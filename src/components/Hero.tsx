@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 const INTERVAL = 8000;
 
@@ -54,32 +54,28 @@ export default function Hero() {
 
   const goTo = useCallback((index: number) => {
     setFading(true);
-    setTimeout(() => {
-      setCurrent(index);
+    window.setTimeout(() => {
+      setCurrent((index + heroSlides.length) % heroSlides.length);
       setFading(false);
-    }, 400);
+    }, 350);
   }, []);
 
+  const next = useCallback(() => goTo(current + 1), [current, goTo]);
+  const prev = useCallback(() => goTo(current - 1), [current, goTo]);
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setFading(true);
-      setTimeout(() => {
-        setCurrent((prev) => (prev + 1) % heroSlides.length);
-        setFading(false);
-      }, 400);
-    }, INTERVAL);
-    return () => clearInterval(timer);
-  }, []);
+    const timer = window.setInterval(next, INTERVAL);
+    return () => window.clearInterval(timer);
+  }, [next]);
 
   const slide = heroSlides[current];
 
   return (
-    <section className="relative w-full min-h-screen overflow-hidden">
-      {/* Background images */}
+    <section className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden">
       {heroSlides.map((s, index) => (
         <div
           key={s.id}
-          className="absolute inset-0 transition-opacity duration-700"
+          className="absolute inset-0 transition-opacity duration-700 ease-in-out"
           style={{ opacity: current === index ? 1 : 0 }}
         >
           <Image
@@ -93,33 +89,46 @@ export default function Hero() {
         </div>
       ))}
 
-      {/* Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20 z-10" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent z-10" />
+      {/* Warm, lighter overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-black/5 z-10" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/15 to-transparent z-10" />
 
-      {/* Content */}
-      <div className="relative z-20 flex flex-col min-h-screen px-4 sm:px-8 lg:px-16 xl:px-24">
-        {/* Navbar spacer */}
-        <div className="h-24" />
+      {/* Arrow navigation */}
+      <button
+        type="button"
+        onClick={prev}
+        aria-label="Previous slide"
+        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-200 flex items-center justify-center"
+      >
+        <ChevronLeft size={22} />
+      </button>
+      <button
+        type="button"
+        onClick={next}
+        aria-label="Next slide"
+        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-200 flex items-center justify-center"
+      >
+        <ChevronRight size={22} />
+      </button>
 
-        {/* Main content */}
+      <div className="relative z-20 flex flex-col min-h-[85vh] lg:min-h-screen px-4 sm:px-8 lg:px-16 xl:px-24">
+        <div className="h-2 sm:h-4" />
+
         <div className="flex-1 flex flex-col justify-center max-w-2xl">
-          {/* Eyebrow */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-5 sm:mb-6">
             <div className="w-8 h-px bg-white/70" />
             <span className="text-xs font-semibold tracking-[0.25em] uppercase text-white/80">
               Farm to Your Table
             </span>
           </div>
 
-          {/* Headline */}
           <h1
-            className="font-display text-white leading-[1.06] mb-5 transition-all duration-400"
+            className="font-display text-white leading-[1.06] mb-4 sm:mb-5"
             style={{
-              fontSize: "clamp(2.75rem, 6vw, 4.5rem)",
+              fontSize: "clamp(2.25rem, 5.5vw, 4.5rem)",
               opacity: fading ? 0 : 1,
-              transform: fading ? "translateY(10px)" : "translateY(0)",
-              transition: "opacity 0.4s ease, transform 0.4s ease",
+              transform: fading ? "translateY(12px)" : "translateY(0)",
+              transition: "opacity 0.35s ease, transform 0.35s ease",
             }}
           >
             {slide.headline[0]}
@@ -127,49 +136,46 @@ export default function Hero() {
             <span className="text-accent-light">{slide.headline[1]}</span>
           </h1>
 
-          {/* Subtext */}
           <p
-            className="text-white/80 text-lg leading-relaxed mb-10 max-w-md"
+            className="text-white/80 text-base sm:text-lg leading-relaxed mb-8 sm:mb-10 max-w-md"
             style={{
               opacity: fading ? 0 : 1,
               transform: fading ? "translateY(8px)" : "translateY(0)",
-              transition: "opacity 0.4s ease 0.05s, transform 0.4s ease 0.05s",
+              transition: "opacity 0.35s ease 0.05s, transform 0.35s ease 0.05s",
             }}
           >
             {slide.subtext}
           </p>
 
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-12">
-            <Link
-              href={slide.shopHref}
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-accent text-white font-semibold text-base rounded-full hover:bg-accent-light transition-colors duration-200"
-            >
+          <div
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12"
+            style={{
+              opacity: fading ? 0 : 1,
+              transition: "opacity 0.35s ease 0.08s",
+            }}
+          >
+            <Link href={slide.shopHref} className="btn-primary text-base py-4 px-8">
               Shop {slide.name}
               <ArrowRight size={16} />
             </Link>
-            <Link
-              href="/shop"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 text-white font-semibold text-base rounded-full border border-white/30 hover:bg-white/20 transition-colors duration-200 backdrop-blur-sm"
-            >
+            <Link href="/shop" className="btn-outline-white text-base py-4 px-8">
               All Products
             </Link>
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             {[
               { value: "5K+", label: "Happy Customers" },
               { value: "50+", label: "Premium Cuts" },
               { value: "100%", label: "Quality Assured" },
             ].map((stat, i) => (
-              <div key={i} className="flex items-center gap-6">
+              <div key={stat.label} className="flex items-center gap-4 sm:gap-6">
                 {i > 0 && <div className="w-px h-8 bg-white/25" />}
                 <div>
-                  <div className="text-2xl font-display font-bold text-white">
+                  <div className="text-xl sm:text-2xl font-display font-bold text-white">
                     {stat.value}
                   </div>
-                  <div className="text-xs text-white/60 tracking-wide mt-0.5">
+                  <div className="text-[11px] sm:text-xs text-white/60 tracking-wide mt-0.5">
                     {stat.label}
                   </div>
                 </div>
@@ -178,29 +184,21 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="pb-10">
-          {/* Category tabs */}
-          <div className="flex gap-2 sm:gap-3 flex-wrap mb-6">
+        <div className="pb-8 sm:pb-10">
+          <div className="flex gap-2 sm:gap-3 flex-wrap mb-5 sm:mb-6">
             {heroSlides.map((s, index) => (
               <button
                 key={s.id}
+                type="button"
                 onClick={() => {
                   goTo(index);
                   router.prefetch(s.shopHref);
                 }}
-                className="group flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 text-sm font-semibold"
-                style={{
-                  background:
-                    current === index
-                      ? "rgba(255,255,255,0.95)"
-                      : "rgba(255,255,255,0.12)",
-                  borderColor:
-                    current === index ? "transparent" : "rgba(255,255,255,0.3)",
-                  color:
-                    current === index ? "#111111" : "rgba(255,255,255,0.85)",
-                  backdropFilter: "blur(8px)",
-                }}
+                className={`group flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-full border transition-all duration-300 text-xs sm:text-sm font-semibold ${
+                  current === index
+                    ? "bg-white text-primary-text border-transparent shadow-soft"
+                    : "bg-white/10 text-white/85 border-white/30 hover:bg-white/20 backdrop-blur-sm"
+                }`}
               >
                 {s.name}
                 <ArrowRight
@@ -211,18 +209,18 @@ export default function Hero() {
             ))}
           </div>
 
-          {/* Progress dots */}
           <div className="flex items-center gap-2">
             {heroSlides.map((_, index) => (
               <button
                 key={index}
+                type="button"
                 onClick={() => goTo(index)}
                 aria-label={`Go to slide ${index + 1}`}
+                aria-current={current === index ? "true" : undefined}
                 className="h-1.5 rounded-full transition-all duration-500"
                 style={{
                   width: current === index ? "2.5rem" : "0.625rem",
-                  background:
-                    current === index ? "white" : "rgba(255,255,255,0.35)",
+                  background: current === index ? "white" : "rgba(255,255,255,0.35)",
                 }}
               />
             ))}

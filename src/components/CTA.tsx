@@ -28,7 +28,7 @@ export default function CTA() {
             <div className="flex items-center justify-center gap-3 mb-6">
               <div className="w-6 h-px bg-accent" />
               <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-white/50">
-                Join 10,000+ happy customers
+                Join 5,000+ happy customers
               </span>
               <div className="w-6 h-px bg-accent" />
             </div>

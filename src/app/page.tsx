@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import DeliveryStrip from "@/components/DeliveryStrip";
 import Hero from "@/components/Hero";
 import TrustBar from "@/components/TrustBar";
 import FeaturedProducts from "@/components/FeaturedProducts";
@@ -13,6 +14,7 @@ export default function HomePage() {
   return (
     <>
       <Navbar />
+      <DeliveryStrip />
       <main>
         <Hero />
         <TrustBar />

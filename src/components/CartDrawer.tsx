@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2, X, CheckCircle } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, X, CheckCircle, MessageCircle } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { business } from "@/data/business";
 
 export default function CartDrawer() {
   const {
@@ -108,6 +109,21 @@ export default function CartDrawer() {
     }
   };
 
+  const buildWhatsAppUrl = () => {
+    const lines = items
+      .map(
+        (item) =>
+          `• ${item.product.name} — ${
+            item.product.isEgg
+              ? `${item.weightKg === 0.5 ? "½" : item.weightKg} dozen`
+              : `${item.weightKg} kg`
+          } — ₹${Math.round(item.product.pricePerKg * item.weightKg)}`
+      )
+      .join("\n");
+    const text = `Hi ${business.name}, I'd like to order:\n\n${lines}\n\nTotal: ₹${subtotal}`;
+    return `https://wa.me/${business.contact.whatsapp.replace("+", "")}?text=${encodeURIComponent(text)}`;
+  };
+
   if (!isDrawerOpen) return null;
 
   return (
@@ -122,7 +138,7 @@ export default function CartDrawer() {
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
-        className="fixed top-0 right-0 h-full w-full md:max-w-md bg-background z-[70] shadow-hover flex flex-col transition-transform duration-300 ease-out"
+        className="fixed top-0 right-0 h-full w-full md:max-w-md bg-background z-[70] shadow-hover flex flex-col animate-slide-in-right"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-warm-gray">
@@ -280,6 +296,15 @@ export default function CartDrawer() {
               >
                 Place Order
               </button>
+              <a
+                href={buildWhatsAppUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full bg-[#25D366] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+              >
+                <MessageCircle size={16} fill="white" />
+                Order via WhatsApp
+              </a>
               <button
                 type="button"
                 onClick={clearCart}

@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { Search, ShoppingCart, Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ShoppingCart, Menu, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
 const navLinks = [
@@ -16,13 +16,11 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { itemCount, isHydrated, openDrawer } = useCart();
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [cartPulse, setCartPulse] = useState(false);
 
   const isSolid = !isHome || scrolled;
 
@@ -39,16 +37,14 @@ export default function Navbar() {
 
   useEffect(() => {
     setMobileOpen(false);
-    setSearchOpen(false);
   }, [pathname]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    router.push(query ? `/shop?q=${encodeURIComponent(query)}` : "/shop");
-    setSearchOpen(false);
-    setSearchQuery("");
-  };
+  useEffect(() => {
+    if (!isHydrated || itemCount === 0) return;
+    setCartPulse(true);
+    const t = window.setTimeout(() => setCartPulse(false), 450);
+    return () => window.clearTimeout(t);
+  }, [itemCount, isHydrated]);
 
   const closeMobile = () => setMobileOpen(false);
 
@@ -204,19 +200,6 @@ export default function Navbar() {
             <div className="flex items-center gap-1.5 sm:gap-3">
               <button
                 type="button"
-                onClick={() => setSearchOpen(!searchOpen)}
-                aria-label="Search products"
-                className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 ${
-                  isSolid
-                    ? "text-secondary-text hover:text-primary-text hover:bg-warm-gray"
-                    : "text-white/80 hover:text-white hover:bg-white/15"
-                }`}
-              >
-                <Search size={18} strokeWidth={1.75} />
-              </button>
-
-              <button
-                type="button"
                 onClick={openDrawer}
                 aria-label={`Cart (${isHydrated ? itemCount : 0} items)`}
                 className={`relative p-2 sm:p-2.5 rounded-full transition-all duration-200 ${
@@ -227,7 +210,12 @@ export default function Navbar() {
               >
                 <ShoppingCart size={18} strokeWidth={1.75} />
                 {isHydrated && itemCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span
+                    key={itemCount}
+                    className={`absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 bg-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center ${
+                      cartPulse ? "animate-cart-pulse" : ""
+                    }`}
+                  >
                     {itemCount > 99 ? "99+" : itemCount}
                   </span>
                 )}
@@ -259,25 +247,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Search bar */}
-          {searchOpen && (
-            <form onSubmit={handleSearch} className="pb-4">
-              <div className="relative">
-                <Search
-                  size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text"
-                />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products..."
-                  autoFocus
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-warm-gray rounded-full text-sm focus:outline-none focus:border-accent/40"
-                />
-              </div>
-            </form>
-          )}
         </nav>
       </header>
     </>

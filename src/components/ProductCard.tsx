@@ -48,14 +48,23 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className={`card-base group flex flex-col ${categoryBorder[product.category] ?? ""}`}>
+    <div
+      className={`card-base group flex flex-col transition-all duration-300 ${categoryBorder[product.category] ?? ""} ${
+        inCart ? "ring-2 ring-success/35 shadow-glow" : ""
+      }`}
+    >
       <div className="p-4 sm:p-5 flex flex-col flex-1">
-
         <div className="flex items-start justify-between gap-3 mb-1.5">
           <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-medium text-secondary-text tracking-wide uppercase">
-              {product.category}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="text-[11px] font-medium text-secondary-text tracking-wide uppercase">
+                {product.category}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                Fresh Daily
+              </span>
+            </div>
             <h3 className="font-display text-base sm:text-lg text-primary-text mt-0.5 leading-tight">
               {product.name}
             </h3>
@@ -65,8 +74,13 @@ export default function ProductCard({ product }: { product: Product }) {
               </span>
             )}
           </div>
-          <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-warm-gray flex-shrink-0">
-            <Image src={product.image} alt={product.name} fill className="object-cover" sizes="80px" />
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-warm-gray flex-shrink-0 shadow-soft">
+            <Image src={product.image} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="112px" />
+            {inCart && (
+              <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-success flex items-center justify-center shadow-soft">
+                <Check size={13} className="text-white" strokeWidth={2.5} />
+              </div>
+            )}
           </div>
         </div>
 

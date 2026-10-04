@@ -19,8 +19,8 @@ const config: Config = {
         "warm-gray": "#E8E4DC",
       },
       fontFamily: {
-        display: ["Georgia", "Times New Roman", "serif"],
-        body: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "Times New Roman", "serif"],
+        body: ["var(--font-body)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
       },
       spacing: {
         "18": "4.5rem",
@@ -42,6 +42,8 @@ const config: Config = {
       animation: {
         "fade-up": "fadeUp 0.6s ease forwards",
         "fade-in": "fadeIn 0.5s ease forwards",
+        "slide-in-right": "slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "cart-pulse": "cartPulse 0.45s ease-out",
       },
       keyframes: {
         fadeUp: {
@@ -51,6 +53,14 @@ const config: Config = {
         fadeIn: {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
+        },
+        slideInRight: {
+          "0%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        cartPulse: {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.25)" },
         },
       },
     },

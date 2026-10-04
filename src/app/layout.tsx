@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { business } from "@/data/business";
 import { createPageMetadata } from "@/lib/seo";
+import { fraunces, dmSans } from "@/lib/fonts";
 import Providers from "@/components/Providers";
 import BackToTop from "@/components/BackToTop";
 import LocalBusinessJsonLd from "@/components/LocalBusinessJsonLd";
@@ -22,14 +23,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${fraunces.variable} ${dmSans.variable}`}>
       <head>
         <link rel="icon" href="/images/logo/kg-logo.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#FAF8F5" />
         <LocalBusinessJsonLd />
       </head>
-      <body className="antialiased bg-background text-primary-text">
+      <body className="font-body antialiased bg-background text-primary-text">
         <Providers>{children}</Providers>
         <BackToTop />
       </body>

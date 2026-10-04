@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Instagram, Facebook, MapPin, Phone, Mail, MessageSquare } from "lucide-react";
 import { business } from "@/data/business";
 
@@ -43,8 +44,14 @@ export default function Footer() {
 				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
 					<div className="lg:col-span-1">
 						<div className="flex items-center gap-3 mb-5">
-							<div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-								<span className="text-white font-display font-bold text-sm">KG</span>
+							<div className="relative w-10 h-10 rounded-full overflow-hidden bg-white border border-white/10 flex items-center justify-center flex-shrink-0">
+								<Image
+									src="/images/logo/kg-logo.png"
+									alt={`${business.name} logo`}
+									width={32}
+									height={32}
+									className="object-contain"
+								/>
 							</div>
 							<div>
 								<div className="font-display font-bold text-lg tracking-tight">{business.name}</div>
