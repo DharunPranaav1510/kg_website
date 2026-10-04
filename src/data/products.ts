@@ -7,6 +7,7 @@ export interface Product {
   badge?: string;
   description: string;
   isEgg?: boolean;
+  featured?: boolean;
 }
 
 export const shopCategories = [
@@ -29,9 +30,12 @@ export const sortOptions: { value: SortOption; label: string }[] = [
   { value: "name-asc", label: "Name: A–Z" },
 ];
 
+// Default catalogue. Used as a fallback when the database is not configured or
+// empty, and as the seed for the admin panel's "Import default products".
 export const products: Product[] = [
   {
     id: "chicken-breast",
+    featured: true,
     name: "Chicken Breast",
     category: "Chicken",
     pricePerKg: 250, // live: ₹150–₹250, using upper/per-kg rate
@@ -41,6 +45,7 @@ export const products: Product[] = [
   },
   {
     id: "chicken-thigh",
+    featured: true,
     name: "Chicken Thigh",
     category: "Chicken",
     pricePerKg: 250, // live: ₹250
@@ -57,6 +62,7 @@ export const products: Product[] = [
   },
   {
     id: "chicken-cutlets",
+    featured: true,
     name: "Chicken Cutlets",
     category: "Ready To Cook",
     pricePerKg: 180, // live: ₹180/pack
@@ -66,6 +72,7 @@ export const products: Product[] = [
   },
   {
     id: "chicken-samosas",
+    featured: true,
     name: "Chicken Samosas",
     category: "Frozen Products",
     pricePerKg: 240, // live: ₹240/pack
@@ -83,6 +90,7 @@ export const products: Product[] = [
   },
   {
     id: "tandoori-chicken-legs",
+    featured: true,
     name: "Tandoori Chicken Legs",
     category: "Ready To Cook",
     pricePerKg: 300, // live: ₹300/pack
@@ -92,6 +100,7 @@ export const products: Product[] = [
   },
   {
     id: "mutton-kheema",
+    featured: true,
     name: "Mutton Kheema",
     category: "Mutton",
     pricePerKg: 360, // live: ₹360/pack
@@ -108,23 +117,6 @@ export const products: Product[] = [
     description: "Hand-selected premium cuts, tender and flavourful.",
   },
 ];
-
-const featuredIds = [
-  "chicken-breast",
-  "chicken-thigh",
-  "chicken-cutlets",
-  "chicken-samosas",
-  "tandoori-chicken-legs",
-  "mutton-kheema",
-];
-
-export const featuredProducts = featuredIds
-  .map((id) => products.find((p) => p.id === id))
-  .filter((p): p is Product => p !== undefined);
-
-export function getProductById(id: string): Product | undefined {
-  return products.find((p) => p.id === id);
-}
 
 export function filterProducts(
   items: Product[],
@@ -158,12 +150,8 @@ export function sortProducts(items: Product[], sort: SortOption): Product[] {
     case "featured":
     default:
       return sorted.sort((a, b) => {
-        const aIndex = featuredIds.indexOf(a.id);
-        const bIndex = featuredIds.indexOf(b.id);
-        if (aIndex === -1 && bIndex === -1) return a.name.localeCompare(b.name);
-        if (aIndex === -1) return 1;
-        if (bIndex === -1) return -1;
-        return aIndex - bIndex;
+        if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
+        return a.name.localeCompare(b.name);
       });
   }
 }

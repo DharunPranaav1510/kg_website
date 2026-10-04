@@ -146,3 +146,16 @@ For issues or questions, please contact the development team.
    The service_role key is server-only; never expose it to the browser.
 
 Orders and enquiries are saved to the `orders` / `enquiries` tables, then emailed. If the Supabase vars are missing, only the email is sent.
+
+## Admin panel
+
+Admins manage products at `/admin` (add, edit price, hide, delete, upload photos).
+
+1. Run the updated `supabase/schema.sql` in the Supabase SQL Editor (adds `products`, `admins` and the `product-images` bucket).
+2. Supabase -> Authentication -> Sign In / Providers: turn **off** "Allow new users to sign up".
+3. Supabase -> Authentication -> Users -> **Add user** (email + password, tick "Auto Confirm User").
+4. Allow that email in the SQL Editor: `insert into public.admins (email) values ('you@example.com');`
+5. Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+6. Open `/admin/login`, sign in, and click **Import default products** once to load the current catalogue.
+
+Only emails in the `admins` table can sign in; everyone else is rejected even if they have a Supabase account. Order prices are always recalculated on the server from the product table.

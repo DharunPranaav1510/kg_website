@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabase } from "@/lib/supabase";
+import { getProducts } from "@/lib/products-db";
 
 // Email is optional: skipped when RESEND_API_KEY is not set.
 const resend = process.env.RESEND_API_KEY
@@ -10,14 +11,42 @@ const resend = process.env.RESEND_API_KEY
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, address, note, items, total } = body;
+    const { name, phone, address, note } = body;
+    let items = body.items;
+    let total = body.total;
 
-    if (!name || !phone || !address || !items || items.length === 0) {
+    if (!name || !phone || !address || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
+
+    // Prices come from the catalogue, never from the browser.
+    const catalogue = await getProducts();
+    let computedTotal = 0;
+    const pricedItems: { name: string; quantity: string; price: number }[] = [];
+    for (const item of items as { id?: string; weightKg?: number }[]) {
+      const product = catalogue.find((p) => p.id === item.id);
+      const weight = Number(item.weightKg);
+      if (!product || !Number.isFinite(weight) || weight <= 0 || weight > 3) {
+        return NextResponse.json(
+          { error: "Some items are no longer available. Please refresh and try again." },
+          { status: 400 }
+        );
+      }
+      const price = Math.round(product.pricePerKg * weight);
+      computedTotal += price;
+      pricedItems.push({
+        name: product.name,
+        quantity: product.isEgg
+          ? `${weight === 0.5 ? "½" : weight} dozen`
+          : `${weight} kg`,
+        price,
+      });
+    }
+    items = pricedItems;
+    total = computedTotal;
 
     const supabase = getSupabase();
     if (supabase) {

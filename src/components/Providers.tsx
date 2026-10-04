@@ -1,15 +1,23 @@
 "use client";
 
 import { CartProvider } from "@/context/CartContext";
+import { ProductsProvider } from "@/context/ProductsContext";
 import CartDrawer from "@/components/CartDrawer";
-import WhatsAppFab from "@/components/WhatsAppFab";
+import type { Product } from "@/data/products";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  products,
+  children,
+}: {
+  products: Product[];
+  children: React.ReactNode;
+}) {
   return (
-    <CartProvider>
-      {children}
-      <CartDrawer />
-      <WhatsAppFab />
-    </CartProvider>
+    <ProductsProvider products={products}>
+      <CartProvider>
+        {children}
+        <CartDrawer />
+      </CartProvider>
+    </ProductsProvider>
   );
 }

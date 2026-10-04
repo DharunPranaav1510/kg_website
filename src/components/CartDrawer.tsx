@@ -81,6 +81,8 @@ export default function CartDrawer() {
       address: address.trim(),
       note: note.trim(),
       items: items.map((item) => ({
+        id: item.product.id,
+        weightKg: item.weightKg,
         name: item.product.name,
         quantity: item.product.isEgg
           ? `${item.weightKg === 0.5 ? "½" : item.weightKg} dozen`

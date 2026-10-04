@@ -4,8 +4,8 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { PackageOpen } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
+import { useProducts } from "@/context/ProductsContext";
 import {
-  products,
   shopCategories,
   filterProducts,
   sortProducts,
@@ -14,6 +14,7 @@ import {
 } from "@/data/products";
 
 export default function ShopContent() {
+  const products = useProducts();
   const searchParams = useSearchParams();
   const [activeCategory, setActiveCategory] = useState<ShopCategory>("All");
 
@@ -28,7 +29,7 @@ export default function ShopContent() {
   const filteredProducts = useMemo(() => {
     const filtered = filterProducts(products, activeCategory, "");
     return sortProducts(filtered, "featured");
-  }, [activeCategory]);
+  }, [products, activeCategory]);
 
   return (
     <section className="pb-8 sm:pb-12 bg-background">
