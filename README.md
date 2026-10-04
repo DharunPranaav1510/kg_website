@@ -132,3 +132,17 @@ Proprietary - KG Foods
 ## Support
 
 For issues or questions, please contact the development team.
+
+## Database (Supabase)
+
+1. Create a free project at https://supabase.com.
+2. SQL Editor -> paste and run `supabase/schema.sql`.
+3. Project Settings -> API: copy the Project URL and the `service_role` key into `.env.local` (and Vercel env vars):
+   ```
+   SUPABASE_URL=https://xxxx.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=eyJ...
+   RESEND_API_KEY=re_...
+   ```
+   The service_role key is server-only; never expose it to the browser.
+
+Orders and enquiries are saved to the `orders` / `enquiries` tables, then emailed. If the Supabase vars are missing, only the email is sent.

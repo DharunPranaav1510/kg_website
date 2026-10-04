@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { getSupabase } from "@/lib/supabase";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -13,6 +14,19 @@ export async function POST(req: NextRequest) {
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    const supabase = getSupabase();
+    if (supabase) {
+      const { error } = await supabase.from("orders").insert({
+        customer_name: name,
+        phone,
+        address,
+        note: note || null,
+        items,
+        total: Number(total) || 0,
+      });
+      if (error) console.error("Supabase order insert error:", error);
     }
 
     const itemRows = items
