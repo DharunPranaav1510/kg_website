@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getSupabase } from "@/lib/supabase";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Email is optional: skipped when RESEND_API_KEY is not set.
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 export async function POST(req: NextRequest) {
   try {
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    await resend.emails.send({
+    await resend?.emails.send({
       from: "onboarding@resend.dev",
       to: "kgbroilersandeggs@gmail.com",
       subject: `New Order from ${name} — ₹${total}`,
