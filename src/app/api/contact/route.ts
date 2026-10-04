@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { clientIpHash, LIMITS } from "@/lib/guard";
+import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { getSupabase } from "@/lib/supabase";
 
 // Email is optional: skipped when RESEND_API_KEY is not set.
@@ -14,62 +16,77 @@ const esc = (v: unknown) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const fail = (error: string, status = 400, field?: string) =>
+  NextResponse.json({ error, ...(field ? { field } : {}) }, { status });
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { name, email, phone, message } = body;
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") return fail("Invalid request");
 
-    if (!name || !email || !phone || !message) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    // Bot trap + minimum fill time (see the order route).
+    if (typeof body.website === "string" && body.website.trim() !== "") {
+      return NextResponse.json({ success: true });
     }
+    const elapsed = Date.now() - Number(body.startedAt);
+    if (!Number.isFinite(elapsed) || elapsed < 3000) {
+      return fail("Please take a moment to review your message and try again.");
+    }
+
+    const name = str(body.name, 80);
+    if (name.length < 2) return fail("Please enter your name", 400, "name");
+    const phone = normalizeIndianMobile(str(body.phone, 25));
+    if (!phone) return fail("Enter a valid 10-digit mobile number", 400, "phone");
+    const emailResult = normalizeEmail(str(body.email, 130));
+    if (emailResult === null) return fail("That email doesn't look right", 400, "email");
+    const email = emailResult ?? null;
+    const message = str(body.message, 2000);
+    if (message.length < 10) return fail("Message must be at least 10 characters", 400, "message");
 
     const supabase = getSupabase();
+    const ipHash = clientIpHash(req);
     if (supabase) {
+      const hourAgo = new Date(Date.now() - 3600 * 1000).toISOString();
+      const { count } = await supabase
+        .from("enquiries")
+        .select("id", { count: "exact", head: true })
+        .eq("ip_hash", ipHash)
+        .gte("created_at", hourAgo);
+      if ((count ?? 0) >= LIMITS.enquiryPerHour) {
+        return fail("Too many messages from this device. Please call the shop instead.", 429);
+      }
       const { error } = await supabase
         .from("enquiries")
-        .insert({ name, email, phone, message });
-      if (error) console.error("Supabase enquiry insert error:", error);
+        .insert({ name, email, phone, message, ip_hash: ipHash });
+      if (error) {
+        console.error("Supabase enquiry insert error:", error);
+        return fail("We couldn't send your message. Please try again or call us.", 500);
+      }
     }
 
-    await resend?.emails.send({
-      from: "onboarding@resend.dev",
-      to: "dskarthik63@gmail.com",
-      subject: `New Enquiry from ${name} — KG Meat Mart`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-          <div style="background:#D63E0A;padding:24px 32px;border-radius:12px 12px 0 0;">
-            <h1 style="color:white;margin:0;font-size:22px;">New Enquiry — KG Meat Mart</h1>
-            <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:14px;">
-              ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
-            </p>
-          </div>
-          <div style="background:#fff;padding:28px 32px;border:1px solid #eee;border-top:none;">
-            <p style="margin:4px 0;font-size:15px;"><strong>Name:</strong> ${esc(name)}</p>
-            <p style="margin:4px 0;font-size:15px;"><strong>Email:</strong> ${esc(email)}</p>
-            <p style="margin:4px 0;font-size:15px;"><strong>Phone:</strong> ${esc(phone)}</p>
-          </div>
-          <div style="background:#FAF8F5;padding:24px 32px;border:1px solid #eee;border-top:none;">
-            <h2 style="font-size:14px;color:#555;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.1em;">Message</h2>
-            <p style="font-size:15px;color:#111;line-height:1.6;margin:0;">${esc(message).replace(/\n/g, "<br/>")}</p>
-          </div>
-          <div style="background:#fff;padding:16px 32px;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;">
-            <p style="margin:0;font-size:13px;color:#888;">
-              Sent from kgfoods.co.in — KG Meat Mart, NH 44, Anna Nagar, Hosur 635109
-            </p>
-          </div>
-        </div>
-      `,
-    });
+    try {
+      await resend?.emails.send({
+        from: "onboarding@resend.dev",
+        to: "dskarthik63@gmail.com",
+        subject: `New Enquiry from ${name} — KG Meat Mart`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <h2>New enquiry</h2>
+            <p><strong>Name:</strong> ${esc(name)}</p>
+            <p><strong>Phone:</strong> ${esc(formatPhone(phone))}</p>
+            ${email ? `<p><strong>Email:</strong> ${esc(email)}</p>` : ""}
+            <p style="white-space:pre-wrap">${esc(message)}</p>
+          </div>`,
+      });
+    } catch (err) {
+      console.error("Contact email error:", err);
+      if (!supabase) throw err;
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Contact email error:", err);
-    return NextResponse.json(
-      { error: "Failed to send message" },
-      { status: 500 }
-    );
+    console.error("Contact error:", err);
+    return fail("Failed to send message", 500);
   }
 }

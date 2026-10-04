@@ -3,38 +3,21 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2, X, CheckCircle, MessageCircle, Phone } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, X, Clock, MessageCircle, Phone, Lock } from "lucide-react";
+import CheckoutForm, { type PlacedOrder } from "@/components/CheckoutForm";
 import { useCart } from "@/context/CartContext";
+import { useShopStatus } from "@/context/ShopStatusContext";
 import { business } from "@/data/business";
 import { amountToFreeDelivery, deliveryFeeFor, MIN_ORDER } from "@/lib/delivery";
+import { formatPhone } from "@/lib/phone";
 
-const CUSTOMER_KEY = "kg-foods-customer";
+type Step = "cart" | "form" | "confirmation";
 
 export default function CartDrawer() {
-  const {
-    items,
-    itemCount,
-    subtotal,
-    isDrawerOpen,
-    closeDrawer,
-    updateWeight,
-    removeItem,
-    clearCart,
-  } = useCart();
-
-  type Step = "cart" | "form" | "confirmation";
+  const { items, itemCount, subtotal, isDrawerOpen, closeDrawer, updateWeight, removeItem, clearCart } = useCart();
+  const shop = useShopStatus();
   const [step, setStep] = useState<Step>("cart");
-  const [submitting, setSubmitting] = useState(false);
-
-  // Form state
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [note, setNote] = useState("");
-  const [slot, setSlot] = useState<string>(business.delivery.slots[0]);
-  const [placed, setPlaced] = useState<{ id: string | null; number: number | null; total: number } | null>(null);
-  const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string; address?: string }>({});
-  const [formErrorMessage, setFormErrorMessage] = useState("");
+  const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = isDrawerOpen ? "hidden" : "";
@@ -43,472 +26,231 @@ export default function CartDrawer() {
     };
   }, [isDrawerOpen]);
 
+  // Reset when closed. The confirmation screen is only cleared on close.
   useEffect(() => {
     if (!isDrawerOpen) {
       setStep("cart");
-      setSubmitting(false);
-      setFormErrors({});
-      setFormErrorMessage("");
-      setName("");
-      setPhone("");
-      setAddress("");
-      setNote("");
       setPlaced(null);
     }
   }, [isDrawerOpen]);
+
+  // Esc closes the cart.
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeDrawer();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isDrawerOpen, closeDrawer]);
 
   const deliveryFee = deliveryFeeFor(subtotal);
   const total = subtotal + deliveryFee;
   const belowMin = subtotal < MIN_ORDER;
   const hasSoldOut = items.some((i) => i.product.inStock === false);
   const toFree = amountToFreeDelivery(subtotal);
-
-  const handleCheckout = () => {
-    if (items.length === 0 || belowMin || hasSoldOut) return;
-    // Pre-fill from the last order on this device.
-    try {
-      const saved = JSON.parse(window.localStorage.getItem(CUSTOMER_KEY) ?? "{}");
-      if (!name && typeof saved.name === "string") setName(saved.name);
-      if (!phone && typeof saved.phone === "string") setPhone(saved.phone);
-      if (!address && typeof saved.address === "string") setAddress(saved.address);
-    } catch {}
-    setStep("form");
-  };
-
-  const handleClose = () => {
-    setStep("cart");
-    closeDrawer();
-  };
-
-  const validateForm = () => {
-    const errors: typeof formErrors = {};
-    if (!name.trim()) errors.name = "Name is required";
-    if (!phone.trim()) errors.phone = "Phone is required";
-    if (!address.trim()) errors.address = "Address is required";
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmitOrder = async () => {
-    setFormErrorMessage("");
-    if (!validateForm()) return;
-    setSubmitting(true);
-
-    const payload = {
-      name: name.trim(),
-      phone: phone.trim(),
-      address: address.trim(),
-      note: note.trim(),
-      slot,
-      // Prices are recalculated on the server; only ids and weights are trusted.
-      items: items.map((item) => ({ id: item.product.id, weightKg: item.weightKg })),
-    };
-
-    try {
-      const res = await fetch("/api/order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Order failed");
-
-      try {
-        window.localStorage.setItem(
-          CUSTOMER_KEY,
-          JSON.stringify({ name: name.trim(), phone: phone.trim(), address: address.trim() })
-        );
-      } catch {}
-      setPlaced({ id: data.id ?? null, number: data.orderNumber ?? null, total: data.total ?? total });
-      setStep("confirmation");
-      clearCart();
-    } catch (err) {
-      console.error(err);
-      setFormErrorMessage(
-        err instanceof Error && err.message !== "Order failed"
-          ? err.message
-          : "Something went wrong. Please try again."
-      );
-      setSubmitting(false);
-    }
-  };
+  const canOrder = shop.open && !belowMin && !hasSoldOut && items.length > 0;
 
   const buildWhatsAppUrl = () => {
     const lines = items
       .map(
         (item) =>
           `• ${item.product.name} — ${
-            item.product.isEgg
-              ? `${item.weightKg === 0.5 ? "½" : item.weightKg} dozen`
-              : `${item.weightKg} kg`
+            item.product.isEgg ? `${item.weightKg === 0.5 ? "½" : item.weightKg} dozen` : `${item.weightKg} kg`
           } — ₹${Math.round(item.product.pricePerKg * item.weightKg)}`
       )
       .join("\n");
-    const text = `Hi ${business.name}, I'd like to order:\n\n${lines}\n\nTotal: ₹${subtotal}`;
+    const text = `Hi ${business.name}, I'd like to order:\n\n${lines}\n\nItems: ₹${subtotal}`;
     return `https://wa.me/${business.contact.whatsapp.replace("+", "")}?text=${encodeURIComponent(text)}`;
   };
 
   if (!isDrawerOpen) return null;
 
+  const stepIndex = step === "cart" ? 1 : step === "form" ? 2 : 3;
+
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
-        onClick={handleClose}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" onClick={closeDrawer} aria-hidden="true" />
 
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
-        className="fixed top-0 right-0 h-full w-full md:max-w-md bg-background z-[70] shadow-hover flex flex-col animate-slide-in-right"
+        className="animate-slide-in-right fixed right-0 top-0 z-[70] flex h-[100dvh] w-full flex-col bg-background shadow-hover md:max-w-md"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-warm-gray">
+        <div className="flex items-center justify-between border-b border-warm-gray px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
           <div className="flex items-center gap-3">
             <ShoppingBag size={20} className="text-accent" strokeWidth={1.75} />
             <div>
-              <h2 className="font-display text-xl text-primary-text">Your Cart</h2>
+              <h2 className="font-display text-xl leading-tight text-primary-text">
+                {step === "form" ? "Checkout" : step === "confirmation" ? "Order received" : "Your cart"}
+              </h2>
               <p className="text-xs text-secondary-text">
-                {itemCount} {itemCount === 1 ? "item" : "items"}
+                {step === "cart" ? `${itemCount} ${itemCount === 1 ? "item" : "items"}` : `Step ${stepIndex} of 3`}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Close cart"
-            className="p-2 rounded-full hover:bg-warm-gray transition-colors"
-          >
-            <X size={20} />
+          <button type="button" onClick={closeDrawer} aria-label="Close cart" className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-warm-gray">
+            <X size={22} />
           </button>
         </div>
 
-        {step === "confirmation" ? (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-5">
-              <CheckCircle size={48} className="text-success" />
+        {step === "confirmation" && placed ? (
+          <div className="flex-1 overflow-y-auto px-5 py-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <Clock size={32} className="text-amber-700" />
             </div>
-            <h3 className="font-display text-2xl text-primary-text mb-1">Order Placed!</h3>
-            {placed?.number && (
-              <p className="text-accent font-semibold mb-3">Order #{placed.number}</p>
-            )}
-            <p className="text-secondary-text text-sm leading-relaxed mb-6 max-w-xs">
-              We&apos;ve received your order and will call you at <span className="font-semibold text-primary-text">{phone}</span> to confirm delivery.
-              Pay <span className="font-semibold text-primary-text">₹{placed?.total ?? total}</span> on delivery.
-            </p>
-            <div className="flex flex-col gap-3 w-full max-w-xs mb-6">
-              {placed?.id && (
-                <Link href={`/order/${placed.id}`} onClick={handleClose} className="btn-secondary w-full">
+            <h3 className="font-display text-2xl text-primary-text">We&apos;ve received your order</h3>
+            {placed.number && <p className="mt-1 font-semibold text-accent">Order #{placed.number}</p>}
+
+            <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-amber-300 bg-amber-50 p-4 text-left text-sm text-amber-900">
+              <p className="font-semibold">⚠ Not confirmed yet</p>
+              <p className="mt-1">
+                Your order is confirmed only when someone from {business.name} calls you on{" "}
+                <b>{formatPhone(placed.phone)}</b>. Please keep your phone nearby.
+              </p>
+            </div>
+
+            <ol className="mx-auto mt-5 max-w-sm space-y-3 text-left text-sm">
+              {[
+                ["done", "Order received"],
+                ["now", `We call ${formatPhone(placed.phone)} to confirm`],
+                ["next", `Delivery — pay ₹${placed.total} on delivery`],
+              ].map(([state, text], i) => (
+                <li key={i} className="flex items-center gap-3">
+                  <span className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${state === "done" ? "bg-success text-white" : state === "now" ? "bg-amber-400 text-white" : "bg-warm-gray text-secondary-text"}`}>
+                    {state === "done" ? "✓" : i + 1}
+                  </span>
+                  <span className={state === "next" ? "text-secondary-text" : "font-medium text-primary-text"}>{text}</span>
+                </li>
+              ))}
+            </ol>
+
+            <div className="mx-auto mt-8 flex max-w-sm flex-col gap-3">
+              {placed.id && (
+                <Link href={`/order/${placed.id}`} onClick={closeDrawer} className="btn-primary min-h-12">
                   Track your order
                 </Link>
               )}
-              <a href={`tel:${business.contact.phone}`} className="inline-flex items-center justify-center gap-2 text-sm text-secondary-text hover:text-accent">
-                <Phone size={14} /> Call the shop
+              <a href={`tel:${business.contact.phone}`} className="btn-secondary min-h-12">
+                <Phone size={15} /> Call the shop · {business.contact.phoneDisplay}
               </a>
+              <button type="button" onClick={closeDrawer} className="min-h-11 text-sm text-secondary-text hover:text-accent">
+                Continue shopping
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setStep("cart");
-                handleClose();
-              }}
-              className="btn-primary"
-            >
-              Continue Shopping
-            </button>
           </div>
         ) : items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-warm-gray flex items-center justify-center mb-5">
+          <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-warm-gray">
               <ShoppingBag size={28} className="text-secondary-text" />
             </div>
-            <h3 className="font-display text-xl text-primary-text mb-2">
-              Your cart is empty
-            </h3>
-            <p className="text-secondary-text text-sm mb-8">
-              Browse our fresh products and add items to get started.
-            </p>
-            <Link href="/shop" onClick={closeDrawer} className="btn-primary">
-              Shop Products
-            </Link>
+            <h3 className="mb-2 font-display text-xl text-primary-text">Your cart is empty</h3>
+            <p className="mb-8 text-sm text-secondary-text">Browse our fresh products and add items to get started.</p>
+            <Link href="/shop" onClick={closeDrawer} className="btn-primary">Shop Products</Link>
           </div>
-        ) : step === "cart" ? (
+        ) : step === "form" ? (
+          <CheckoutForm
+            subtotal={subtotal}
+            deliveryFee={deliveryFee}
+            total={total}
+            onBack={() => setStep("cart")}
+            onPlaced={(order) => {
+              setPlaced(order);
+              setStep("confirmation");
+            }}
+          />
+        ) : (
           <>
-            {/* Items */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
               {items.map(({ product, weightKg }) => (
-                <div
-                  key={product.id}
-                  className="flex gap-4 p-3 bg-white rounded-xl shadow-soft border border-warm-gray/60"
-                >
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-warm-gray flex-shrink-0">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="80px"
-                    />
+                <div key={product.id} className="flex gap-3 rounded-xl border border-warm-gray/60 bg-white p-3 shadow-soft">
+                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-warm-gray">
+                    <Image src={product.image} alt={product.name} fill className="object-cover" sizes="80px" />
                   </div>
-
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-secondary-text">
-                          {product.category}
-                        </p>
-                        <h3 className="font-medium text-sm text-primary-text leading-tight">
-                          {product.name}
-                        </h3>
-                        <p className="text-xs text-secondary-text mt-0.5">
-                          {product.isEgg
-                            ? `${weightKg === 0.5 ? "½" : weightKg} dozen`
-                            : `${weightKg} kg`}
-                        </p>
-                        {product.inStock === false && (
-                          <p className="text-xs font-semibold text-accent mt-1">Sold out — please remove</p>
-                        )}
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wide text-secondary-text">{product.category}</p>
+                        <h3 className="text-sm font-medium leading-tight text-primary-text">{product.name}</h3>
+                        {product.inStock === false && <p className="mt-1 text-xs font-semibold text-accent">Sold out — please remove</p>}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(product.id)}
-                        aria-label={`Remove ${product.name}`}
-                        className="p-1.5 text-secondary-text hover:text-accent transition-colors flex-shrink-0"
-                      >
-                        <Trash2 size={14} />
+                      <button type="button" onClick={() => removeItem(product.id)} aria-label={`Remove ${product.name}`} className="-mr-2 -mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center text-secondary-text hover:text-accent">
+                        <Trash2 size={16} />
                       </button>
                     </div>
-
-                    <div className="flex items-center justify-between mt-3">
-                      {/* Weight +/- */}
-                      <div className="flex items-center gap-2">
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
+                          aria-label={`Decrease ${product.name}`}
                           onClick={() => {
-                            const stepVal = product.isEgg ? 0.5 : 0.25;
-                            updateWeight(product.id, Math.max(product.isEgg ? 0.5 : 0.25, weightKg - stepVal));
+                            const min = product.isEgg ? 0.5 : 0.25;
+                            updateWeight(product.id, Math.max(min, weightKg - min));
                           }}
-                          className="w-7 h-7 rounded-full bg-warm-gray text-primary-text text-sm hover:bg-accent/10 transition-colors flex items-center justify-center"
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-warm-gray transition-colors active:bg-accent/10"
                         >
-                          <Minus size={12} />
+                          <Minus size={14} />
                         </button>
-                        <span className="text-sm font-semibold min-w-[3rem] text-center">
-                          {product.isEgg
-                            ? `${weightKg === 0.5 ? "½" : weightKg}dz`
-                            : `${weightKg}kg`}
+                        <span className="min-w-[3.25rem] text-center text-sm font-semibold">
+                          {product.isEgg ? `${weightKg === 0.5 ? "½" : weightKg} dz` : `${weightKg} kg`}
                         </span>
                         <button
                           type="button"
+                          aria-label={`Increase ${product.name}`}
                           onClick={() => {
-                            const stepVal = product.isEgg ? 0.5 : 0.25;
-                            const max = product.isEgg ? 2 : 3;
-                            updateWeight(product.id, Math.min(max, weightKg + stepVal));
+                            const step = product.isEgg ? 0.5 : 0.25;
+                            updateWeight(product.id, Math.min(product.isEgg ? 2 : 3, weightKg + step));
                           }}
-                          className="w-7 h-7 rounded-full bg-accent text-white text-sm hover:bg-accent-light transition-colors flex items-center justify-center"
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-white transition-colors active:bg-accent-light"
                         >
-                          <Plus size={12} />
+                          <Plus size={14} />
                         </button>
                       </div>
-                      <span className="font-bold text-primary-text">
-                        ₹{Math.round(product.pricePerKg * weightKg)}
-                      </span>
+                      <span className="font-bold text-primary-text">₹{Math.round(product.pricePerKg * weightKg)}</span>
                     </div>
                   </div>
                 </div>
               ))}
+
+              <button type="button" onClick={clearCart} className="w-full py-2 text-sm text-secondary-text hover:text-accent">Clear cart</button>
             </div>
 
-            {/* Footer */}
-            <div className="border-t border-warm-gray px-5 sm:px-6 py-5 space-y-4 bg-white">
-              <div className="space-y-1.5 text-sm">
-                <div className="flex items-center justify-between text-secondary-text">
-                  <span>Subtotal</span>
-                  <span>₹{subtotal}</span>
-                </div>
-                <div className="flex items-center justify-between text-secondary-text">
-                  <span>Delivery</span>
-                  <span>{deliveryFee ? `₹${deliveryFee}` : "Free"}</span>
-                </div>
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-primary-text font-medium">Total (pay on delivery)</span>
+            <div className="space-y-3 border-t border-warm-gray bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-secondary-text"><span>Subtotal</span><span>₹{subtotal}</span></div>
+                <div className="flex justify-between text-secondary-text"><span>Delivery</span><span>{deliveryFee ? `₹${deliveryFee}` : "Free"}</span></div>
+                <div className="flex items-baseline justify-between pt-1">
+                  <span className="font-medium text-primary-text">Total · pay on delivery</span>
                   <span className="font-display text-2xl text-primary-text">₹{total}</span>
                 </div>
               </div>
-              {belowMin ? (
-                <p className="text-xs rounded-lg bg-amber-50 text-amber-800 px-3 py-2">
-                  Minimum order is ₹{MIN_ORDER}. Add ₹{MIN_ORDER - subtotal} more to continue.
+
+              {!shop.open ? (
+                <p className="flex items-start gap-2 rounded-lg bg-primary-text px-3 py-2.5 text-xs text-white">
+                  <Lock size={14} className="mt-0.5 flex-shrink-0" />
+                  <span><b>Orders are paused.</b> {shop.message || "We're closed right now. Please check back soon."}</span>
                 </p>
+              ) : belowMin ? (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Minimum order is ₹{MIN_ORDER}. Add ₹{MIN_ORDER - subtotal} more to continue.</p>
               ) : toFree > 0 ? (
-                <p className="text-xs rounded-lg bg-success/10 text-success px-3 py-2">
-                  Add ₹{toFree} more for free delivery.
-                </p>
+                <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">Add ₹{toFree} more for free delivery.</p>
               ) : null}
-              {hasSoldOut && (
-                <p className="text-xs rounded-lg bg-accent/10 text-accent px-3 py-2">
-                  Remove the sold-out item(s) to place your order.
-                </p>
+              {hasSoldOut && <p className="rounded-lg bg-accent/10 px-3 py-2 text-xs text-accent">Remove the sold-out item(s) to place your order.</p>}
+
+              <p className="text-center text-xs text-secondary-text">
+                Orders are confirmed only after our team calls you.
+              </p>
+              <button type="button" onClick={() => canOrder && setStep("form")} disabled={!canOrder} className="btn-primary min-h-12 w-full !py-3.5 text-base disabled:cursor-not-allowed disabled:opacity-50">
+                Continue to checkout
+              </button>
+              {shop.open && (
+                <a href={buildWhatsAppUrl()} target="_blank" rel="noopener noreferrer" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#25D366] text-sm font-semibold text-white transition-opacity hover:opacity-90">
+                  <MessageCircle size={16} fill="white" />
+                  Order via WhatsApp instead
+                </a>
               )}
-              <button
-                type="button"
-                onClick={handleCheckout}
-                disabled={belowMin || hasSoldOut}
-                className="btn-primary w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Place Order
-              </button>
-              <a
-                href={buildWhatsAppUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-full bg-[#25D366] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                <MessageCircle size={16} fill="white" />
-                Order via WhatsApp
-              </a>
-              <button
-                type="button"
-                onClick={clearCart}
-                className="w-full text-sm text-secondary-text hover:text-accent transition-colors py-2"
-              >
-                Clear Cart
-              </button>
             </div>
           </>
-        ) : (
-          // Form step
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-            <h3 className="font-display text-xl text-primary-text mb-6">Delivery Details</h3>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-primary-text mb-1.5">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  autoComplete="name"
-                  inputMode="text"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (formErrors.name) setFormErrors((p) => ({ ...p, name: undefined }));
-                  }}
-                  className={`w-full px-4 py-3.5 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all ${
-                    formErrors.name ? "border-accent" : "border-warm-gray focus:border-accent/40"
-                  }`}
-                  placeholder="Your full name"
-                />
-                {formErrors.name && (
-                  <p className="text-xs text-accent mt-1.5">{formErrors.name}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-primary-text mb-1.5">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (formErrors.phone) setFormErrors((p) => ({ ...p, phone: undefined }));
-                  }}
-                  className={`w-full px-4 py-3.5 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all ${
-                    formErrors.phone ? "border-accent" : "border-warm-gray focus:border-accent/40"
-                  }`}
-                  placeholder="+91 98765 43210"
-                />
-                {formErrors.phone && (
-                  <p className="text-xs text-accent mt-1.5">{formErrors.phone}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-primary-text mb-1.5">
-                  Delivery Address
-                </label>
-                <textarea
-                  rows={3}
-                  autoComplete="street-address"
-                  value={address}
-                  onChange={(e) => {
-                    setAddress(e.target.value);
-                    if (formErrors.address) setFormErrors((p) => ({ ...p, address: undefined }));
-                  }}
-                  className={`w-full px-4 py-3.5 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all resize-none ${
-                    formErrors.address ? "border-accent" : "border-warm-gray focus:border-accent/40"
-                  }`}
-                  placeholder="House/flat no., street, area, Hosur"
-                />
-                {formErrors.address && (
-                  <p className="text-xs text-accent mt-1.5">{formErrors.address}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-primary-text mb-1.5">
-                  Delivery slot
-                </label>
-                <div className="flex flex-col gap-2">
-                  {business.delivery.slots.map((s) => (
-                    <label
-                      key={s}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm cursor-pointer transition-colors ${
-                        slot === s ? "border-accent bg-accent/5" : "border-warm-gray"
-                      }`}
-                    >
-                      <input type="radio" name="slot" checked={slot === s} onChange={() => setSlot(s)} className="accent-accent" />
-                      {s}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-primary-text mb-1.5">
-                  Note for shop {" "}
-                  <span className="text-secondary-text font-normal">(optional)</span>
-                </label>
-                <textarea
-                  rows={2}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="e.g. remove skin, deliver before 6pm"
-                  className="w-full px-4 py-3.5 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all resize-none border-warm-gray focus:border-accent/40"
-                />
-              </div>
-
-              {formErrorMessage && (
-                <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-xs">
-                  {formErrorMessage}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2 pb-6">
-                <button
-                  type="button"
-                  onClick={() => setStep("cart")}
-                  className="w-1/2 py-3.5 rounded-full border border-warm-gray text-sm font-medium text-primary-text hover:border-accent/40 transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmitOrder}
-                  disabled={submitting}
-                  className="w-1/2 btn-primary py-3.5 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {submitting ? "Sending..." : "Confirm Order"}
-                </button>
-              </div>
-            </div>
-          </div>
-         )}
+        )}
       </aside>
     </>
   );

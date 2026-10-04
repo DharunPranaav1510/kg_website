@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { business } from "@/data/business";
 import { getSupabase } from "@/lib/supabase";
-import { STATUS_LABEL, type OrderStatus } from "@/lib/delivery";
+import type { OrderStatus } from "@/lib/delivery";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -14,6 +14,20 @@ export const metadata: Metadata = {
 };
 
 const STEPS: OrderStatus[] = ["new", "confirmed", "out_for_delivery", "delivered"];
+const CUSTOMER_LABEL: Record<OrderStatus, string> = {
+  new: "Order received",
+  confirmed: "Confirmed by the shop",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+const HEADLINE: Record<OrderStatus, string> = {
+  new: "we've received your order",
+  confirmed: "your order is confirmed",
+  out_for_delivery: "your order is on its way",
+  delivered: "your order was delivered",
+  cancelled: "your order was cancelled",
+};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface OrderItem {
@@ -57,10 +71,17 @@ export default async function OrderTrackingPage({
                 Order #{order.order_number}
               </p>
               <h1 className="font-display text-2xl sm:text-3xl mt-1">
-                {order.status === "cancelled"
-                  ? "Order cancelled"
-                  : `Hi ${String(order.customer_name).split(" ")[0]}, ${STATUS_LABEL[order.status as OrderStatus]?.toLowerCase() ?? order.status}`}
+                {`Hi ${String(order.customer_name).split(" ")[0]}, ${HEADLINE[order.status as OrderStatus] ?? order.status}`}
               </h1>
+
+              {order.status === "new" && (
+                <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                  <p className="font-semibold">⚠ Not confirmed yet</p>
+                  <p className="mt-1">
+                    Your order is confirmed only when someone from {business.name} calls you. Please keep your phone nearby. This page updates when we confirm.
+                  </p>
+                </div>
+              )}
 
               {order.status !== "cancelled" && (
                 <ol className="mt-6 space-y-4">
@@ -77,7 +98,7 @@ export default async function OrderTrackingPage({
                           {done ? <Check size={14} /> : i + 1}
                         </span>
                         <span className={done ? "font-medium text-primary-text" : "text-secondary-text"}>
-                          {STATUS_LABEL[step]}
+                          {CUSTOMER_LABEL[step]}
                         </span>
                       </li>
                     );

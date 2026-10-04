@@ -7,7 +7,13 @@ export interface Order {
   created_at: string;
   customer_name: string;
   phone: string;
+  email?: string | null;
   address: string;
+  area?: string | null;
+  landmark?: string | null;
+  pincode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   note: string | null;
   items: { name: string; quantity: string; price: number }[];
   total: number;
@@ -114,3 +120,23 @@ export const PREV: Partial<Record<OrderStatus, OrderStatus>> = {
   delivered: "out_for_delivery",
   cancelled: "new",
 };
+
+export interface CustomerHistory {
+  orders: number;
+  delivered: number;
+  cancelled: number;
+}
+
+export interface OrdersResponse {
+  orders: Order[];
+  history: Record<string, CustomerHistory>;
+  blocked: string[];
+}
+
+/** Short trust hint for staff deciding whether to call back a new order. */
+export function customerHint(h: CustomerHistory | undefined): { text: string; tone: "good" | "neutral" | "bad" } {
+  if (!h || h.orders <= 1) return { text: "First order", tone: "neutral" };
+  const text = `${h.orders - 1} earlier order${h.orders === 2 ? "" : "s"} · ${h.delivered} delivered${h.cancelled ? ` · ${h.cancelled} cancelled` : ""}`;
+  if (h.cancelled >= 2 && h.delivered === 0) return { text, tone: "bad" };
+  return { text, tone: h.delivered > 0 ? "good" : "neutral" };
+}

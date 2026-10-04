@@ -45,6 +45,20 @@ export const business = {
     fee: 30, // ₹, waived at or above freeAbove
     freeAbove: 500, // ₹
     slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Evening (4 – 7 PM)"],
+    // Suggestions shown while typing the area. Customers can still type any
+    // other area; edit this list to match where you actually deliver.
+    areas: [
+      "Anna Nagar",
+      "Bagalur Road",
+      "Housing Board Colony",
+      "Mathigiri",
+      "Moranapalli",
+      "Mookandapalli",
+      "Rayakottai Road",
+      "SIPCOT",
+      "Thally Road",
+      "Zuzuvadi",
+    ],
   },
 
   social: {

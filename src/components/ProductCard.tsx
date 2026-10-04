@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { ShoppingCart, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useShopStatus } from "@/context/ShopStatusContext";
 import type { Product } from "@/data/products";
 
 const badgeColors: Record<string, string> = {
@@ -29,6 +30,7 @@ const EGG_OPTIONS = [
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem, updateWeight, getWeight } = useCart();
+  const shopOpen = useShopStatus().open;
   const [picking, setPicking] = useState(false);
   const [draftWeight, setDraftWeight] = useState(0.5);
 
@@ -175,6 +177,10 @@ export default function ProductCard({ product }: { product: Product }) {
                   </button>
                 </div>
               </>
+            ) : !shopOpen ? (
+              <span className="ml-auto px-4 py-2.5 rounded-full bg-warm-gray text-secondary-text text-sm font-medium">
+                Orders paused
+              </span>
             ) : soldOut ? (
               <span className="ml-auto px-4 py-2.5 rounded-full bg-warm-gray text-secondary-text text-sm font-medium">
                 Sold out today

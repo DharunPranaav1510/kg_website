@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { STATUS_LABEL, type OrderStatus } from "@/lib/delivery";
-import { adminApi } from "../api";
+import { adminApi } from "../../api";
 import {
   NEXT,
   NEXT_LABEL,
@@ -13,9 +12,12 @@ import {
   printSlip,
   urgencyOf,
   whatsappLink,
+  type CustomerHistory,
   type Order,
+  type OrdersResponse,
   type Urgency,
-} from "../orderUtils";
+} from "../../orderUtils";
+import { AddressBlock, BlockButton, ContactLines, CustomerBadge } from "../../OrderParts";
 
 const POLL_MS = 10000;
 const COLUMNS: OrderStatus[] = ["new", "confirmed", "out_for_delivery", "delivered"];
@@ -37,6 +39,8 @@ const isToday = (iso: string, now: number) =>
 
 export default function OrderBoard() {
   const [orders, setOrders] = useState<Order[] | null>(null);
+  const [history, setHistory] = useState<Record<string, CustomerHistory>>({});
+  const [blocked, setBlocked] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [lastSync, setLastSync] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -73,8 +77,10 @@ export default function OrderBoard() {
 
   const load = useCallback(async () => {
     try {
-      const { orders: list } = (await adminApi("/api/admin/orders")) as { orders: Order[] };
+      const { orders: list, history: hist, blocked: blk } = (await adminApi("/api/admin/orders")) as OrdersResponse;
       setOrders(list);
+      setHistory(hist);
+      setBlocked(blk);
       setLastSync(Date.now());
       setError("");
 
@@ -234,7 +240,7 @@ export default function OrderBoard() {
     }`;
 
   return (
-    <main className="mx-auto max-w-[1500px] px-3 sm:px-5 py-4 pb-24">
+    <div className="mx-auto max-w-[1500px] pb-24">
       {/* Top bar */}
       <header className="flex flex-wrap items-center gap-3 mb-4">
         <div className="mr-auto">
@@ -254,7 +260,6 @@ export default function OrderBoard() {
         <button onClick={toggleAwake} className={pill(awake)}>{awake ? "☀ Screen stays on" : "☀ Keep screen on"}</button>
         <button onClick={toggleFullscreen} className={pill(false)}>⛶ Fullscreen</button>
         <button onClick={load} className={pill(false)}>↻ Refresh</button>
-        <Link href="/admin" className={pill(false)}>← Admin</Link>
       </header>
 
       {error && <p className="mb-4 rounded-xl bg-red-50 text-red-700 text-sm px-4 py-3">{error}</p>}
@@ -361,6 +366,9 @@ export default function OrderBoard() {
                           </span>
                         </div>
                         <p className="text-sm font-medium truncate">{o.customer_name}</p>
+                        {(o.status === "new" || blocked.includes(o.phone)) && (
+                          <div className="mt-1"><CustomerBadge history={history[o.phone]} blocked={blocked.includes(o.phone)} /></div>
+                        )}
                         <p className="text-xs text-secondary-text truncate">{itemsSummary(o)}</p>
                         <div className="mt-1.5 flex items-center justify-between text-xs">
                           <span className="text-secondary-text">{o.slot ? `🕒 ${o.slot.split(" (")[0]}` : ""}</span>
@@ -370,10 +378,9 @@ export default function OrderBoard() {
 
                       {expanded && (
                         <div className="mt-3 border-t border-warm-gray pt-3 text-sm space-y-2">
-                          <p>
-                            <a href={`tel:${o.phone}`} className="font-medium text-accent hover:underline">📞 {o.phone}</a>
-                          </p>
-                          <p className="text-secondary-text">📍 {o.address}</p>
+                          <ContactLines o={o} />
+                          <AddressBlock o={o} />
+                          <CustomerBadge history={history[o.phone]} blocked={blocked.includes(o.phone)} />
                           {o.note && <p className="italic">“{o.note}”</p>}
                           <p className="text-xs text-secondary-text">
                             Placed {new Date(o.created_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
@@ -399,9 +406,12 @@ export default function OrderBoard() {
                                 ← Move back
                               </button>
                             )}
-                            {o.status !== "delivered" && (
-                              <button onClick={() => changeStatus(o, "cancelled")} className="ml-auto text-xs text-red-600 hover:underline">Cancel order</button>
-                            )}
+                            <span className="ml-auto flex gap-3">
+                              <BlockButton phone={o.phone} blocked={blocked.includes(o.phone)} onChanged={load} />
+                              {o.status !== "delivered" && o.status !== "cancelled" && (
+                                <button onClick={() => changeStatus(o, "cancelled")} className="text-xs text-red-600 hover:underline">Cancel order</button>
+                              )}
+                            </span>
                           </div>
                         </div>
                       )}
@@ -456,6 +466,6 @@ export default function OrderBoard() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

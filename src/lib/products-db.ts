@@ -80,7 +80,7 @@ export const getProducts = unstable_cache(
 
 // Call after any admin change so the storefront updates immediately.
 export function revalidateStorefront() {
-  revalidateTag("products");
+  revalidateTag("products", { expire: 0 });
   revalidatePath("/", "layout");
 }
 

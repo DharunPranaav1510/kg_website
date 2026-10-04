@@ -1,31 +1,48 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ShoppingBag } from "lucide-react";
+import { Lock, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useShopStatus } from "@/context/ShopStatusContext";
 
-// Sticky "View cart" bar so shoppers on phones never lose the cart.
+// Bottom dock on every public page: a "shop closed" notice (when an admin has
+// paused orders) and the sticky "View cart" bar so phone shoppers never lose
+// their cart.
 export default function CartBar() {
   const { itemCount, subtotal, isDrawerOpen, openDrawer, isHydrated } = useCart();
+  const shop = useShopStatus();
   const pathname = usePathname();
 
-  if (!isHydrated || itemCount === 0 || isDrawerOpen || pathname.startsWith("/admin")) {
-    return null;
-  }
+  if (isDrawerOpen || pathname.startsWith("/admin")) return null;
+  const showCart = isHydrated && itemCount > 0;
+  if (shop.open && !showCart) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 p-3 sm:p-4 pr-3 pointer-events-none">
-      <button
-        type="button"
-        onClick={openDrawer}
-        className="pointer-events-auto mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-full bg-accent text-white px-5 py-3.5 shadow-hover hover:bg-accent-light active:scale-[0.98] transition-all animate-fade-up"
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <ShoppingBag size={18} />
-          {itemCount} {itemCount === 1 ? "item" : "items"}
-        </span>
-        <span className="text-sm font-semibold">View cart · ₹{subtotal}</span>
-      </button>
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex flex-col items-center gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-4">
+      {!shop.open && (
+        <div
+          role="status"
+          className="pointer-events-auto flex w-full max-w-md items-start gap-2.5 rounded-2xl bg-primary-text px-4 py-3 text-sm text-white shadow-hover"
+        >
+          <Lock size={16} className="mt-0.5 flex-shrink-0" />
+          <p>
+            <b>Orders are paused.</b> {shop.message || "We're closed right now. Please check back soon."}
+          </p>
+        </div>
+      )}
+      {showCart && (
+        <button
+          type="button"
+          onClick={openDrawer}
+          className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-full bg-accent px-5 py-3.5 text-white shadow-hover transition-all hover:bg-accent-light active:scale-[0.98]"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <ShoppingBag size={18} />
+            {itemCount} {itemCount === 1 ? "item" : "items"}
+          </span>
+          <span className="text-sm font-semibold">View cart · ₹{subtotal}</span>
+        </button>
+      )}
     </div>
   );
 }
