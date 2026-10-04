@@ -167,3 +167,7 @@ Only emails in the `admins` table can sign in; everyone else is rejected even if
 - **Delivery rules** live in `src/data/business.ts` (`delivery`): minimum order, fee, free-delivery threshold and time slots. They are enforced on the server.
 - **Sold-out toggle** and quick price edits are in the Products tab.
 - After pulling this change, re-run `supabase/schema.sql` once (it is safe to re-run) to add the new columns.
+
+## Live order board
+
+`/admin/orders` (linked from the admin page) is a kanban board for running the shop day: New / Confirmed / Out for delivery / Delivered today. It shows time since the last order, the oldest order still waiting, today's sales and orders per hour, and top sellers. Cards turn amber/red when an order has waited too long (thresholds in `WAIT_LIMITS`, `src/app/admin/orderUtils.ts`). Move orders forward with one tap (7-second undo), search by name/phone/#, and optionally enable sound, desktop alerts, keep-screen-on and fullscreen for a counter display. It refreshes every 10 seconds.

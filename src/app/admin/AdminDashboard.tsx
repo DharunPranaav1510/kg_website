@@ -26,6 +26,7 @@ export default function AdminDashboard({ email }: { email: string }) {
           <p className="text-sm text-secondary-text">Signed in as {email}</p>
         </div>
         <div className="flex gap-2">
+          <a href="/admin/orders" className="btn-primary !py-2 !px-4">Live order board</a>
           <a href="/shop" className="btn-secondary !py-2 !px-4">View shop</a>
           <button onClick={logout} className="btn-secondary !py-2 !px-4">Log out</button>
         </div>
