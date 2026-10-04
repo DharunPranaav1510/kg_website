@@ -171,3 +171,31 @@ Only emails in the `admins` table can sign in; everyone else is rejected even if
 ## Live order board
 
 `/admin/orders` (linked from the admin page) is a kanban board for running the shop day: New / Confirmed / Out for delivery / Delivered today. It shows time since the last order, the oldest order still waiting, today's sales and orders per hour, and top sellers. Cards turn amber/red when an order has waited too long (thresholds in `WAIT_LIMITS`, `src/app/admin/orderUtils.ts`). Move orders forward with one tap (7-second undo), search by name/phone/#, and optionally enable sound, desktop alerts, keep-screen-on and fullscreen for a counter display. It refreshes every 10 seconds.
+
+## Admin panel (sidebar)
+
+Everything in `/admin` is reached from the **right-hand sidebar**: Overview, Live orders, Order history, Products, Update prices, Sales and Shop settings. The open/closed switch is always at the top of the sidebar.
+
+- **Open / close the shop:** sidebar switch or *Shop settings* (with a message customers see). Closing pauses new orders on the site and is enforced by the server.
+- **Update prices:** `/admin/prices`. Edit many prices, use -/+ buttons, or the *% Adjust many at once* tool (with rounding), then press **Save changes** once.
+- **Sales:** `/admin/sales`. Today / 7 / 30 / 90 days / this month, each compared with the previous period; trend, best sellers, categories, busiest hours and weekdays, new vs returning customers.
+- **Order history:** search, filter by date/status, download CSV.
+
+## Checkout rules
+
+- Mobile number is **required** and must be a valid Indian mobile number (validated in the browser and on the server). Email is optional.
+- Address is structured: house/flat, street, area, landmark, pincode (defaults to Hosur), plus an optional **Use my current location** pin (OpenStreetMap reverse geocoding, no key needed).
+- Customers are told in the cart, the checkout and the confirmation screen that **an order is only confirmed after someone from the shop calls them.** Payment is on delivery.
+
+## Spam protection
+
+Honeypot field, minimum form-fill time, limits per phone (2 waiting, 3/hour, 6/day) and per hashed device, duplicate-order detection, and an admin block list (any order card, or *Shop settings*). Every new order shows how many earlier orders that number has. See `docs/PHONE_VERIFICATION.md` for the plan to add real SMS/WhatsApp verification later.
+
+## Tests
+
+`npm test` runs unit tests for phone/address validation, order limits and the sales calculations.
+
+## After pulling this update
+
+1. Re-run `supabase/schema.sql` in the Supabase SQL Editor (safe to repeat).
+2. `npm install`.

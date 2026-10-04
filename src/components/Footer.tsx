@@ -41,8 +41,8 @@ export default function Footer() {
 	return (
 		<footer className="bg-[#0D0D0D] text-white">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
-					<div className="lg:col-span-1">
+				<div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-9 sm:gap-10">
+					<div className="col-span-2 lg:col-span-1">
 						<div className="flex items-center gap-3 mb-5">
 							<div className="relative w-10 h-10 rounded-full overflow-hidden bg-white border border-white/10 flex items-center justify-center flex-shrink-0">
 								<Image
@@ -114,7 +114,7 @@ export default function Footer() {
 						</ul>
 					</div>
 
-					<div>
+					<div className="col-span-2 lg:col-span-1">
 						<h4 className="font-semibold text-sm tracking-wide mb-5 text-white/80">Contact</h4>
 						<ul className="flex flex-col gap-4">
 							<li className="flex items-start gap-3">

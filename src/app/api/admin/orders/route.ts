@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { chunk, fetchAll } from "@/lib/paginate";
 import { getSupabase } from "@/lib/supabase";
 
 const COLUMNS =
@@ -24,13 +25,12 @@ export async function GET(req: NextRequest) {
   // How often has each customer ordered before? Helps spot dummy orders.
   const phones = [...new Set(data.map((o) => o.phone))];
   const history: Record<string, { orders: number; delivered: number; cancelled: number }> = {};
-  if (phones.length > 0) {
-    const { data: all } = await supabase
-      .from("orders")
-      .select("phone, status")
-      .in("phone", phones)
-      .limit(10000);
-    for (const row of all ?? []) {
+  // In batches of 100 numbers so the request URL stays short.
+  for (const batch of chunk(phones, 100)) {
+    const { data: all } = await fetchAll<{ phone: string; status: string }>((from, to) =>
+      supabase.from("orders").select("phone, status").in("phone", batch).order("id", { ascending: true }).range(from, to)
+    );
+    for (const row of all) {
       const h = (history[row.phone] ??= { orders: 0, delivered: 0, cancelled: 0 });
       h.orders++;
       if (row.status === "delivered") h.delivered++;

@@ -47,9 +47,9 @@ export default function ShopContent() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search chicken, mutton, eggs…"
+                placeholder="Search products"
                 aria-label="Search products"
-                className="w-full pl-10 pr-10 py-2.5 rounded-full border border-warm-gray bg-white text-sm focus:outline-none focus:border-accent/40 focus:shadow-glow"
+                className="w-full pl-10 pr-10 py-2.5 min-h-11 text-base sm:text-sm rounded-full border border-warm-gray bg-white text-sm focus:outline-none focus:border-accent/40 focus:shadow-glow"
               />
               {query && (
                 <button type="button" onClick={() => setQuery("")} aria-label="Clear search"
@@ -62,7 +62,7 @@ export default function ShopContent() {
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               aria-label="Sort products"
-              className="rounded-full border border-warm-gray bg-white px-3 sm:px-4 text-sm text-secondary-text focus:outline-none focus:border-accent/40"
+              className="w-[7.25rem] sm:w-auto rounded-full border border-warm-gray bg-white px-3 sm:px-4 text-sm text-secondary-text focus:outline-none focus:border-accent/40"
             >
               {sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>

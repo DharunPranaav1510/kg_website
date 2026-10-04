@@ -31,7 +31,7 @@ const contactCards = [
     icon: MapPin,
     title: "Address",
     value: business.address.full,
-    href: undefined,
+    href: business.maps.url,
   },
   {
     icon: Clock,
@@ -53,20 +53,34 @@ export default function ContactPage() {
           <h1 className="font-display text-4xl sm:text-5xl text-primary-text mt-3 mb-4">
             Get In Touch
           </h1>
-          <p className="text-secondary-text text-lg max-w-xl mx-auto">
+          <p className="text-secondary-text text-base sm:text-lg max-w-xl mx-auto">
             Questions about orders, delivery areas, or bulk enquiries? Our Hosur team is here to help.
           </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center max-w-sm sm:max-w-none mx-auto">
+            <a href={`tel:${business.contact.phone}`} className="btn-primary min-h-12">
+              <Phone size={16} /> Call {business.contact.phoneDisplay}
+            </a>
+            <a
+              href={`https://wa.me/${business.contact.whatsapp.replace("+", "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-7 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            >
+              WhatsApp us
+            </a>
+          </div>
         </div>
 
         <section className="py-12 sm:py-16 md:py-24 bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">
               {contactCards.map((card) => (
-                <div key={card.title} className="card-base p-5 sm:p-7 text-center group">
-                  <div className="w-12 h-12 rounded-xl bg-accent/8 flex items-center justify-center mx-auto mb-4 sm:mb-5 transition-colors duration-200 group-hover:bg-accent/15">
+                <div key={card.title} className="card-base p-4 sm:p-7 flex sm:block items-center gap-4 text-left sm:text-center group">
+                  <div className="w-12 h-12 flex-shrink-0 rounded-xl bg-accent/8 flex items-center justify-center sm:mx-auto sm:mb-5 transition-colors duration-200 group-hover:bg-accent/15">
                     <card.icon size={20} className="text-accent" strokeWidth={1.75} />
                   </div>
-                  <h3 className="font-semibold text-sm text-secondary-text uppercase tracking-wide mb-2">
+                  <div className="min-w-0">
+                  <h3 className="font-semibold text-xs sm:text-sm text-secondary-text uppercase tracking-wide mb-0.5 sm:mb-2">
                     {card.title}
                   </h3>
                   {card.href ? (
@@ -79,6 +93,7 @@ export default function ContactPage() {
                   ) : (
                     <p className="text-primary-text font-medium text-sm leading-snug">{card.value}</p>
                   )}
+                  </div>
                 </div>
               ))}
             </div>

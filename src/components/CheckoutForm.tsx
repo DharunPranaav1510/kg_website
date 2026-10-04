@@ -271,6 +271,7 @@ export default function CheckoutForm({
             onClear={() => setGps(null)}
             onFound={(loc) => {
               setGps({ lat: loc.lat, lng: loc.lng });
+              setErrors((e) => ({ ...e, street: loc.street ? undefined : e.street, area: loc.area ? undefined : e.area, pincode: undefined }));
               setF((cur) => ({
                 ...cur,
                 street: cur.street.trim() ? cur.street : loc.street ?? cur.street,

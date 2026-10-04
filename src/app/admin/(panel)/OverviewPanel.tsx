@@ -21,6 +21,8 @@ export default function OverviewPanel() {
   const [shop, setShop] = useState<{ open: boolean; message: string } | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [mounted, setMounted] = useState(false); // time-of-day text differs between server and browser
+  useEffect(() => setMounted(true), []);
 
   const load = useCallback(async () => {
     try {
@@ -66,10 +68,10 @@ export default function OverviewPanel() {
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="font-display text-2xl sm:text-3xl">
-        {today.getHours() < 12 ? "Good morning" : today.getHours() < 17 ? "Good afternoon" : "Good evening"} 👋
+        {!mounted ? "Welcome" : today.getHours() < 12 ? "Good morning" : today.getHours() < 17 ? "Good afternoon" : "Good evening"} 👋
       </h1>
-      <p className="mb-5 text-sm text-secondary-text">
-        {today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
+      <p className="mb-5 min-h-5 text-sm text-secondary-text">
+        {mounted && today.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
       </p>
 
       {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}

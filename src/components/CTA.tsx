@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Phone } from "lucide-react";
+import { business } from "@/data/business";
 
 export default function CTA() {
   return (
@@ -44,8 +45,8 @@ export default function CTA() {
 
             {/* Sub */}
             <p className="text-white/60 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-              Order before noon and get same-day delivery in select areas. Your first
-              order gets free cold-pack delivery.
+              Order before noon for same-day delivery in Hosur. Our team calls you
+              to confirm every order, and you pay on delivery.
             </p>
 
             {/* Buttons */}
@@ -62,7 +63,7 @@ export default function CTA() {
 
             {/* Disclaimer */}
             <p className="text-white/30 text-xs mt-8">
-              Free delivery on first order · No minimum order value · Cancel anytime
+              Minimum order ₹{business.delivery.minOrder} · Free delivery above ₹{business.delivery.freeAbove} · Pay on delivery
             </p>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 const INTERVAL = 8000;
@@ -51,6 +51,7 @@ export default function Hero() {
   const [current, setCurrent] = useState(0);
   const [fading, setFading] = useState(false);
   const router = useRouter();
+  const touchX = useRef<number | null>(null);
 
   const goTo = useCallback((index: number) => {
     setFading(true);
@@ -71,7 +72,16 @@ export default function Hero() {
   const slide = heroSlides[current];
 
   return (
-    <section className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden">
+    <section
+      className="relative w-full min-h-[85vh] lg:min-h-screen overflow-hidden"
+      onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchX.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchX.current;
+        touchX.current = null;
+        if (Math.abs(dx) > 60) (dx < 0 ? next : prev)();
+      }}
+    >
       {heroSlides.map((s, index) => (
         <div
           key={s.id}
@@ -98,7 +108,7 @@ export default function Hero() {
         type="button"
         onClick={prev}
         aria-label="Previous slide"
-        className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-200 flex items-center justify-center"
+        className="hidden sm:flex absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-200 flex items-center justify-center"
       >
         <ChevronLeft size={22} />
       </button>
@@ -106,7 +116,7 @@ export default function Hero() {
         type="button"
         onClick={next}
         aria-label="Next slide"
-        className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-200 flex items-center justify-center"
+        className="hidden sm:flex absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all duration-200 flex items-center justify-center"
       >
         <ChevronRight size={22} />
       </button>
