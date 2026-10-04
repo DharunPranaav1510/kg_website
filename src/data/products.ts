@@ -8,6 +8,7 @@ export interface Product {
   description: string;
   isEgg?: boolean;
   featured?: boolean;
+  inStock?: boolean; // undefined = in stock
 }
 
 export const shopCategories = [

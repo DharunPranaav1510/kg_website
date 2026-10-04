@@ -2,6 +2,7 @@
 
 import { CartProvider } from "@/context/CartContext";
 import { ProductsProvider } from "@/context/ProductsContext";
+import CartBar from "@/components/CartBar";
 import CartDrawer from "@/components/CartDrawer";
 import type { Product } from "@/data/products";
 
@@ -17,6 +18,7 @@ export default function Providers({
       <CartProvider>
         {children}
         <CartDrawer />
+        <CartBar />
       </CartProvider>
     </ProductsProvider>
   );

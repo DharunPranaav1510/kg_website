@@ -19,6 +19,7 @@ export interface ProductRow {
   is_egg: boolean;
   featured: boolean;
   active: boolean;
+  in_stock: boolean;
 }
 
 export type AdminProduct = Product & { active: boolean };
@@ -34,6 +35,7 @@ export function rowToProduct(row: ProductRow): AdminProduct {
     description: row.description,
     isEgg: row.is_egg,
     featured: row.featured,
+    inStock: row.in_stock,
     active: row.active,
   };
 }
@@ -49,6 +51,7 @@ export function productToRow(p: Product) {
     description: p.description,
     is_egg: p.isEgg ?? false,
     featured: p.featured ?? false,
+    in_stock: p.inStock ?? true,
     active: true,
   };
 }
@@ -90,6 +93,7 @@ export interface ProductInput {
   description: string;
   isEgg: boolean;
   featured: boolean;
+  inStock: boolean;
   active: boolean;
 }
 
@@ -131,6 +135,7 @@ export function parseProductInput(
       description,
       isEgg: b.isEgg === true,
       featured: b.featured === true,
+      inStock: b.inStock !== false,
       active: b.active !== false,
     },
   };

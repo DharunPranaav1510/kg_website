@@ -32,6 +32,11 @@ export default function ProductCard({ product }: { product: Product }) {
   const [picking, setPicking] = useState(false);
   const [draftWeight, setDraftWeight] = useState(0.5);
 
+  const soldOut = product.inStock === false;
+  const quickOptions = product.isEgg
+    ? [{ label: "1 dz", value: 1 }, { label: "2 dz", value: 2 }]
+    : [{ label: "½ kg", value: 0.5 }, { label: "1 kg", value: 1 }, { label: "2 kg", value: 2 }];
+
   const cartWeight = getWeight(product.id);
   const inCart = cartWeight > 0;
   const priceFor = (w: number) => Math.round(product.pricePerKg * w);
@@ -75,7 +80,12 @@ export default function ProductCard({ product }: { product: Product }) {
             )}
           </div>
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-warm-gray flex-shrink-0 shadow-soft">
-            <Image src={product.image} alt={product.name} fill className="object-cover transition-transform duration-500 group-hover:scale-105" sizes="112px" />
+            <Image src={product.image} alt={product.name} fill className={`object-cover transition-transform duration-500 group-hover:scale-105 ${soldOut ? "grayscale opacity-60" : ""}`} sizes="112px" />
+            {soldOut && (
+              <span className="absolute inset-x-0 bottom-0 bg-black/70 text-white text-[10px] font-semibold uppercase tracking-wider text-center py-1">
+                Sold out
+              </span>
+            )}
             {inCart && (
               <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-success flex items-center justify-center shadow-soft">
                 <Check size={13} className="text-white" strokeWidth={2.5} />
@@ -165,11 +175,28 @@ export default function ProductCard({ product }: { product: Product }) {
                   </button>
                 </div>
               </>
+            ) : soldOut ? (
+              <span className="ml-auto px-4 py-2.5 rounded-full bg-warm-gray text-secondary-text text-sm font-medium">
+                Sold out today
+              </span>
             ) : (
-              <button type="button" onClick={openPicker}
-                className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white text-sm font-semibold rounded-full hover:bg-accent-light transition-all hover:shadow-glow active:scale-95 ml-auto">
-                <ShoppingCart size={14} strokeWidth={1.75} />Add to Cart
-              </button>
+              <div className="w-full">
+                <p className="text-[11px] uppercase tracking-wide text-secondary-text mb-1.5">Quick add</p>
+                <div className="flex flex-wrap gap-2">
+                  {quickOptions.map((opt) => (
+                    <button key={opt.value} type="button" onClick={() => addItem(product.id, opt.value)}
+                      className="flex-1 min-w-[4.5rem] px-2 py-2 rounded-xl border border-warm-gray bg-white text-center hover:border-accent hover:bg-accent/5 active:scale-95 transition-all">
+                      <span className="block text-sm font-semibold text-primary-text">{opt.label}</span>
+                      <span className="block text-[11px] text-secondary-text">₹{priceFor(opt.value)}</span>
+                    </button>
+                  ))}
+                  <button type="button" onClick={openPicker}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-light transition-all active:scale-95"
+                    aria-label={`Choose custom quantity of ${product.name}`}>
+                    <ShoppingCart size={14} strokeWidth={1.75} />Custom
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

@@ -7,6 +7,13 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
+const esc = (v: unknown) =>
+  String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -40,13 +47,13 @@ export async function POST(req: NextRequest) {
             </p>
           </div>
           <div style="background:#fff;padding:28px 32px;border:1px solid #eee;border-top:none;">
-            <p style="margin:4px 0;font-size:15px;"><strong>Name:</strong> ${name}</p>
-            <p style="margin:4px 0;font-size:15px;"><strong>Email:</strong> ${email}</p>
-            <p style="margin:4px 0;font-size:15px;"><strong>Phone:</strong> ${phone}</p>
+            <p style="margin:4px 0;font-size:15px;"><strong>Name:</strong> ${esc(name)}</p>
+            <p style="margin:4px 0;font-size:15px;"><strong>Email:</strong> ${esc(email)}</p>
+            <p style="margin:4px 0;font-size:15px;"><strong>Phone:</strong> ${esc(phone)}</p>
           </div>
           <div style="background:#FAF8F5;padding:24px 32px;border:1px solid #eee;border-top:none;">
             <h2 style="font-size:14px;color:#555;margin:0 0 10px;text-transform:uppercase;letter-spacing:0.1em;">Message</h2>
-            <p style="font-size:15px;color:#111;line-height:1.6;margin:0;">${message.replace(/\n/g, "<br/>")}</p>
+            <p style="font-size:15px;color:#111;line-height:1.6;margin:0;">${esc(message).replace(/\n/g, "<br/>")}</p>
           </div>
           <div style="background:#fff;padding:16px 32px;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;">
             <p style="margin:0;font-size:13px;color:#888;">

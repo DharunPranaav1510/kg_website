@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2, X, CheckCircle, MessageCircle } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, X, CheckCircle, MessageCircle, Phone } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { business } from "@/data/business";
+import { amountToFreeDelivery, deliveryFeeFor, MIN_ORDER } from "@/lib/delivery";
+
+const CUSTOMER_KEY = "kg-foods-customer";
 
 export default function CartDrawer() {
   const {
@@ -28,6 +31,8 @@ export default function CartDrawer() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
+  const [slot, setSlot] = useState<string>(business.delivery.slots[0]);
+  const [placed, setPlaced] = useState<{ id: string | null; number: number | null; total: number } | null>(null);
   const [formErrors, setFormErrors] = useState<{ name?: string; phone?: string; address?: string }>({});
   const [formErrorMessage, setFormErrorMessage] = useState("");
 
@@ -48,11 +53,25 @@ export default function CartDrawer() {
       setPhone("");
       setAddress("");
       setNote("");
+      setPlaced(null);
     }
   }, [isDrawerOpen]);
 
+  const deliveryFee = deliveryFeeFor(subtotal);
+  const total = subtotal + deliveryFee;
+  const belowMin = subtotal < MIN_ORDER;
+  const hasSoldOut = items.some((i) => i.product.inStock === false);
+  const toFree = amountToFreeDelivery(subtotal);
+
   const handleCheckout = () => {
-    if (items.length === 0) return;
+    if (items.length === 0 || belowMin || hasSoldOut) return;
+    // Pre-fill from the last order on this device.
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(CUSTOMER_KEY) ?? "{}");
+      if (!name && typeof saved.name === "string") setName(saved.name);
+      if (!phone && typeof saved.phone === "string") setPhone(saved.phone);
+      if (!address && typeof saved.address === "string") setAddress(saved.address);
+    } catch {}
     setStep("form");
   };
 
@@ -80,16 +99,9 @@ export default function CartDrawer() {
       phone: phone.trim(),
       address: address.trim(),
       note: note.trim(),
-      items: items.map((item) => ({
-        id: item.product.id,
-        weightKg: item.weightKg,
-        name: item.product.name,
-        quantity: item.product.isEgg
-          ? `${item.weightKg === 0.5 ? "½" : item.weightKg} dozen`
-          : `${item.weightKg} kg`,
-        price: Math.round(item.product.pricePerKg * item.weightKg),
-      })),
-      total: subtotal,
+      slot,
+      // Prices are recalculated on the server; only ids and weights are trusted.
+      items: items.map((item) => ({ id: item.product.id, weightKg: item.weightKg })),
     };
 
     try {
@@ -99,14 +111,25 @@ export default function CartDrawer() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Order failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Order failed");
 
-      // success
+      try {
+        window.localStorage.setItem(
+          CUSTOMER_KEY,
+          JSON.stringify({ name: name.trim(), phone: phone.trim(), address: address.trim() })
+        );
+      } catch {}
+      setPlaced({ id: data.id ?? null, number: data.orderNumber ?? null, total: data.total ?? total });
       setStep("confirmation");
       clearCart();
     } catch (err) {
       console.error(err);
-      setFormErrorMessage("Something went wrong. Please try again.");
+      setFormErrorMessage(
+        err instanceof Error && err.message !== "Order failed"
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
       setSubmitting(false);
     }
   };
@@ -168,10 +191,24 @@ export default function CartDrawer() {
             <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-5">
               <CheckCircle size={48} className="text-success" />
             </div>
-            <h3 className="font-display text-2xl text-primary-text mb-3">Order Placed!</h3>
-            <p className="text-secondary-text text-sm leading-relaxed mb-8 max-w-xs">
+            <h3 className="font-display text-2xl text-primary-text mb-1">Order Placed!</h3>
+            {placed?.number && (
+              <p className="text-accent font-semibold mb-3">Order #{placed.number}</p>
+            )}
+            <p className="text-secondary-text text-sm leading-relaxed mb-6 max-w-xs">
               We&apos;ve received your order and will call you at <span className="font-semibold text-primary-text">{phone}</span> to confirm delivery.
+              Pay <span className="font-semibold text-primary-text">₹{placed?.total ?? total}</span> on delivery.
             </p>
+            <div className="flex flex-col gap-3 w-full max-w-xs mb-6">
+              {placed?.id && (
+                <Link href={`/order/${placed.id}`} onClick={handleClose} className="btn-secondary w-full">
+                  Track your order
+                </Link>
+              )}
+              <a href={`tel:${business.contact.phone}`} className="inline-flex items-center justify-center gap-2 text-sm text-secondary-text hover:text-accent">
+                <Phone size={14} /> Call the shop
+              </a>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -231,6 +268,9 @@ export default function CartDrawer() {
                             ? `${weightKg === 0.5 ? "½" : weightKg} dozen`
                             : `${weightKg} kg`}
                         </p>
+                        {product.inStock === false && (
+                          <p className="text-xs font-semibold text-accent mt-1">Sold out — please remove</p>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -283,18 +323,39 @@ export default function CartDrawer() {
 
             {/* Footer */}
             <div className="border-t border-warm-gray px-5 sm:px-6 py-5 space-y-4 bg-white">
-              <div className="flex items-center justify-between">
-                <span className="text-secondary-text">Subtotal</span>
-                <span className="font-display text-2xl text-primary-text">₹{subtotal}</span>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-center justify-between text-secondary-text">
+                  <span>Subtotal</span>
+                  <span>₹{subtotal}</span>
+                </div>
+                <div className="flex items-center justify-between text-secondary-text">
+                  <span>Delivery</span>
+                  <span>{deliveryFee ? `₹${deliveryFee}` : "Free"}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-primary-text font-medium">Total (pay on delivery)</span>
+                  <span className="font-display text-2xl text-primary-text">₹{total}</span>
+                </div>
               </div>
-              <p className="text-xs text-secondary-text">
-                Delivery charges calculated at confirmation. Cold-chain packaging
-                included for all meat orders.
-              </p>
+              {belowMin ? (
+                <p className="text-xs rounded-lg bg-amber-50 text-amber-800 px-3 py-2">
+                  Minimum order is ₹{MIN_ORDER}. Add ₹{MIN_ORDER - subtotal} more to continue.
+                </p>
+              ) : toFree > 0 ? (
+                <p className="text-xs rounded-lg bg-success/10 text-success px-3 py-2">
+                  Add ₹{toFree} more for free delivery.
+                </p>
+              ) : null}
+              {hasSoldOut && (
+                <p className="text-xs rounded-lg bg-accent/10 text-accent px-3 py-2">
+                  Remove the sold-out item(s) to place your order.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={handleCheckout}
-                className="btn-primary w-full py-4 text-base"
+                disabled={belowMin || hasSoldOut}
+                className="btn-primary w-full py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Place Order
               </button>
@@ -387,6 +448,25 @@ export default function CartDrawer() {
                 {formErrors.address && (
                   <p className="text-xs text-accent mt-1.5">{formErrors.address}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-primary-text mb-1.5">
+                  Delivery slot
+                </label>
+                <div className="flex flex-col gap-2">
+                  {business.delivery.slots.map((s) => (
+                    <label
+                      key={s}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm cursor-pointer transition-colors ${
+                        slot === s ? "border-accent bg-accent/5" : "border-warm-gray"
+                      }`}
+                    >
+                      <input type="radio" name="slot" checked={slot === s} onChange={() => setSlot(s)} className="accent-accent" />
+                      {s}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div>

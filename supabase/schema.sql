@@ -60,3 +60,13 @@ on conflict (id) do nothing;
 -- After creating your admin user in Supabase (Authentication -> Users), add
 -- their email here:
 -- insert into public.admins (email) values ('you@example.com');
+
+-- ---------------------------------------------------------------------------
+-- Order tracking, delivery slots, sold-out toggle (safe to re-run)
+-- ---------------------------------------------------------------------------
+
+alter table public.products add column if not exists in_stock boolean not null default true;
+
+alter table public.orders add column if not exists order_number bigint generated always as identity;
+alter table public.orders add column if not exists delivery_fee numeric(10, 2) not null default 0;
+alter table public.orders add column if not exists slot text;

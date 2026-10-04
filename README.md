@@ -159,3 +159,11 @@ Admins manage products at `/admin` (add, edit price, hide, delete, upload photos
 6. Open `/admin/login`, sign in, and click **Import default products** once to load the current catalogue.
 
 Only emails in the `admins` table can sign in; everyone else is rejected even if they have a Supabase account. Order prices are always recalculated on the server from the product table.
+
+## Orders, delivery and stock
+
+- **Orders tab** (`/admin`): live list (refreshes every 20s, optional chime), one-tap status changes (Confirm -> Out for delivery -> Delivered), WhatsApp the customer, print a slip, today's sales.
+- **Customers** get an order number and a tracking page at `/order/<id>` (status timeline, no sign-in needed).
+- **Delivery rules** live in `src/data/business.ts` (`delivery`): minimum order, fee, free-delivery threshold and time slots. They are enforced on the server.
+- **Sold-out toggle** and quick price edits are in the Products tab.
+- After pulling this change, re-run `supabase/schema.sql` once (it is safe to re-run) to add the new columns.

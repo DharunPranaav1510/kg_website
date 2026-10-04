@@ -40,6 +40,13 @@ export const business = {
     ],
   },
 
+  delivery: {
+    minOrder: 200, // ₹
+    fee: 30, // ₹, waived at or above freeAbove
+    freeAbove: 500, // ₹
+    slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Evening (4 – 7 PM)"],
+  },
+
   social: {
     instagram: "https://www.instagram.com/kgmeatmart",
     facebook: null,
