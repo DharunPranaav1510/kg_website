@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { getSupabase } from "@/lib/supabase";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Email is optional: skipped when RESEND_API_KEY is not set.
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +19,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await resend.emails.send({
+    const supabase = getSupabase();
+    if (supabase) {
+      const { error } = await supabase
+        .from("enquiries")
+        .insert({ name, email, phone, message });
+      if (error) console.error("Supabase enquiry insert error:", error);
+    }
+
+    await resend?.emails.send({
       from: "onboarding@resend.dev",
       to: "dskarthik63@gmail.com",
       subject: `New Enquiry from ${name} — KG Meat Mart`,
