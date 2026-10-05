@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { chunk, fetchAll } from "@/lib/paginate";
+import { dbDetail } from "@/lib/db-error";
 import { getSupabase } from "@/lib/supabase";
 
 const COLUMNS =
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
     .limit(limit);
   if (error) {
     console.error("Admin orders fetch error:", error);
-    return NextResponse.json({ error: "Failed to load orders" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load orders", detail: dbDetail(error as { message?: string }) }, { status: 500 });
   }
 
   // How often has each customer ordered before? Helps spot dummy orders.

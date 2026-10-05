@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { fetchAll } from "@/lib/paginate";
+import { dbDetail } from "@/lib/db-error";
 import { getSupabase } from "@/lib/supabase";
 import { buildSalesReport, RANGE_IDS, resolveRange, type RangeId, type SalesOrder } from "@/lib/sales";
 
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
   ]);
   if (error) {
     console.error("Admin sales fetch error:", error);
-    return NextResponse.json({ error: "Failed to load sales" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to load sales", detail: dbDetail(error as { message?: string }) }, { status: 500 });
   }
 
   const all = orders;

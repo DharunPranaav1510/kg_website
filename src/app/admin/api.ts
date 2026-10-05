@@ -7,6 +7,6 @@ export async function adminApi(url: string, init?: RequestInit) {
     throw new Error("Session expired");
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Something went wrong");
+  if (!res.ok) throw new Error([data.error ?? "Something went wrong", data.detail].filter(Boolean).join(" — "));
   return data;
 }

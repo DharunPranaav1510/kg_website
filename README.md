@@ -174,7 +174,7 @@ Only emails in the `admins` table can sign in; everyone else is rejected even if
 
 ## Admin panel (sidebar)
 
-Everything in `/admin` is reached from the **right-hand sidebar**: Overview, Live orders, Order history, Products, Update prices, Sales and Shop settings. The open/closed switch is always at the top of the sidebar.
+Everything in `/admin` is reached from the **left-hand sidebar**: Overview, Live orders, Order history, Products, Update prices, Sales and Shop settings. The open/closed switch is always at the top of the sidebar.
 
 - **Open / close the shop:** sidebar switch or *Shop settings* (with a message customers see). Closing pauses new orders on the site and is enforced by the server.
 - **Update prices:** `/admin/prices`. Edit many prices, use -/+ buttons, or the *% Adjust many at once* tool (with rounding), then press **Save changes** once.

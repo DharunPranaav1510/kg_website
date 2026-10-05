@@ -252,7 +252,7 @@ export default function PricesPanel() {
       )}
 
       {changedRows.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-warm-gray bg-white/95 px-4 py-3 shadow-hover backdrop-blur lg:right-64">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-warm-gray bg-white/95 px-4 py-3 shadow-hover backdrop-blur lg:left-64">
           <div className="mx-auto flex max-w-4xl items-center gap-3">
             <p className="flex-1 text-sm">
               <b>{changedRows.length}</b> unsaved change{changedRows.length === 1 ? "" : "s"}

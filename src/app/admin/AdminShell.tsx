@@ -190,37 +190,36 @@ export default function AdminShell({
   );
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[minmax(0,1fr)_16rem]">
+    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       {/* Phone / tablet top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-warm-gray bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
-        <span className="font-display text-lg">KG Foods Admin</span>
         <div className="flex items-center gap-2">
-          {shopOpen !== undefined && (
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${shopOpen ? "bg-success/10 text-success" : "bg-red-100 text-red-700"}`}>
-              {shopOpen ? "Open" : "Closed"}
-            </span>
-          )}
-          <button onClick={() => setMenuOpen(true)} className="relative p-2 rounded-full hover:bg-warm-gray" aria-label="Open menu">
+          <button onClick={() => setMenuOpen(true)} className="relative -ml-2 p-2 rounded-full hover:bg-warm-gray" aria-label="Open menu">
             <Menu size={22} />
             {(summary?.newOrders ?? 0) > 0 && (
               <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-accent" />
             )}
           </button>
+          <span className="font-display text-lg">KG Foods Admin</span>
         </div>
+        {shopOpen !== undefined && (
+          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${shopOpen ? "bg-success/10 text-success" : "bg-red-100 text-red-700"}`}>
+            {shopOpen ? "Open" : "Closed"}
+          </span>
+        )}
       </header>
 
-      <div className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">{children}</div>
-
-      {/* Right sidebar: fixed column on desktop, slide-over on phones */}
-      <aside className="hidden lg:block">
-        <div className="sticky top-0 h-screen overflow-y-auto border-l border-warm-gray bg-white">{sidebar}</div>
+      {/* Left sidebar: fixed column on desktop, slide-over on phones */}
+      <aside className="hidden lg:block lg:order-first">
+        <div className="sticky top-0 h-screen overflow-y-auto border-r border-warm-gray bg-white">{sidebar}</div>
       </aside>
       {menuOpen && (
         <div className="lg:hidden">
           <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-          <aside className="fixed inset-y-0 right-0 z-50 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-hover">{sidebar}</aside>
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] overflow-y-auto bg-white shadow-hover">{sidebar}</aside>
         </div>
       )}
+      <div className="min-w-0 px-4 py-5 sm:px-6 lg:order-last lg:px-8 lg:py-8">{children}</div>
     </div>
   );
 }
