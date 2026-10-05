@@ -21,3 +21,14 @@ export function getAuthClient(): SupabaseClient | null {
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false } });
 }
+
+/**
+ * A client acting as one signed-in user (needed for that user's own two-step
+ * login calls: enroll, challenge, verify). Returns null if the tokens are bad.
+ */
+export async function getUserClient(accessToken: string, refreshToken: string): Promise<SupabaseClient | null> {
+  const c = getAuthClient();
+  if (!c) return null;
+  const { error } = await c.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+  return error ? null : c;
+}

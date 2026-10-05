@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 import { productToRow, revalidateStorefront } from "@/lib/products-db";
 import { products as defaultProducts } from "@/data/products";
@@ -23,6 +24,7 @@ export async function POST() {
     return NextResponse.json({ error: "Import failed" }, { status: 500 });
   }
 
+  await audit("products_imported", `${defaultProducts.length} products`);
   revalidateStorefront();
   return NextResponse.json({ success: true });
 }

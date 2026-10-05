@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAdmin, hasRefreshCookie } from "@/lib/admin-auth";
 import AdminShell from "../AdminShell";
+import SecurityPanel from "./security/SecurityPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +12,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   if (!admin) {
     redirect((await hasRefreshCookie()) ? "/api/admin/refresh" : "/admin/login");
   }
-  return <AdminShell email={admin.email}>{children}</AdminShell>;
+  // Two-step login is compulsory and not set up yet: nothing else is reachable.
+  return <AdminShell email={admin.email}>{admin.mfaSetupRequired ? <SecurityPanel forced /> : children}</AdminShell>;
 }

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { clientIpHash, LIMITS } from "@/lib/guard";
 import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
+import { allow } from "@/lib/ratelimit";
 import { getSupabase } from "@/lib/supabase";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 // Email is optional: skipped when RESEND_API_KEY is not set.
 const resend = process.env.RESEND_API_KEY
@@ -24,6 +26,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return fail("Invalid request");
+
+    if (!(await allow(getSupabase(), "contact_attempt", clientIpHash(req), 10, 10 * 60 * 1000))) {
+      return fail("Too many attempts. Please wait a few minutes or call the shop.", 429);
+    }
+    if (!(await verifyTurnstile(body.turnstileToken, req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null))) {
+      return fail("Please complete the security check and try again.");
+    }
 
     // Bot trap + minimum fill time (see the order route).
     if (typeof body.website === "string" && body.website.trim() !== "") {

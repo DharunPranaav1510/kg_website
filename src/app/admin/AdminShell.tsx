@@ -13,7 +13,9 @@ import {
   Menu,
   Package,
   Settings,
+  ShieldCheck,
   Store,
+  ScrollText,
   X,
 } from "lucide-react";
 import { adminApi } from "./api";
@@ -26,6 +28,8 @@ const NAV = [
   { href: "/admin/prices", label: "Update prices", icon: IndianRupee },
   { href: "/admin/sales", label: "Sales", icon: BarChart3 },
   { href: "/admin/settings", label: "Shop settings", icon: Settings },
+  { href: "/admin/activity", label: "Activity log", icon: ScrollText },
+  { href: "/admin/security", label: "Security", icon: ShieldCheck },
 ] as const;
 
 interface Summary {

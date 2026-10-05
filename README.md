@@ -203,3 +203,7 @@ Honeypot field, minimum form-fill time, limits per phone (2 waiting, 3/hour, 6/d
 ## Order numbers and tracking
 
 Every order gets a sequential **order number** (#57) shown to the customer on the confirmation screen, to staff on every order card, and searchable in the admin. Customers can follow an order any time from **Track Order** (footer): order number + the mobile number they ordered with. The longer link `/order/<id>` is unguessable and is used behind the scenes. Products have an automatic ID too (shown in the edit form).
+
+## Security
+
+See **`docs/SECURITY.md`** for what is protected, the one-time owner checklist (two-step login, Turnstile, backups, keys) and what to do if something goes wrong. Environment variables are listed in `.env.example`. Admin extras: **Security** (two-step login, sign out of all devices) and **Activity log** in the sidebar.

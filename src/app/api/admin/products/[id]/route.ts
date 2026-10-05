@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 import {
   parseProductInput,
@@ -18,6 +19,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const parsed = parseProductInput(await req.json().catch(() => null));
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
   const p = parsed.value;
+
+  const { data: before } = await supabase.from("products").select("name, price_per_kg").eq("id", id).maybeSingle();
 
   const { data, error } = await supabase
     .from("products")
@@ -42,6 +45,12 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   }
   if (!data) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
+  const oldPrice = before ? Number(before.price_per_kg) : null;
+  await audit(
+    oldPrice !== null && oldPrice !== p.pricePerKg ? "prices_changed" : "product_updated",
+    p.name,
+    oldPrice !== null && oldPrice !== p.pricePerKg ? { changes: [{ name: p.name, from: `₹${oldPrice}`, to: `₹${p.pricePerKg}` }] } : { id }
+  );
   revalidateStorefront();
   return NextResponse.json({ product: rowToProduct(data) });
 }
@@ -67,6 +76,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
+  const { data: before } = await supabase.from("products").select("name, price_per_kg, in_stock").eq("id", id).maybeSingle();
+
   const { data, error } = await supabase
     .from("products")
     .update(update)
@@ -79,6 +90,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
   if (!data) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
+  const changes: { name: string; from: string; to: string }[] = [];
+  if (before && "price_per_kg" in update && Number(before.price_per_kg) !== update.price_per_kg) {
+    changes.push({ name: before.name, from: `₹${Number(before.price_per_kg)}`, to: `₹${update.price_per_kg}` });
+  }
+  if (before && "in_stock" in update && before.in_stock !== update.in_stock) {
+    changes.push({ name: before.name, from: before.in_stock ? "in stock" : "sold out", to: update.in_stock ? "in stock" : "sold out" });
+  }
+  if (changes.length) await audit("prices_changed", changes[0].name, { changes });
   revalidateStorefront();
   return NextResponse.json({ product: rowToProduct(data) });
 }
@@ -89,12 +108,14 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const supabase = getSupabase()!;
   const { id } = await params;
 
+  const { data: gone } = await supabase.from("products").select("name").eq("id", id).maybeSingle();
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) {
     console.error("Admin product delete error:", error);
     return NextResponse.json({ error: "Failed to delete product" }, { status: 500 });
   }
 
+  await audit("product_deleted", gone?.name ?? id, { id });
   revalidateStorefront();
   return NextResponse.json({ success: true });
 }

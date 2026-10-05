@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 import {
   parseProductInput,
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to add product" }, { status: 500 });
   }
 
+  await audit("product_created", p.name, { id: data.id, price: p.pricePerKg });
   revalidateStorefront();
   return NextResponse.json({ product: rowToProduct(data) });
 }

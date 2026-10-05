@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 import { revalidateStorefront } from "@/lib/products-db";
 
@@ -38,6 +39,11 @@ export async function PATCH(req: NextRequest) {
     rows.push({ id: u.id, patch });
   }
 
+  const { data: olds } = await supabase
+    .from("products")
+    .select("id, name, price_per_kg, in_stock")
+    .in("id", rows.map((r) => r.id));
+
   const results = await Promise.all(
     rows.map(({ id, patch }) => supabase.from("products").update(patch).eq("id", id))
   );
@@ -49,6 +55,19 @@ export async function PATCH(req: NextRequest) {
       { status: 500 }
     );
   }
+
+  const changes: { name: string; from: string; to: string }[] = [];
+  for (const { id, patch } of rows) {
+    const old = olds?.find((o) => o.id === id);
+    if (!old) continue;
+    if ("price_per_kg" in patch && Number(old.price_per_kg) !== patch.price_per_kg) {
+      changes.push({ name: old.name, from: `₹${Number(old.price_per_kg)}`, to: `₹${patch.price_per_kg}` });
+    }
+    if ("in_stock" in patch && old.in_stock !== patch.in_stock) {
+      changes.push({ name: old.name, from: old.in_stock ? "in stock" : "sold out", to: patch.in_stock ? "in stock" : "sold out" });
+    }
+  }
+  if (changes.length) await audit("prices_changed", `${changes.length} change${changes.length === 1 ? "" : "s"}`, { changes });
 
   revalidateStorefront();
   return NextResponse.json({ success: true, updated: rows.length });

@@ -1,5 +1,6 @@
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getSupabase } from "@/lib/supabase";
+import { isAllowedImageUrl } from "@/lib/image-url";
 import {
   products as defaultProducts,
   shopCategories,
@@ -117,7 +118,7 @@ export function parseProductInput(
 
   const image = typeof b.image === "string" ? b.image.trim() : "";
   if (!image) return { error: "Add a product photo" };
-  if (!/^(\/|https:\/\/)/.test(image)) return { error: "Invalid image" };
+  if (!isAllowedImageUrl(image)) return { error: "Invalid image" };
 
   const badge = typeof b.badge === "string" ? b.badge.trim() : "";
   if (badge.length > 30) return { error: "Badge is too long (max 30 characters)" };

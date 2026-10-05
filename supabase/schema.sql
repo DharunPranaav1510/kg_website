@@ -108,3 +108,30 @@ create index if not exists enquiries_ip_created_idx on public.enquiries (ip_hash
 alter table public.settings enable row level security;
 alter table public.blocked_phones enable row level security;
 alter table public.enquiries alter column email drop not null;
+
+-- ---------------------------------------------------------------------------
+-- Security: shared rate limiting + admin activity log (safe to re-run)
+-- ---------------------------------------------------------------------------
+
+-- One row per counted event (failed admin logins, order lookups, order attempts).
+create table if not exists public.rate_events (
+  id bigint generated always as identity primary key,
+  kind text not null,
+  key text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists rate_events_lookup_idx on public.rate_events (kind, key, created_at desc);
+
+-- Who changed what in the admin panel.
+create table if not exists public.admin_audit (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  admin_email text not null,
+  action text not null,
+  target text,
+  detail jsonb
+);
+create index if not exists admin_audit_created_idx on public.admin_audit (created_at desc);
+
+alter table public.rate_events enable row level security;
+alter table public.admin_audit enable row level security;

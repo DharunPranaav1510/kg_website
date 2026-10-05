@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientIpHash, softRateLimit } from "@/lib/guard";
+import { clientIpHash } from "@/lib/guard";
+import { allow } from "@/lib/ratelimit";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { getSupabase } from "@/lib/supabase";
 
 // "Where is my order?": order number + the phone number it was placed with.
 export async function POST(req: NextRequest) {
-  if (!softRateLimit(`track:${clientIpHash(req)}`, 10, 10 * 60 * 1000)) {
+  const supabase = getSupabase();
+  if (!(await allow(supabase, "track", clientIpHash(req), 10, 10 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Please wait a few minutes or call the shop." }, { status: 429 });
   }
 
@@ -16,7 +18,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter your order number and the mobile number you ordered with." }, { status: 400 });
   }
 
-  const supabase = getSupabase();
   const { data } = supabase
     ? await supabase.from("orders").select("id").eq("order_number", number).eq("phone", phone).maybeSingle()
     : { data: null };

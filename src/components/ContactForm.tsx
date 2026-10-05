@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import Turnstile, { turnstileConfigured } from "@/components/Turnstile";
 import { normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { Loader2, Send } from "lucide-react";
 
@@ -61,6 +62,8 @@ export default function ContactForm() {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [serverError, setServerError] = useState("");
   const [honeypot, setHoneypot] = useState("");
+  const [captcha, setCaptcha] = useState("");
+  const [captchaReset, setCaptchaReset] = useState(0);
   const startedAt = useRef(Date.now());
 
   const handleChange = (field: keyof FormData, value: string) => {
@@ -83,6 +86,12 @@ export default function ContactForm() {
       return;
     }
 
+    if (turnstileConfigured && !captcha) {
+      setServerError("Please complete the security check below.");
+      setStatus("error");
+      return;
+    }
+
     setErrors({});
     setStatus("submitting");
 
@@ -90,9 +99,10 @@ export default function ContactForm() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, website: honeypot, startedAt: startedAt.current }),
+        body: JSON.stringify({ ...form, website: honeypot, startedAt: startedAt.current, turnstileToken: captcha }),
       });
       const data = await res.json().catch(() => ({}));
+      setCaptchaReset((n) => n + 1);
 
       if (!res.ok) {
         if (data.field && data.field in initialForm) {
@@ -223,6 +233,8 @@ export default function ContactForm() {
         <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
           <label>Website<input tabIndex={-1} autoComplete="off" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} /></label>
         </div>
+
+        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
 
         <button
           type="submit"

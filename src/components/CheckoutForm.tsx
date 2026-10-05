@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PhoneCall } from "lucide-react";
 import LocationButton from "@/components/LocationButton";
+import Turnstile, { turnstileConfigured } from "@/components/Turnstile";
 import { useCart } from "@/context/CartContext";
 import { business } from "@/data/business";
 import { normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
@@ -101,6 +102,8 @@ export default function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [honeypot, setHoneypot] = useState("");
+  const [captcha, setCaptcha] = useState("");
+  const [captchaReset, setCaptchaReset] = useState(0);
   const startedAt = useRef(Date.now());
 
   // Pre-fill from the last order made on this device.
@@ -149,6 +152,11 @@ export default function CheckoutForm({
       return;
     }
 
+    if (turnstileConfigured && !captcha) {
+      setFormError("Please complete the security check below.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/order", {
@@ -171,6 +179,7 @@ export default function CheckoutForm({
           items: items.map((i) => ({ id: i.product.id, weightKg: i.weightKg })),
           website: honeypot,
           startedAt: startedAt.current,
+          turnstileToken: captcha,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -182,6 +191,7 @@ export default function CheckoutForm({
           setFormError(data.error ?? "Something went wrong. Please try again or call the shop.");
         }
         setSubmitting(false);
+        setCaptchaReset((n) => n + 1);
         return;
       }
 
@@ -343,6 +353,8 @@ export default function CheckoutForm({
         <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
           <label>Website<input tabIndex={-1} autoComplete="off" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} /></label>
         </div>
+
+        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
 
         {formError && (
           <div role="alert" className="rounded-xl border border-accent/20 bg-accent/10 p-3 text-sm text-accent">{formError}</div>

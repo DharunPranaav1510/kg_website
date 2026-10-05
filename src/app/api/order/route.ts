@@ -12,8 +12,10 @@ import {
 } from "@/lib/guard";
 import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { getProducts } from "@/lib/products-db";
+import { allow } from "@/lib/ratelimit";
 import { getShopStatusFresh } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 // Email is optional: skipped when RESEND_API_KEY is not set.
 const resend = process.env.RESEND_API_KEY
@@ -42,10 +44,19 @@ export async function POST(req: NextRequest) {
     if (typeof body.website === "string" && body.website.trim() !== "") {
       return NextResponse.json({ success: true, id: null, orderNumber: null, total: 0, deliveryFee: 0 });
     }
+    // Hammering the endpoint (even with invalid orders) is cut off early.
+    const ipHash = clientIpHash(req);
+    if (!(await allow(getSupabase(), "order_attempt", ipHash, 30, 10 * 60 * 1000))) {
+      return fail("Too many attempts. Please wait a few minutes or call the shop.", 429);
+    }
     // A human cannot fill in the checkout form in a couple of seconds.
     const elapsed = Date.now() - Number(body.startedAt);
     if (!Number.isFinite(elapsed) || elapsed < LIMITS.minFormSeconds * 1000) {
       return fail("Please review your details and try again.");
+    }
+
+    if (!(await verifyTurnstile(body.turnstileToken, req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null))) {
+      return fail("Please complete the security check and try again.", 400, { field: "turnstile" });
     }
 
     // Shop closed? Checked against the database, never a cached copy.
@@ -124,7 +135,6 @@ export async function POST(req: NextRequest) {
 
     // Abuse limits (blocked numbers, rate limits, duplicate orders).
     const supabase = getSupabase();
-    const ipHash = clientIpHash(req);
     if (supabase) {
       const stats = await gatherOrderStats(supabase, {
         phone,

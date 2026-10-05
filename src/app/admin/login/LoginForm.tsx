@@ -3,69 +3,107 @@
 import { useState } from "react";
 
 export default function LoginForm() {
+  const [step, setStep] = useState<"password" | "code">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  async function post(url: string, body: unknown) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (res.ok) {
-        window.location.href = "/admin";
-        return;
+      if (step === "password") {
+        const { ok, data } = await post("/api/admin/login", { email, password });
+        if (ok && data.mfaRequired) {
+          setStep("code");
+        } else if (ok) {
+          window.location.href = "/admin";
+          return;
+        } else {
+          setError(data.error ?? "Login failed");
+        }
+      } else {
+        const { ok, data } = await post("/api/admin/login/mfa", { code });
+        if (ok) {
+          window.location.href = "/admin";
+          return;
+        }
+        setError(data.error ?? "That code didn't work");
+        setCode("");
+        if (data.restart) {
+          setStep("password");
+          setPassword("");
+        }
       }
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Login failed");
     } catch {
       setError("Network error. Please try again.");
     }
     setBusy(false);
   }
 
+  const input =
+    "mt-1 w-full rounded-xl border border-warm-gray px-3 py-2.5 text-base outline-none focus:border-accent";
+
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white rounded-2xl border border-warm-gray p-6 sm:p-8 shadow-sm space-y-4"
-      >
+    <main className="flex min-h-screen items-center justify-center px-4">
+      <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4 rounded-2xl border border-warm-gray bg-white p-6 shadow-sm sm:p-8">
         <div>
-          <h1 className="font-display text-2xl text-primary-text">Admin login</h1>
-          <p className="text-sm text-secondary-text mt-1">KG Foods staff only.</p>
+          <h1 className="font-display text-2xl text-primary-text">{step === "password" ? "Admin login" : "Two-step login"}</h1>
+          <p className="mt-1 text-sm text-secondary-text">
+            {step === "password" ? "KG Foods staff only." : "Open your authenticator app and enter the 6-digit code for KG Foods Admin."}
+          </p>
         </div>
-        <label className="block text-sm font-medium text-primary-text">
-          Email
-          <input
-            type="email"
-            required
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-warm-gray px-3 py-2.5 text-sm outline-none focus:border-accent"
-          />
-        </label>
-        <label className="block text-sm font-medium text-primary-text">
-          Password
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-warm-gray px-3 py-2.5 text-sm outline-none focus:border-accent"
-          />
-        </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {step === "password" ? (
+          <>
+            <label className="block text-sm font-medium text-primary-text">
+              Email
+              <input type="email" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className={input} />
+            </label>
+            <label className="block text-sm font-medium text-primary-text">
+              Password
+              <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={input} />
+            </label>
+          </>
+        ) : (
+          <label className="block text-sm font-medium text-primary-text">
+            6-digit code
+            <input
+              autoFocus
+              required
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9 ]*"
+              maxLength={7}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ""))}
+              className={`${input} text-center text-2xl tracking-[0.4em]`}
+              placeholder="······"
+            />
+          </label>
+        )}
+
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <button type="submit" disabled={busy} className="btn-primary w-full disabled:opacity-60">
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? "Checking…" : step === "password" ? "Continue" : "Sign in"}
         </button>
+        {step === "code" && (
+          <button type="button" onClick={() => { setStep("password"); setCode(""); setError(""); }} className="w-full text-sm text-secondary-text hover:text-accent">
+            ← Back
+          </button>
+        )}
       </form>
     </main>
   );
