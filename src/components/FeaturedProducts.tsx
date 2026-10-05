@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { featuredProducts } from "@/data/products";
+import { getProducts } from "@/lib/products-db";
 import ProductCard from "@/components/ProductCard";
 
-export default function FeaturedProducts() {
+export default async function FeaturedProducts() {
+  const featuredProducts = (await getProducts()).filter((p) => p.featured);
+
   return (
     <section className="py-16 sm:py-24 bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

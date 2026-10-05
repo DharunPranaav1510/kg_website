@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { business } from "@/data/business";
 import { createPageMetadata } from "@/lib/seo";
 import { fraunces, dmSans } from "@/lib/fonts";
+import { getProducts } from "@/lib/products-db";
+import { getShopStatus } from "@/lib/settings";
 import Providers from "@/components/Providers";
 import BackToTop from "@/components/BackToTop";
 import LocalBusinessJsonLd from "@/components/LocalBusinessJsonLd";
@@ -17,11 +19,13 @@ export const metadata: Metadata = {
   }),
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [products, shop] = await Promise.all([getProducts(), getShopStatus()]);
+
   return (
     <html lang="en" className={`${fraunces.variable} ${dmSans.variable}`}>
       <head>
@@ -31,7 +35,7 @@ export default function RootLayout({
         <LocalBusinessJsonLd />
       </head>
       <body className="font-body antialiased bg-background text-primary-text">
-        <Providers>{children}</Providers>
+        <Providers products={products} shop={shop}>{children}</Providers>
         <BackToTop />
       </body>
     </html>

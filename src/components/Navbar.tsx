@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ShoppingCart, Menu, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { business } from "@/data/business";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -119,6 +120,12 @@ export default function Navbar() {
             >
               Order Now
             </Link>
+            <a
+              href={`tel:${business.contact.phone}`}
+              className="mt-3 flex items-center justify-center gap-2 w-full py-4 border border-warm-gray text-primary-text font-medium text-base rounded-full hover:border-accent/40 transition-colors"
+            >
+              Call the shop · {business.contact.phoneDisplay}
+            </a>
           </div>
         </div>
       )}

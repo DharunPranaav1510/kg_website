@@ -21,7 +21,7 @@ export default function Testimonials() {
     <section className="py-16 sm:py-24 bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-xl mx-auto mb-16">
+        <div className="text-center max-w-xl mx-auto mb-8 sm:mb-16">
           <span className="section-label block mb-3">Real Reviews</span>
           <h2 className="section-title mb-4">
             What Our Customers Say
@@ -33,11 +33,11 @@ export default function Testimonials() {
         </div>
 
         {/* Testimonials grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 md:mx-0 md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:px-0 md:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {testimonials.map((t, idx) => (
             <div
               key={t.id}
-              className={`card-base p-7 flex flex-col ${
+              className={`card-base p-5 sm:p-7 flex flex-col w-[85%] flex-shrink-0 snap-center md:w-auto md:flex-shrink ${
                 idx === 1 ? "md:translate-y-4" : ""
               }`}
             >
@@ -82,7 +82,7 @@ export default function Testimonials() {
         </div>
 
         {/* Summary bar */}
-        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
+        <div className="mt-6 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
               {[1, 2, 3].map((n) => (

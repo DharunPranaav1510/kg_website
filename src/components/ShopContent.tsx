@@ -2,20 +2,26 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { Search, X } from "lucide-react";
 import { PackageOpen } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
+import { useProducts } from "@/context/ProductsContext";
 import {
-  products,
   shopCategories,
   filterProducts,
   sortProducts,
+  sortOptions,
+  type SortOption,
   categoryToShopParam,
   type ShopCategory,
 } from "@/data/products";
 
 export default function ShopContent() {
+  const products = useProducts();
   const searchParams = useSearchParams();
   const [activeCategory, setActiveCategory] = useState<ShopCategory>("All");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortOption>("featured");
 
   useEffect(() => {
     const categoryParam = searchParams.get("category");
@@ -26,21 +32,48 @@ export default function ShopContent() {
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
-    const filtered = filterProducts(products, activeCategory, "");
-    return sortProducts(filtered, "featured");
-  }, [activeCategory]);
+    const filtered = filterProducts(products, activeCategory, query);
+    return sortProducts(filtered, sort);
+  }, [products, activeCategory, query, sort]);
 
   return (
     <section className="pb-8 sm:pb-12 bg-background">
       <div className="sticky top-16 sm:top-[4.5rem] z-40 bg-background/95 backdrop-blur-md border-b border-warm-gray/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="w-full pl-10 pr-10 py-2.5 min-h-11 text-base sm:text-sm rounded-full border border-warm-gray bg-white text-sm focus:outline-none focus:border-accent/40 focus:shadow-glow"
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery("")} aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-text hover:text-primary-text">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortOption)}
+              aria-label="Sort products"
+              className="w-[7.25rem] sm:w-auto rounded-full border border-warm-gray bg-white px-3 sm:px-4 text-sm text-secondary-text focus:outline-none focus:border-accent/40"
+            >
+              {sortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 overflow-x-auto sm:flex-wrap pb-1 -mx-1 px-1">
             {shopCategories.map((category) => (
               <button
                 key={category}
                 type="button"
                 onClick={() => setActiveCategory(category)}
-                className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${
+                className={`flex-shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${
                   activeCategory === category
                     ? "bg-accent text-white shadow-glow scale-[1.02]"
                     : "bg-white text-secondary-text border border-warm-gray hover:border-accent/30 hover:text-primary-text"
@@ -58,6 +91,7 @@ export default function ShopContent() {
           Showing {filteredProducts.length}{" "}
           {filteredProducts.length === 1 ? "product" : "products"}
           {activeCategory !== "All" && ` in ${activeCategory}`}
+          {query.trim() && ` matching “${query.trim()}”`}
         </p>
 
         {filteredProducts.length > 0 ? (
@@ -72,14 +106,14 @@ export default function ShopContent() {
               <PackageOpen size={24} className="text-secondary-text" />
             </div>
             <h3 className="font-display text-xl text-primary-text mb-2">
-              No products in this category
+              No products found
             </h3>
             <p className="text-secondary-text text-sm max-w-sm mx-auto mb-6">
-              Try browsing all products or pick a different category.
+              Try a different search or pick another category.
             </p>
             <button
               type="button"
-              onClick={() => setActiveCategory("All")}
+              onClick={() => { setActiveCategory("All"); setQuery(""); }}
               className="btn-secondary text-sm py-3 px-6"
             >
               View All Products

@@ -146,3 +146,64 @@ For issues or questions, please contact the development team.
    The service_role key is server-only; never expose it to the browser.
 
 Orders and enquiries are saved to the `orders` / `enquiries` tables, then emailed. If the Supabase vars are missing, only the email is sent.
+
+## Admin panel
+
+Admins manage products at `/admin` (add, edit price, hide, delete, upload photos).
+
+1. Run the updated `supabase/schema.sql` in the Supabase SQL Editor (adds `products`, `admins` and the `product-images` bucket).
+2. Supabase -> Authentication -> Sign In / Providers: turn **off** "Allow new users to sign up".
+3. Supabase -> Authentication -> Users -> **Add user** (email + password, tick "Auto Confirm User").
+4. Allow that email in the SQL Editor: `insert into public.admins (email) values ('you@example.com');`
+5. Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+6. Open `/admin/login`, sign in, and click **Import default products** once to load the current catalogue.
+
+Only emails in the `admins` table can sign in; everyone else is rejected even if they have a Supabase account. Order prices are always recalculated on the server from the product table.
+
+## Orders, delivery and stock
+
+- **Orders tab** (`/admin`): live list (refreshes every 20s, optional chime), one-tap status changes (Confirm -> Out for delivery -> Delivered), WhatsApp the customer, print a slip, today's sales.
+- **Customers** get an order number and a tracking page at `/order/<id>` (status timeline, no sign-in needed).
+- **Delivery rules** live in `src/data/business.ts` (`delivery`): minimum order, fee, free-delivery threshold and time slots. They are enforced on the server.
+- **Sold-out toggle** and quick price edits are in the Products tab.
+- After pulling this change, re-run `supabase/schema.sql` once (it is safe to re-run) to add the new columns.
+
+## Live order board
+
+`/admin/orders` (linked from the admin page) is a kanban board for running the shop day: New / Confirmed / Out for delivery / Delivered today. It shows time since the last order, the oldest order still waiting, today's sales and orders per hour, and top sellers. Cards turn amber/red when an order has waited too long (thresholds in `WAIT_LIMITS`, `src/app/admin/orderUtils.ts`). Move orders forward with one tap (7-second undo), search by name/phone/#, and optionally enable sound, desktop alerts, keep-screen-on and fullscreen for a counter display. It refreshes every 10 seconds.
+
+## Admin panel (sidebar)
+
+Everything in `/admin` is reached from the **left-hand sidebar**: Overview, Live orders, Order history, Products, Update prices, Sales and Shop settings. The open/closed switch is always at the top of the sidebar.
+
+- **Open / close the shop:** sidebar switch or *Shop settings* (with a message customers see). Closing pauses new orders on the site and is enforced by the server.
+- **Update prices:** `/admin/prices`. Edit many prices, use -/+ buttons, or the *% Adjust many at once* tool (with rounding), then press **Save changes** once.
+- **Sales:** `/admin/sales`. Today / 7 / 30 / 90 days / this month, each compared with the previous period; trend, best sellers, categories, busiest hours and weekdays, new vs returning customers.
+- **Order history:** search, filter by date/status, download CSV.
+
+## Checkout rules
+
+- Mobile number is **required** and must be a valid Indian mobile number (validated in the browser and on the server). Email is optional.
+- Address is structured: house/flat, street, area, landmark, pincode (defaults to Hosur), plus an optional **Use my current location** pin (OpenStreetMap reverse geocoding, no key needed).
+- Customers are told in the cart, the checkout and the confirmation screen that **an order is only confirmed after someone from the shop calls them.** Payment is on delivery.
+
+## Spam protection
+
+Honeypot field, minimum form-fill time, limits per phone (2 waiting, 3/hour, 6/day) and per hashed device, duplicate-order detection, and an admin block list (any order card, or *Shop settings*). Every new order shows how many earlier orders that number has. See `docs/PHONE_VERIFICATION.md` for the plan to add real SMS/WhatsApp verification later.
+
+## Tests
+
+`npm test` runs unit tests for phone/address validation, order limits and the sales calculations.
+
+## After pulling this update
+
+1. Re-run `supabase/schema.sql` in the Supabase SQL Editor (safe to repeat).
+2. `npm install`.
+
+## Order numbers and tracking
+
+Every order gets a sequential **order number** (#57) shown to the customer on the confirmation screen, to staff on every order card, and searchable in the admin. Customers can follow an order any time from **Track Order** (footer): order number + the mobile number they ordered with. The longer link `/order/<id>` is unguessable and is used behind the scenes. Products have an automatic ID too (shown in the edit form).
+
+## Security
+
+See **`docs/SECURITY.md`** for what is protected, the one-time owner checklist (two-step login, Turnstile, backups, keys) and what to do if something goes wrong. Environment variables are listed in `.env.example`. Admin extras: **Security** (two-step login, sign out of all devices) and **Activity log** in the sidebar.

@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
+import Turnstile, { turnstileConfigured } from "@/components/Turnstile";
+import { normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { Loader2, Send } from "lucide-react";
 
 interface FormData {
@@ -35,16 +37,14 @@ function validateForm(data: FormData): FormErrors {
     errors.name = "Name must be at least 2 characters";
   }
 
-  if (!data.email.trim()) {
-    errors.email = "Email is required";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+  if (normalizeEmail(data.email) === null) {
     errors.email = "Please enter a valid email address";
   }
 
   if (!data.phone.trim()) {
-    errors.phone = "Phone number is required";
-  } else if (!/^[0-9+\s-]{10,15}$/.test(data.phone.trim())) {
-    errors.phone = "Please enter a valid phone number";
+    errors.phone = "Mobile number is required";
+  } else if (!normalizeIndianMobile(data.phone)) {
+    errors.phone = "Enter a valid 10-digit mobile number (starting with 6, 7, 8 or 9)";
   }
 
   if (!data.message.trim()) {
@@ -60,6 +60,11 @@ export default function ContactForm() {
   const [form, setForm] = useState<FormData>(initialForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [status, setStatus] = useState<FormStatus>("idle");
+  const [serverError, setServerError] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [captcha, setCaptcha] = useState("");
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const startedAt = useRef(Date.now());
 
   const handleChange = (field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -81,6 +86,12 @@ export default function ContactForm() {
       return;
     }
 
+    if (turnstileConfigured && !captcha) {
+      setServerError("Please complete the security check below.");
+      setStatus("error");
+      return;
+    }
+
     setErrors({});
     setStatus("submitting");
 
@@ -88,14 +99,27 @@ export default function ContactForm() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, website: honeypot, startedAt: startedAt.current, turnstileToken: captcha }),
       });
+      const data = await res.json().catch(() => ({}));
+      setCaptchaReset((n) => n + 1);
 
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        if (data.field && data.field in initialForm) {
+          setErrors({ [data.field]: data.error });
+          setStatus("idle");
+        } else {
+          setServerError(data.error ?? "");
+          setStatus("error");
+        }
+        return;
+      }
 
       setStatus("success");
       setForm(initialForm);
+      startedAt.current = Date.now();
     } catch {
+      setServerError("");
       setStatus("error");
     }
   };
@@ -124,7 +148,7 @@ export default function ContactForm() {
           role="alert"
           className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm font-medium"
         >
-          Something went wrong. Please try again or call us directly.
+          {serverError || "Something went wrong. Please try again or call us directly."}
         </div>
       )}
 
@@ -136,10 +160,11 @@ export default function ContactForm() {
           <input
             id="name"
             type="text"
+            autoComplete="name"
             value={form.name}
             onChange={(e) => handleChange("name", e.target.value)}
             disabled={status === "submitting"}
-            className={`w-full px-4 py-3 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all disabled:opacity-60 ${
+            className={`w-full px-4 py-3 min-h-12 rounded-xl border text-base text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all disabled:opacity-60 ${
               errors.name ? "border-accent" : "border-warm-gray focus:border-accent/40"
             }`}
             placeholder="Your full name"
@@ -149,15 +174,17 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-primary-text mb-1.5">
-            Email
+            Email <span className="font-normal text-secondary-text">(optional)</span>
           </label>
           <input
             id="email"
             type="email"
+            inputMode="email"
+            autoComplete="email"
             value={form.email}
             onChange={(e) => handleChange("email", e.target.value)}
             disabled={status === "submitting"}
-            className={`w-full px-4 py-3 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all disabled:opacity-60 ${
+            className={`w-full px-4 py-3 min-h-12 rounded-xl border text-base text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all disabled:opacity-60 ${
               errors.email ? "border-accent" : "border-warm-gray focus:border-accent/40"
             }`}
             placeholder="you@example.com"
@@ -167,15 +194,17 @@ export default function ContactForm() {
 
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-primary-text mb-1.5">
-            Phone
+            Mobile number
           </label>
           <input
             id="phone"
             type="tel"
+            inputMode="tel"
+            autoComplete="tel"
             value={form.phone}
             onChange={(e) => handleChange("phone", e.target.value)}
             disabled={status === "submitting"}
-            className={`w-full px-4 py-3 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all disabled:opacity-60 ${
+            className={`w-full px-4 py-3 min-h-12 rounded-xl border text-base text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all disabled:opacity-60 ${
               errors.phone ? "border-accent" : "border-warm-gray focus:border-accent/40"
             }`}
             placeholder="+91 98765 43210"
@@ -193,13 +222,19 @@ export default function ContactForm() {
             value={form.message}
             onChange={(e) => handleChange("message", e.target.value)}
             disabled={status === "submitting"}
-            className={`w-full px-4 py-3 rounded-xl border text-sm text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all resize-none disabled:opacity-60 ${
+            className={`w-full px-4 py-3 min-h-12 rounded-xl border text-base text-primary-text placeholder:text-secondary-text/50 focus:outline-none focus:shadow-glow transition-all resize-none disabled:opacity-60 ${
               errors.message ? "border-accent" : "border-warm-gray focus:border-accent/40"
             }`}
             placeholder="Tell us about your order, delivery area, or enquiry..."
           />
           {errors.message && <p className="text-xs text-accent mt-1.5">{errors.message}</p>}
         </div>
+
+        <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+          <label>Website<input tabIndex={-1} autoComplete="off" name="website" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} /></label>
+        </div>
+
+        <Turnstile onToken={setCaptcha} resetKey={captchaReset} />
 
         <button
           type="submit"

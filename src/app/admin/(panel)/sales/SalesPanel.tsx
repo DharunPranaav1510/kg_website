@@ -1,0 +1,201 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { RANGE_IDS, RANGE_LABEL, type RangeId, type SalesReport } from "@/lib/sales";
+import { adminApi } from "../../api";
+import { Delta, MiniBars, RankedBars, TrendChart, inr, PREVIOUS } from "./charts";
+
+const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "a" : "p"}`;
+
+function Tile({ label, value, children, sub }: { label: string; value: string; children?: React.ReactNode; sub?: string }) {
+  return (
+    <div className="rounded-2xl border border-warm-gray bg-white p-4">
+      <p className="text-xs text-secondary-text">{label}</p>
+      <p className="font-display text-2xl leading-tight sm:text-3xl">{value}</p>
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+        {children}
+        {sub && <span className="text-xs text-secondary-text">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+function Card({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`rounded-2xl border border-warm-gray bg-white p-4 sm:p-5 ${className}`}>
+      <h2 className="mb-3 text-sm font-medium">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+export default function SalesPanel() {
+  const [range, setRange] = useState<RangeId>("7d");
+  const [report, setReport] = useState<SalesReport | null>(null);
+  const [metric, setMetric] = useState<"revenue" | "orders">("revenue");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async (r: RangeId) => {
+    setLoading(true);
+    try {
+      setReport((await adminApi(`/api/admin/sales?range=${r}`)).report);
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    load(range);
+  }, [load, range]);
+
+  const c = report?.current;
+  const p = report?.previous;
+  const empty = !!c && c.orders === 0 && c.cancelled === 0;
+
+  const busiest = report?.byHour.reduce((b, h) => (h.orders > b.orders ? h : b), { hour: 0, orders: 0 });
+  const bestDay = report?.byWeekday.reduce((b, d) => (d.revenue > b.revenue ? d : b), { day: "", orders: 0, revenue: 0, });
+  const insights: string[] = [];
+  if (report && c && c.orders > 0) {
+    if (busiest && busiest.orders > 0) insights.push(`Busiest hour: ${hourLabel(busiest.hour).replace("a", " AM").replace("p", " PM")} (${busiest.orders} order${busiest.orders === 1 ? "" : "s"}).`);
+    if (report.range.days > 1 && bestDay && bestDay.revenue > 0) insights.push(`Best weekday: ${bestDay.day} (${inr(bestDay.revenue)}).`);
+    if (report.products[0]) insights.push(`Top product: ${report.products[0].name} (${inr(report.products[0].revenue)}).`);
+    if (c.customers > 0) insights.push(`${Math.round((c.returningCustomers / c.customers) * 100)}% of customers (${c.returningCustomers} of ${c.customers}) had ordered before.`);
+    if (c.cancelRate >= 0.15) insights.push(`${Math.round(c.cancelRate * 100)}% of orders were cancelled. Check the cancelled orders for dummy or unreachable customers.`);
+  }
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <h1 className="font-display text-2xl sm:text-3xl">Sales</h1>
+      <p className="mb-4 text-sm text-secondary-text">
+        Cancelled orders are not counted as sales. Totals include delivery charges. Orders are paid on delivery.
+      </p>
+
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        {RANGE_IDS.map((id) => (
+          <button
+            key={id}
+            onClick={() => setRange(id)}
+            className={`rounded-full border px-4 py-1.5 text-xs font-medium ${range === id ? "border-primary-text bg-primary-text text-white" : "border-warm-gray bg-white text-secondary-text"}`}
+          >
+            {RANGE_LABEL[id]}
+          </button>
+        ))}
+        {report && (
+          <span className="ml-auto text-xs text-secondary-text">
+            Compared with: <b>{report.range.prevLabel}</b>
+          </span>
+        )}
+      </div>
+
+      {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+      {!report ? (
+        <p className="text-secondary-text">{loading ? "Loading…" : "No data."}</p>
+      ) : (
+        <div className={loading ? "opacity-60 transition-opacity" : "transition-opacity"}>
+          {empty && (
+            <p className="mb-5 rounded-2xl border border-warm-gray bg-white p-6 text-center text-secondary-text">
+              No orders in this period yet. Pick a longer range, or check back after orders come in.
+            </p>
+          )}
+
+          <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Tile label="Sales" value={inr(c!.revenue)}><Delta now={c!.revenue} before={p!.revenue} /></Tile>
+            <Tile label="Orders" value={String(c!.orders)}><Delta now={c!.orders} before={p!.orders} /></Tile>
+            <Tile label="Average order" value={inr(c!.aov)}><Delta now={c!.aov} before={p!.aov} /></Tile>
+            <Tile label="Cancelled" value={`${Math.round(c!.cancelRate * 100)}%`} sub={`${c!.cancelled} order${c!.cancelled === 1 ? "" : "s"}`}>
+              <Delta now={c!.cancelRate * 100} before={p!.cancelRate * 100} goodWhenUp={false} />
+            </Tile>
+          </section>
+
+          <Card title={report.granularity === "hour" ? "Today by hour" : "Daily trend"} className="mb-5">
+            <div className="mb-3 flex gap-2">
+              {(["revenue", "orders"] as const).map((m) => (
+                <button key={m} onClick={() => setMetric(m)} className={`rounded-full border px-3.5 py-1 text-xs font-medium ${metric === m ? "border-primary-text bg-primary-text text-white" : "border-warm-gray text-secondary-text"}`}>
+                  {m === "revenue" ? "Sales ₹" : "Orders"}
+                </button>
+              ))}
+            </div>
+            <TrendChart series={report.series} metric={metric} prevLabel={report.range.prevLabel} />
+            <details className="mt-3 text-xs">
+              <summary className="cursor-pointer text-secondary-text">View as table</summary>
+              <div className="mt-2 max-h-64 overflow-auto rounded-xl border border-warm-gray">
+                <table className="w-full text-left">
+                  <thead className="sticky top-0 bg-cream text-secondary-text">
+                    <tr><th className="px-3 py-2">{report.granularity === "hour" ? "Hour" : "Day"}</th><th className="px-3 py-2">Sales</th><th className="px-3 py-2">Orders</th><th className="px-3 py-2">Sales before</th><th className="px-3 py-2">Orders before</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-warm-gray/70">
+                    {report.series.map((b) => (
+                      <tr key={b.label}><td className="px-3 py-1.5">{b.label}</td><td className="px-3 py-1.5">{inr(b.revenue)}</td><td className="px-3 py-1.5">{b.orders}</td><td className="px-3 py-1.5" style={{ color: PREVIOUS }}>{inr(b.prevRevenue)}</td><td className="px-3 py-1.5" style={{ color: PREVIOUS }}>{b.prevOrders}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </Card>
+
+          {insights.length > 0 && (
+            <Card title="What stands out" className="mb-5">
+              <ul className="list-inside list-disc space-y-1 text-sm">
+                {insights.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            </Card>
+          )}
+
+          <div className="mb-5 grid gap-5 lg:grid-cols-2">
+            <Card title="Best sellers (sales ₹)">
+              <RankedBars rows={report.products} empty="No sales yet." />
+              <p className="mt-3 text-[11px] text-secondary-text">Grey tick = same product in {report.range.prevLabel.toLowerCase()}.</p>
+            </Card>
+            <Card title="Sales by category">
+              <RankedBars rows={report.categories} empty="No sales yet." />
+            </Card>
+          </div>
+
+          <div className="mb-5 grid gap-5 lg:grid-cols-2">
+            <Card title="When customers order (by hour)">
+              <MiniBars
+                caption="Orders by hour of day"
+                labelEvery={3}
+                data={report.byHour.map((h) => ({ label: hourLabel(h.hour), value: h.orders, display: `${h.orders} order${h.orders === 1 ? "" : "s"}` }))}
+              />
+            </Card>
+            <Card title="Busiest weekdays (sales ₹)">
+              <MiniBars
+                caption="Sales by weekday"
+                data={report.byWeekday.map((d) => ({ label: d.day, value: d.revenue, display: `${inr(d.revenue)} · ${d.orders} order${d.orders === 1 ? "" : "s"}` }))}
+              />
+            </Card>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Card title="Customers">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div><p className="font-display text-2xl">{c!.customers}</p><p className="text-xs text-secondary-text">customers</p></div>
+                <div><p className="font-display text-2xl">{c!.newCustomers}</p><p className="text-xs text-secondary-text">first-time</p></div>
+                <div><p className="font-display text-2xl">{c!.returningCustomers}</p><p className="text-xs text-secondary-text">returning</p></div>
+              </div>
+              <p className="mt-3 text-xs text-secondary-text">Customers are counted by phone number. {c!.itemsPerOrder > 0 && `Average basket: ${c!.itemsPerOrder.toFixed(1)} items.`}</p>
+            </Card>
+            <Card title="Delivery slots chosen">
+              {report.slots.length === 0 ? (
+                <p className="text-sm text-secondary-text">No orders yet.</p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {report.slots.map((s) => (
+                    <li key={s.slot} className="flex items-center justify-between gap-3">
+                      <span className="truncate">{s.slot}</span>
+                      <b>{s.orders}</b>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

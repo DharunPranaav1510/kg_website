@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getProductById, type Product } from "@/data/products";
+import { type Product } from "@/data/products";
+import { useProducts } from "@/context/ProductsContext";
 
 const STORAGE_KEY = "kg-foods-cart";
 const EXPIRY_KEY = "kg-foods-cart-expiry";
@@ -67,6 +68,7 @@ function saveCartToStorage(cart: Record<string, number>) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const products = useProducts();
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
   const [isHydrated, setIsHydrated] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -84,12 +86,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const items = useMemo<CartItem[]>(() => {
     return Object.entries(cartMap)
       .map(([productId, weightKg]) => {
-        const product = getProductById(productId);
+        const product = products.find((p) => p.id === productId);
         if (!product || weightKg <= 0) return null;
         return { product, weightKg };
       })
       .filter((item): item is CartItem => item !== null);
-  }, [cartMap]);
+  }, [cartMap, products]);
 
   const itemCount = useMemo(() => Object.keys(cartMap).length, [cartMap]);
 
