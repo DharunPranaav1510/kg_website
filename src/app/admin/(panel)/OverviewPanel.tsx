@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { STATUS_LABEL } from "@/lib/delivery";
 import { adminApi } from "../api";
+import { usePoll } from "../usePoll";
 import { STATUS_STYLE, formatAge, itemsSummary, type Order, type OrdersResponse } from "../orderUtils";
 
 interface ProductLite {
@@ -43,12 +44,11 @@ export default function OverviewPanel() {
 
   useEffect(() => {
     load();
-    const t = setInterval(() => {
-      setNow(Date.now());
-      load();
-    }, 30000);
-    return () => clearInterval(t);
   }, [load]);
+  usePoll(() => {
+    setNow(Date.now());
+    load();
+  }, 45000);
 
   const today = new Date(now);
   const yesterday = new Date(now - 86400000);

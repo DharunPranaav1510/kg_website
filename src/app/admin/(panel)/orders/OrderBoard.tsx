@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { STATUS_LABEL, type OrderStatus } from "@/lib/delivery";
 import { adminApi } from "../../api";
+import { usePoll } from "../../usePoll";
 import {
   NEXT,
   NEXT_LABEL,
@@ -104,16 +105,14 @@ export default function OrderBoard() {
 
   useEffect(() => {
     load();
-    const poll = setInterval(load, POLL_MS);
-    const tick = setInterval(() => setNow(Date.now()), 5000);
-    const onVisible = () => document.visibilityState === "visible" && load();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(poll);
-      clearInterval(tick);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
   }, [load]);
+  usePoll(load, POLL_MS);
+
+  // Live clocks ("12 min ago") tick locally; no server calls.
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(tick);
+  }, []);
 
   // Browser-tab title shows how many orders need action.
   const newCount = (orders ?? []).filter((o) => o.status === "new").length;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearSessionCookies, currentTokens, getAdmin } from "@/lib/admin-auth";
+import { clearSessionCookies, currentTokens, forgetAdminSession, getAdmin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.auth.admin.signOut(tokens.access, all ? "global" : "local");
     if (error) console.error("Server-side sign out failed:", error.message);
   }
+  if (tokens) forgetAdminSession(tokens.access);
   if (admin) await audit(all ? "logout_everywhere" : "logout", undefined, undefined, admin.email);
 
   const res = NextResponse.json({ success: true });

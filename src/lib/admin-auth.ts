@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { decideAccess, decodeAal } from "@/lib/admin-access";
+import { decideAccess, peekClaims } from "@/lib/admin-access";
 import { getAuthClient, getSupabase } from "@/lib/supabase";
 
 const ACCESS_COOKIE = "kg_admin_at";
@@ -51,29 +51,62 @@ export async function verifiedTotpFactors(userId: string) {
   return (data.user?.factors ?? []).filter((f) => f.factor_type === "totp" && f.status === "verified");
 }
 
+// Every admin request used to make 3 sequential trips to Supabase just to
+// check who is calling. Now the lookups run side by side, and the answer is
+// remembered for a few seconds per server so a page that fires several requests
+// at once checks only once.
+const AUTH_CACHE_MS = 30_000;
+const authCache = new Map<string, { at: number; admin: Promise<Admin | null> }>();
+
+/** Forget a session right away (used by logout). Other servers catch up within AUTH_CACHE_MS. */
+export function forgetAdminSession(token: string) {
+  authCache.delete(token);
+}
+
+async function resolveAdmin(token: string): Promise<Admin | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  // The token's own (unverified) claims let us start the other lookups now;
+  // getUser() below is what actually proves the token is genuine and not revoked.
+  const claims = peekClaims(token);
+  const [userRes, allowRow, factors] = await Promise.all([
+    supabase.auth.getUser(token),
+    claims.email ? supabase.from("admins").select("email").ilike("email", claims.email).maybeSingle() : null,
+    claims.sub && claims.aal !== "aal2" ? verifiedTotpFactors(claims.sub) : null,
+  ]);
+
+  const user = userRes.data.user;
+  const email = user?.email?.toLowerCase();
+  if (userRes.error || !user || !email) return null;
+  // The early lookups must be about the same person the server confirmed.
+  if (email !== claims.email || user.id !== claims.sub || !allowRow?.data) return null;
+
+  const aal = claims.aal;
+  // aal2 means a code was already entered, so a factor certainly exists.
+  const hasFactor = aal === "aal2" || (factors?.length ?? 0) > 0;
+  const access = decideAccess({ aal, hasVerifiedFactor: hasFactor, requireMfa: requireMfa() });
+  if (access === "deny") return null;
+  return { email, userId: user.id, mfaEnabled: hasFactor, mfaSetupRequired: access === "setup" };
+}
+
 /**
  * Returns the signed-in admin, or null. Only emails in the `admins` table pass,
  * and an account with two-step login only counts once the code was entered.
  */
 export async function getAdmin(): Promise<Admin | null> {
-  const supabase = getSupabase();
   const token = (await cookies()).get(ACCESS_COOKIE)?.value;
-  if (!supabase || !token) return null;
+  if (!token) return null;
 
-  const { data, error } = await supabase.auth.getUser(token);
-  const email = data.user?.email?.toLowerCase();
-  const userId = data.user?.id;
-  if (error || !email || !userId) return null;
+  const hit = authCache.get(token);
+  if (hit && Date.now() - hit.at < AUTH_CACHE_MS) return hit.admin;
 
-  const { data: row } = await supabase.from("admins").select("email").ilike("email", email).maybeSingle();
-  if (!row) return null;
-
-  const aal = decodeAal(token);
-  // aal2 means a code was already entered, so a factor certainly exists.
-  const hasFactor = aal === "aal2" || (await verifiedTotpFactors(userId)).length > 0;
-  const access = decideAccess({ aal, hasVerifiedFactor: hasFactor, requireMfa: requireMfa() });
-  if (access === "deny") return null;
-  return { email, userId, mfaEnabled: hasFactor, mfaSetupRequired: access === "setup" };
+  const admin = resolveAdmin(token);
+  authCache.set(token, { at: Date.now(), admin });
+  if (authCache.size > 200) authCache.delete(authCache.keys().next().value as string);
+  // Never remember a "no": a fresh login must work straight away.
+  admin.then((a) => !a && authCache.delete(token), () => authCache.delete(token));
+  return admin;
 }
 
 /**

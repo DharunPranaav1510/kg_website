@@ -49,3 +49,11 @@ test("two-step login rules", () => {
   assert.equal(decideAccess({ aal: "aal1", hasVerifiedFactor: false, requireMfa: false }), "ok");
   assert.equal(decideAccess({ aal: "aal1", hasVerifiedFactor: false, requireMfa: true }), "setup");
 });
+
+import { peekClaims } from "../src/lib/admin-access";
+
+test("peekClaims reads sub, email and aal without trusting them", () => {
+  const t = `h.${Buffer.from(JSON.stringify({ sub: "u1", email: "Owner@KGFoods.in", aal: "aal2" })).toString("base64url")}.s`;
+  assert.deepEqual(peekClaims(t), { sub: "u1", email: "owner@kgfoods.in", aal: "aal2" });
+  assert.deepEqual(peekClaims("nope"), { sub: null, email: null, aal: null });
+});
