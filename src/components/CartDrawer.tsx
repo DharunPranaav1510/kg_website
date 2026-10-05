@@ -99,7 +99,12 @@ export default function CartDrawer() {
               <Clock size={32} className="text-amber-700" />
             </div>
             <h3 className="font-display text-2xl text-primary-text">We&apos;ve received your order</h3>
-            {placed.number && <p className="mt-1 font-semibold text-accent">Order #{placed.number}</p>}
+            {placed.number && (
+              <>
+                <p className="mt-1 font-semibold text-accent">Order #{placed.number}</p>
+                <p className="mt-0.5 text-xs text-secondary-text">Keep this number. You can look it up any time under Track Order with your mobile number.</p>
+              </>
+            )}
 
             <div className="mx-auto mt-5 max-w-sm rounded-2xl border border-amber-300 bg-amber-50 p-4 text-left text-sm text-amber-900">
               <p className="font-semibold">⚠ Not confirmed yet</p>

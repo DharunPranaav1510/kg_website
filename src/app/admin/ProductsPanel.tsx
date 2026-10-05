@@ -1,51 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { shopCategories } from "@/data/products";
+import ProductForm, { EMPTY_DRAFT, PRODUCT_CATEGORIES, type ProductDraft } from "./ProductForm";
 import { adminApi } from "./api";
 
-const categories = shopCategories.filter((c) => c !== "All");
-
-interface AdminProduct {
-  id: string;
-  name: string;
-  category: string;
-  pricePerKg: number;
-  image: string;
-  badge?: string;
-  description: string;
-  isEgg?: boolean;
-  featured?: boolean;
-  inStock?: boolean;
-  active: boolean;
-}
-
-type Draft = Omit<AdminProduct, "id" | "pricePerKg"> & {
-  id?: string;
-  pricePerKg: string;
-};
-
-const emptyDraft: Draft = {
-  name: "",
-  category: categories[0],
-  pricePerKg: "",
-  image: "",
-  badge: "",
-  description: "",
-  isEgg: false,
-  featured: false,
-  inStock: true,
-  active: true,
-};
-
-const inputCls =
-  "mt-1 w-full rounded-xl border border-warm-gray px-3 py-2.5 text-sm outline-none focus:border-accent bg-white";
+type AdminProduct = Omit<ProductDraft, "pricePerKg" | "id"> & { id: string; pricePerKg: number };
 
 export default function ProductsPanel() {
   const [products, setProducts] = useState<AdminProduct[] | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<ProductDraft | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
@@ -118,7 +84,7 @@ export default function ProductsPanel() {
   }
 
   async function upload(file: File) {
-    setBusy(true);
+    setUploading(true);
     setMessage("");
     try {
       const form = new FormData();
@@ -128,7 +94,7 @@ export default function ProductsPanel() {
     } catch (e) {
       setMessage((e as Error).message);
     }
-    setBusy(false);
+    setUploading(false);
   }
 
   const edit = (p: AdminProduct) =>
@@ -154,9 +120,9 @@ export default function ProductsPanel() {
           onChange={(e) => setCatFilter(e.target.value)}
           className="rounded-full border border-warm-gray bg-white px-4 py-2 text-sm"
         >
-          {shopCategories.map((c) => <option key={c}>{c}</option>)}
+          {["All", ...PRODUCT_CATEGORIES].map((c) => <option key={c}>{c}</option>)}
         </select>
-        <button onClick={() => { setMessage(""); setDraft({ ...emptyDraft }); }} className="btn-primary !py-2 !px-4">
+        <button onClick={() => { setMessage(""); setDraft({ ...EMPTY_DRAFT }); }} className="btn-primary !py-2 !px-4">
           + Add product
         </button>
       </div>
@@ -235,86 +201,16 @@ export default function ProductsPanel() {
       )}
 
       {draft && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 space-y-4">
-            <h2 className="font-display text-xl text-primary-text">
-              {draft.id ? "Edit product" : "Add product"}
-            </h2>
-
-            <label className="block text-sm font-medium">
-              Name
-              <input className={inputCls} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-medium">
-                Category
-                <select className={inputCls} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
-                  {categories.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </label>
-              <label className="block text-sm font-medium">
-                Price (₹ per {draft.isEgg ? "dozen" : "kg / pack"})
-                <input className={inputCls} type="number" min="0" step="1" inputMode="decimal" value={draft.pricePerKg} onChange={(e) => setDraft({ ...draft, pricePerKg: e.target.value })} />
-              </label>
-            </div>
-
-            <label className="block text-sm font-medium">
-              Description
-              <textarea className={inputCls} rows={2} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-            </label>
-
-            <label className="block text-sm font-medium">
-              Badge (optional, e.g. New, Bestseller)
-              <input className={inputCls} value={draft.badge ?? ""} onChange={(e) => setDraft({ ...draft, badge: e.target.value })} />
-            </label>
-
-            <div className="text-sm font-medium">
-              Photo
-              <div className="mt-1 flex items-center gap-3">
-                {draft.image && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={draft.image} alt="" className="w-16 h-16 rounded-xl object-cover bg-warm-gray" />
-                )}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-                  className="text-sm"
-                />
-              </div>
-              <p className="text-xs text-secondary-text mt-1">JPG, PNG or WebP, up to 4 MB.</p>
-            </div>
-
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!draft.isEgg} onChange={(e) => setDraft({ ...draft, isEgg: e.target.checked })} />
-                Sold per dozen (eggs)
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!draft.featured} onChange={(e) => setDraft({ ...draft, featured: e.target.checked })} />
-                Show on home page
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={draft.inStock !== false} onChange={(e) => setDraft({ ...draft, inStock: e.target.checked })} />
-                In stock today
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
-                Visible in shop
-              </label>
-            </div>
-
-            {message && <p className="rounded-xl bg-red-50 text-red-700 text-sm px-4 py-3">{message}</p>}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => { setDraft(null); setMessage(""); }} className="btn-secondary !py-2 !px-5">Cancel</button>
-              <button onClick={save} disabled={busy} className="btn-primary !py-2 !px-5 disabled:opacity-60">
-                {busy ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProductForm
+          draft={draft}
+          onChange={setDraft}
+          onSave={save}
+          onCancel={() => { setDraft(null); setMessage(""); }}
+          onUpload={upload}
+          saving={busy}
+          uploading={uploading}
+          error={message}
+        />
       )}
     </section>
   );

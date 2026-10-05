@@ -202,6 +202,13 @@ export default function CheckoutForm({
       } catch {
         /* private mode: fine */
       }
+      if (data.id && data.orderNumber) {
+        try {
+          window.localStorage.setItem("kg-foods-last-order", JSON.stringify({ id: data.id, number: data.orderNumber }));
+        } catch {
+          /* private mode: fine */
+        }
+      }
       clearCart();
       onPlaced({
         id: data.id ?? null,
