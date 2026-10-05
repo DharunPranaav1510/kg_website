@@ -38,11 +38,22 @@ export async function POST(req: NextRequest) {
   };
 
   const { data, error } = await auth.auth.signInWithPassword({ email, password });
-  if (error || !data.session || !data.user) return reject("bad password");
+  if (error || !data.session || !data.user) {
+    // Wrong keys / wrong project is a setup problem, not a typo: say so (visible to the owner only in logs + a hint).
+    const code = (error as { code?: string } | null)?.code;
+    console.error("[admin login] sign-in failed:", error?.status, code, error?.message);
+    if (error && (error.status === 401 && /api key|apikey/i.test(error.message) || /fetch failed|network/i.test(error.message))) {
+      return NextResponse.json({ error: "Server cannot reach Supabase with the configured keys. Check the Supabase env vars in Vercel and redeploy." }, { status: 500 });
+    }
+    return reject("bad password");
+  }
 
   // Valid Supabase user, but are they an admin? Same message so it can't be probed.
   const { data: admin } = await supabase.from("admins").select("email").ilike("email", email).maybeSingle();
-  if (!admin) return reject("not an admin");
+  if (!admin) {
+    console.error("[admin login] password OK but email is not in the admins table (or the table is missing)");
+    return reject("not an admin");
+  }
 
   // Two-step login switched on? Don't hand out a session until the code is entered.
   if ((await verifiedTotpFactors(data.user.id)).length > 0) {
