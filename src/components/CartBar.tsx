@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Lock, ShoppingBag } from "lucide-react";
+import { Lock, Moon, ShoppingBag } from "lucide-react";
+import { closedHeadline } from "@/components/ClosedNotice";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
 
@@ -24,9 +25,9 @@ export default function CartBar() {
           role="status"
           className="pointer-events-auto flex w-full max-w-md items-start gap-2.5 rounded-2xl bg-primary-text px-4 py-3 text-sm text-white shadow-hover"
         >
-          <Lock size={16} className="mt-0.5 flex-shrink-0" />
+          {shop.reason === "paused" ? <Lock size={16} className="mt-0.5 flex-shrink-0" /> : <Moon size={16} className="mt-0.5 flex-shrink-0" />}
           <p>
-            <b>Orders are paused.</b> {shop.message || "We're closed right now. Please check back soon."}
+            <b>{closedHeadline(shop.reason)}</b> {shop.message}
           </p>
         </div>
       )}

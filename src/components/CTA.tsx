@@ -64,7 +64,7 @@ export default async function CTA() {
 
             {/* Disclaimer */}
             <p className="text-white/30 text-xs mt-8">
-              Minimum order ₹{business.delivery.minOrder} · Free delivery above ₹{business.delivery.freeAbove} · Pay on delivery
+              Minimum order ₹{business.delivery.minOrder} · Delivery ₹{business.delivery.fee}{business.delivery.freeAbove > 0 ? ` (free above ₹${business.delivery.freeAbove})` : ""}{business.delivery.radiusKm > 0 ? ` within ${business.delivery.radiusKm} km` : ""} · Pay on delivery
             </p>
           </div>
         </div>

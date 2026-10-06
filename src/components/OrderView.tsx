@@ -1,4 +1,6 @@
 import Link from "next/link";
+import FeedbackForm from "@/components/FeedbackForm";
+import OrderRefresh from "@/components/OrderRefresh";
 import { Check, Phone } from "lucide-react";
 import { getBusiness } from "@/lib/content";
 import { getSupabase } from "@/lib/supabase";
@@ -35,9 +37,13 @@ export default async function OrderView({ id }: { id: string }) {
     supabase && UUID.test(id)
       ? await supabase
           .from("orders")
-          .select("order_number, created_at, customer_name, items, total, delivery_fee, slot, status")
+          .select("order_number, created_at, customer_name, items, total, delivery_fee, gst_total, gst_inclusive, slot, status")
           .eq("id", id)
           .maybeSingle()
+      : { data: null };
+  const { data: feedback } =
+    supabase && order && order.status === "delivered"
+      ? await supabase.from("order_feedback").select("rating, comment").eq("order_id", id).maybeSingle()
       : { data: null };
 
   return (
@@ -98,6 +104,12 @@ export default async function OrderView({ id }: { id: string }) {
                     <span>₹{it.price}</span>
                   </div>
                 ))}
+                {Number(order.gst_total) > 0 && (
+                  <div className="flex justify-between text-secondary-text">
+                    <span>{order.gst_inclusive ? "GST (included)" : "GST"}</span>
+                    <span>₹{Number(order.gst_total).toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-secondary-text">
                   <span>Delivery</span>
                   <span>{Number(order.delivery_fee) ? `₹${order.delivery_fee}` : "Free"}</span>
@@ -115,8 +127,11 @@ export default async function OrderView({ id }: { id: string }) {
               >
                 <Phone size={15} /> Call the shop · {business.contact.phoneDisplay}
               </a>
+
+              {order.status === "delivered" && <FeedbackForm orderId={id} existing={feedback ?? null} />}
             </div>
           )}
+        {order && <OrderRefresh finished={order.status === "delivered" || order.status === "cancelled"} />}
         </div>
   );
 }

@@ -220,6 +220,14 @@ Set `MAINTENANCE_MODE=true` in Vercel (Settings → Environment Variables, then 
 `MAINTENANCE_BYPASS_KEY` (8+ random characters) and open `/?preview=<key>`; `/?preview=off` locks it again.
 `MAINTENANCE_MESSAGE` replaces the default sentence on the page.
 
+## Opening hours and the closed view
+
+Default hours are 6:30 AM to 5:00 PM, every day (Indian time). In the admin go to **Shop settings → Opening hours**
+to change any day, mark a day off, or add special days (a holiday, or different hours on one date). Outside the
+hours customers see a "closed" hero (desktop and phone) with when you open next, Add buttons say "Opens ...",
+and the server refuses orders. The **Pause orders** switch below the hours stops orders earlier (sold out) and
+wins over the timetable. Hours are saved in the existing `settings` table (key `hours`), so no schema change.
+
 ## Phone layout
 
 Phones get an app-style version of the customer pages (home, shop, orders, order status, contact, more) at the
@@ -244,3 +252,15 @@ is shown.
 Checkout requires the customer to tick a box accepting the Terms, Privacy, Delivery, Cancellation and Refund policies
 (each linked and opening in a new tab). The server rejects orders without it and stores `consent_at` and the version
 (`updated_at`) of each policy on the order.
+
+## Products, offers, GST, delivery area, bills and feedback
+
+- **Allowed quantities:** in a product's form choose which quantities customers can pick (for example 1, 2 and 5 kg). Nothing chosen = the standard steps. The server refuses any other quantity.
+- **Time and date based display:** a product can be shown only on certain days, times or dates (Indian time). Either hidden completely outside the window, or shown as "Available Sun · 6:00 AM – 11:00 AM" and not orderable. Checked again on the server when an order arrives.
+- **Offers:** Admin > Offers lists products with what each sold in the last 30 days (slowest first), so you can tick the slow ones and apply a percentage off with a label and an end time. A single product's offer can also be set in its form. The old price is shown crossed out.
+- **GST:** Admin > Website content > Business details > GST. Rate per category (frozen products 5% by default) with an optional override and HSN code per product, and a switch for "prices already include GST". The shop must be GST registered to charge GST: ask your CA.
+- **Delivery:** a fixed delivery charge (₹50), optional "free above", and a delivery radius (6 km) around the shop's map position. Customers pin their address on a map (OpenStreetMap, free) and the server checks the straight-line distance.
+- **Bills:** "Print bill" on any order opens a bill laid out like the shop's own counter receipt: shop name with the financial year, address, FSSAI, GSTIN/UIN, state name and code (worked out from the GSTIN), contact, bill number (PREFIX/00057), date, time, user, items with both "Rate (Incl. of Tax)" and "Rate", totals with CGST/SGST, payment lines (Cash / Cash Tendered / Balance / Total Paid, chosen when printing), the declaration and a footer message. For an 80 mm receipt printer or A4. The details are edited in Business details > Legal details and bill.
+- **Customer order page:** refreshes itself every 15 seconds while open, with a Refresh button. After delivery the customer can rate the order; Admin > Feedback lists ratings and can copy a good comment into the website reviews.
+
+Run the latest `supabase/schema.sql` for the new product and order columns and the `order_feedback` table.

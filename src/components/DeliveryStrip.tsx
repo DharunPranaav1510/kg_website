@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Clock, Lock } from "lucide-react";
+import { MapPin, Clock, Lock, Moon } from "lucide-react";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import { useBusiness } from "@/context/BusinessContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
@@ -14,14 +14,14 @@ export default function DeliveryStrip() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-center gap-x-4 sm:gap-x-8 gap-y-1 flex-wrap text-xs sm:text-sm text-secondary-text">
         {!shop.open ? (
           <span className="flex items-center gap-2 font-semibold text-accent">
-            <Lock size={14} className="flex-shrink-0" />
-            Orders paused{shop.message ? ` — ${shop.message}` : ""}
+            {shop.reason === "paused" ? <Lock size={14} className="flex-shrink-0" /> : <Moon size={14} className="flex-shrink-0" />}
+            {shop.reason === "paused" ? `Orders paused${shop.message ? ` — ${shop.message}` : ""}` : shop.label}
           </span>
         ) : (
           <>
             <span className="flex items-center gap-1.5 font-medium">
               <MapPin size={14} className="text-accent flex-shrink-0" />
-              Delivering across {business.address.city}
+              {business.delivery.radiusKm > 0 ? `Delivering within ${business.delivery.radiusKm} km of the shop` : `Delivering across ${business.address.city}`}
             </span>
             <span className="hidden sm:block w-px h-3.5 bg-warm-gray" />
             <span className="flex items-center gap-1.5">
@@ -29,6 +29,7 @@ export default function DeliveryStrip() {
               <span className="hidden sm:inline">Open </span>
               {business.hours.display}
               <span className="hidden sm:inline">, {business.hours.days}</span>
+              {shop.minutesToClose !== null && shop.minutesToClose <= 60 && <b className="ml-1 text-accent">· closes in {shop.minutesToClose} min</b>}
             </span>
           </>
         )}

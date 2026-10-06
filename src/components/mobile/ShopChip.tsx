@@ -10,7 +10,7 @@ export default function ShopChip() {
         {shop.open && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 motion-safe:animate-ping" />}
         <span className={`relative inline-flex h-2 w-2 rounded-full ${shop.open ? "bg-emerald-400" : "bg-white"}`} />
       </span>
-      {shop.open ? "Taking orders now" : "Orders paused"}
+      {shop.open ? (shop.closesAt ? `Taking orders · until ${shop.closesAt}` : "Taking orders now") : shop.label}
     </span>
   );
 }

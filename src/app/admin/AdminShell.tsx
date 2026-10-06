@@ -1,5 +1,6 @@
 "use client";
 
+import { isOwner } from "@/lib/owner";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -8,6 +9,8 @@ import {
   ClipboardList,
   History,
   IndianRupee,
+  MessageSquareHeart,
+  Tag,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -15,10 +18,12 @@ import {
   Package,
   Settings,
   ShieldCheck,
+  Users,
   Store,
   ScrollText,
   X,
 } from "lucide-react";
+import { shopNow, type OpeningHours } from "@/lib/hours";
 import { adminApi } from "./api";
 import { usePoll } from "./usePoll";
 
@@ -28,16 +33,20 @@ const NAV = [
   { href: "/admin/history", label: "Order history", icon: History },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/prices", label: "Update prices", icon: IndianRupee },
+  { href: "/admin/offers", label: "Offers", icon: Tag },
   { href: "/admin/sales", label: "Sales", icon: BarChart3 },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquareHeart },
   { href: "/admin/content", label: "Website content", icon: FileText },
   { href: "/admin/settings", label: "Shop settings", icon: Settings },
   { href: "/admin/activity", label: "Activity log", icon: ScrollText },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
+  { href: "/admin/admins", label: "Admins", icon: Users, ownerOnly: true },
 ] as const;
 
 interface Summary {
   newOrders: number;
   shop: { open: boolean; message: string };
+  hours: OpeningHours;
 }
 
 export const SHOP_CHANGED_EVENT = "kg-shop-changed";
@@ -74,7 +83,7 @@ export default function AdminShell({
   async function toggleShop() {
     if (!summary || toggling) return;
     const open = !summary.shop.open;
-    if (!open && !window.confirm("Close the shop? Customers will not be able to place orders until you reopen.")) return;
+    if (!open && !window.confirm("Pause orders? Customers will not be able to order until you switch this back.")) return;
     setToggling(true);
     try {
       const { shop } = await adminApi("/api/admin/shop", {
@@ -97,7 +106,9 @@ export default function AdminShell({
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
-  const shopOpen = summary?.shop.open;
+  // What customers get right now: the opening hours AND the pause switch.
+  const live = summary ? shopNow(summary.hours, summary.shop) : null;
+  const shopOpen = live?.open;
 
   const sidebar = (
     <nav className="flex h-full flex-col gap-5 p-4" aria-label="Admin navigation">
@@ -119,7 +130,7 @@ export default function AdminShell({
       <button
         onClick={toggleShop}
         disabled={!summary || toggling}
-        aria-pressed={!!shopOpen}
+        aria-pressed={!!summary?.shop.open}
         className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors disabled:opacity-60 ${
           shopOpen === undefined
             ? "border-warm-gray bg-white"
@@ -131,10 +142,10 @@ export default function AdminShell({
         <Store size={18} className={shopOpen ? "text-success" : "text-red-600"} />
         <span className="flex-1">
           <span className="block text-sm font-semibold">
-            {shopOpen === undefined ? "Shop status…" : shopOpen ? "Shop is open" : "Shop is closed"}
+            {live === null ? "Shop status…" : live.open ? "Shop is open" : live.reason === "paused" ? "Orders paused" : "Shop is closed"}
           </span>
           <span className="block text-xs text-secondary-text">
-            {shopOpen === undefined ? "" : shopOpen ? "Tap to close orders" : "Tap to reopen"}
+            {live === null ? "" : live.reason === "paused" ? "Tap to resume" : live.open ? `Closes ${live.closesAt} · tap to pause` : `${live.label} · tap to pause`}
           </span>
         </span>
         <span
@@ -148,7 +159,7 @@ export default function AdminShell({
       </button>
 
       <ul className="flex flex-col gap-1">
-        {NAV.map(({ href, label, icon: Icon, ...rest }) => {
+        {NAV.filter((n) => !("ownerOnly" in n) || isOwner(email)).map(({ href, label, icon: Icon, ...rest }) => {
           const badge = "badge" in rest && rest.badge ? summary?.newOrders ?? 0 : 0;
           return (
             <li key={href}>

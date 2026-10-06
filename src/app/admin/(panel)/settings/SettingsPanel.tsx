@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import HoursEditor from "./HoursEditor";
 import { formatPhone } from "@/lib/phone";
 import { adminApi } from "../../api";
 import { SHOP_CHANGED_EVENT } from "../../AdminShell";
@@ -100,12 +101,15 @@ export default function SettingsPanel() {
       {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
       {notice && <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{notice}</p>}
 
+      <HoursEditor />
+
       <section className="rounded-2xl border border-warm-gray bg-white p-5">
-        <h2 className="mb-3 font-medium">Orders</h2>
+        <h2 className="mb-1 font-medium">Pause orders</h2>
+        <p className="mb-3 text-xs text-secondary-text">Orders follow the opening hours above. Use this to stop taking orders earlier than that, for example when you are sold out.</p>
         <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Shop status">
           {[
-            { value: true, label: "Open", sub: "Customers can place orders", on: "border-success bg-success/10" },
-            { value: false, label: "Closed", sub: "Orders are paused", on: "border-red-400 bg-red-50" },
+            { value: true, label: "Follow opening hours", sub: "Orders open and close by themselves", on: "border-success bg-success/10" },
+            { value: false, label: "Pause orders now", sub: "No orders until you switch back", on: "border-red-400 bg-red-50" },
           ].map((opt) => (
             <button
               key={String(opt.value)}
@@ -121,7 +125,7 @@ export default function SettingsPanel() {
         </div>
 
         <label className="mt-5 block text-sm font-medium">
-          Message for customers {open ? "(only shown while closed)" : ""}
+          Message for customers {open ? "(only shown while paused)" : ""}
           <textarea
             rows={2}
             maxLength={200}
@@ -142,7 +146,7 @@ export default function SettingsPanel() {
         {open === false && (
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             <p className="text-xs font-semibold uppercase tracking-wide">What customers will see</p>
-            <p className="mt-1">🔒 We&apos;re closed for orders right now. {message.trim() || "Please check back soon."}</p>
+            <p className="mt-1">🔒 Orders are paused. {message.trim() || "Please check back soon."}</p>
           </div>
         )}
 
@@ -150,7 +154,7 @@ export default function SettingsPanel() {
           {busy ? "Saving…" : "Save"}
         </button>
         <p className="mt-2 text-xs text-secondary-text">
-          Orders already received keep going. Customers can still browse the shop while it is closed.
+          Orders already received keep going. Customers can still browse the shop while orders are paused or the shop is closed.
         </p>
       </section>
 

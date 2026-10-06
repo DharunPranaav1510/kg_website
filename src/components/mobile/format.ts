@@ -10,10 +10,6 @@ export function fraction(n: number): string {
 }
 
 export const qtyLabel = (p: Product, w: number) => `${fraction(w)} ${p.isEgg ? "dz" : "kg"}`;
-export const stepFor = (p: Product) => (p.isEgg ? 0.5 : 0.25);
-export const maxFor = (p: Product) => (p.isEgg ? 2 : 3);
-export const defaultQty = (p: Product) => (p.isEgg ? 1 : 0.5);
-
 export function tap() {
   try {
     navigator.vibrate?.(8);

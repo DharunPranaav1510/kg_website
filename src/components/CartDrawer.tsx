@@ -6,15 +6,18 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2, X, Clock, MessageCircle, Phone, Lock } from "lucide-react";
 import CheckoutForm, { type PlacedOrder } from "@/components/CheckoutForm";
 import { useCart } from "@/context/CartContext";
+import ClosedNotice from "@/components/ClosedNotice";
 import { useShopStatus } from "@/context/ShopStatusContext";
 import { useBusiness } from "@/context/BusinessContext";
 import { amountToFreeDelivery, deliveryFeeFor } from "@/lib/delivery";
+import { stepWeight } from "@/lib/pricing";
+import { qtyLabel } from "@/components/mobile/format";
 import { formatPhone } from "@/lib/phone";
 
 type Step = "cart" | "form" | "confirmation";
 
 export default function CartDrawer() {
-  const { items, itemCount, subtotal, isDrawerOpen, closeDrawer, updateWeight, removeItem, clearCart } = useCart();
+  const { items, itemCount, subtotal, gstExtra, priced, isDrawerOpen, closeDrawer, updateWeight, removeItem, clearCart } = useCart();
   const shop = useShopStatus();
   const business = useBusiness();
   const MIN_ORDER = business.delivery.minOrder;
@@ -54,9 +57,10 @@ export default function CartDrawer() {
   }, [isDrawerOpen, closeDrawer]);
 
   const deliveryFee = deliveryFeeFor(subtotal, business.delivery);
-  const total = subtotal + deliveryFee;
+  const total = subtotal + gstExtra + deliveryFee;
   const belowMin = subtotal < MIN_ORDER;
-  const hasSoldOut = items.some((i) => i.product.inStock === false);
+  const hasSoldOut = items.some((i) => i.product.inStock === false || !!i.product.unavailableNote);
+  const lineFor = (id: string) => priced.lines.find((l) => l.id === id);
   const toFree = amountToFreeDelivery(subtotal, business.delivery);
   const canOrder = shop.open && !belowMin && !hasSoldOut && items.length > 0;
 
@@ -65,11 +69,11 @@ export default function CartDrawer() {
       .map(
         (item) =>
           `• ${item.product.name} — ${
-            item.product.isEgg ? `${item.weightKg === 0.5 ? "½" : item.weightKg} dozen` : `${item.weightKg} kg`
-          } — ₹${Math.round(item.product.pricePerKg * item.weightKg)}`
+            qtyLabel(item.product, item.weightKg).replace(/ dz$/, " dozen")
+          } — ₹${lineFor(item.product.id)?.price ?? 0}`
       )
       .join("\n");
-    const text = `Hi ${business.name}, I'd like to order:\n\n${lines}\n\nItems: ₹${subtotal}`;
+    const text = `Hi ${business.name}, I'd like to order:\n\n${lines}\n\nItems: ₹${subtotal}${gstExtra ? ` + GST ₹${gstExtra}` : ""}`;
     return `https://wa.me/${business.contact.whatsapp.replace("+", "")}?text=${encodeURIComponent(text)}`;
   };
 
@@ -166,6 +170,7 @@ export default function CartDrawer() {
         ) : step === "form" ? (
           <CheckoutForm
             subtotal={subtotal}
+            gstExtra={gstExtra}
             deliveryFee={deliveryFee}
             total={total}
             onBack={() => setStep("cart")}
@@ -188,6 +193,7 @@ export default function CartDrawer() {
                         <p className="text-[10px] uppercase tracking-wide text-secondary-text">{product.category}</p>
                         <h3 className="text-sm font-medium leading-tight text-primary-text">{product.name}</h3>
                         {product.inStock === false && <p className="mt-1 text-xs font-semibold text-accent">Sold out — please remove</p>}
+                        {product.inStock !== false && product.unavailableNote && <p className="mt-1 text-xs font-semibold text-accent">{product.unavailableNote} — please remove</p>}
                       </div>
                       <button type="button" onClick={() => removeItem(product.id)} aria-label={`Remove ${product.name}`} className="-mr-2 -mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center text-secondary-text hover:text-accent">
                         <Trash2 size={16} />
@@ -198,30 +204,27 @@ export default function CartDrawer() {
                         <button
                           type="button"
                           aria-label={`Decrease ${product.name}`}
-                          onClick={() => {
-                            const min = product.isEgg ? 0.5 : 0.25;
-                            updateWeight(product.id, Math.max(min, weightKg - min));
-                          }}
+                          onClick={() => updateWeight(product.id, stepWeight(product, weightKg, -1) ?? 0)}
                           className="flex h-10 w-10 items-center justify-center rounded-full bg-warm-gray transition-colors active:bg-accent/10"
                         >
                           <Minus size={14} />
                         </button>
-                        <span className="min-w-[3.25rem] text-center text-sm font-semibold">
-                          {product.isEgg ? `${weightKg === 0.5 ? "½" : weightKg} dz` : `${weightKg} kg`}
-                        </span>
+                        <span className="min-w-[3.25rem] text-center text-sm font-semibold">{qtyLabel(product, weightKg)}</span>
                         <button
                           type="button"
                           aria-label={`Increase ${product.name}`}
-                          onClick={() => {
-                            const step = product.isEgg ? 0.5 : 0.25;
-                            updateWeight(product.id, Math.min(product.isEgg ? 2 : 3, weightKg + step));
-                          }}
-                          className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-white transition-colors active:bg-accent-light"
+                          disabled={stepWeight(product, weightKg, 1) === null}
+                          onClick={() => updateWeight(product.id, stepWeight(product, weightKg, 1) ?? weightKg)}
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-white transition-colors active:bg-accent-light disabled:opacity-40"
                         >
                           <Plus size={14} />
                         </button>
                       </div>
-                      <span className="font-bold text-primary-text">₹{Math.round(product.pricePerKg * weightKg)}</span>
+                      <span className="text-right leading-tight">
+                        <span className="font-bold text-primary-text">₹{lineFor(product.id)?.price ?? 0}</span>
+                        {lineFor(product.id) && lineFor(product.id)!.unitPrice < lineFor(product.id)!.listPrice && <span className="block text-[10px] font-semibold text-success">Offer price</span>}
+                        {(lineFor(product.id)?.gstRate ?? 0) > 0 && <span className="block text-[10px] text-secondary-text">{business.tax.inclusive ? "incl." : "+"} {lineFor(product.id)!.gstRate}% GST</span>}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -233,7 +236,13 @@ export default function CartDrawer() {
             <div className="space-y-3 border-t border-warm-gray bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-secondary-text"><span>Subtotal</span><span>₹{subtotal}</span></div>
-                <div className="flex justify-between text-secondary-text"><span>Delivery</span><span>{deliveryFee ? `₹${deliveryFee}` : "Free"}</span></div>
+                {priced.gstTotal > 0 && (
+                  <div className="flex justify-between text-secondary-text">
+                    <span>{business.tax.inclusive ? "Includes GST" : "GST"}</span>
+                    <span>₹{business.tax.inclusive ? priced.gstTotal.toFixed(2) : gstExtra}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-secondary-text"><span>Delivery charge</span><span>{deliveryFee ? `₹${deliveryFee}` : "Free"}</span></div>
                 <div className="flex items-baseline justify-between pt-1">
                   <span className="font-medium text-primary-text">Total · pay on delivery</span>
                   <span className="font-display text-2xl text-primary-text">₹{total}</span>
@@ -241,16 +250,13 @@ export default function CartDrawer() {
               </div>
 
               {!shop.open ? (
-                <p className="flex items-start gap-2 rounded-lg bg-primary-text px-3 py-2.5 text-xs text-white">
-                  <Lock size={14} className="mt-0.5 flex-shrink-0" />
-                  <span><b>Orders are paused.</b> {shop.message || "We're closed right now. Please check back soon."}</span>
-                </p>
+                <ClosedNotice className="rounded-lg bg-primary-text px-3 py-2.5 text-xs text-white" />
               ) : belowMin ? (
                 <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Minimum order is ₹{MIN_ORDER}. Add ₹{MIN_ORDER - subtotal} more to continue.</p>
               ) : toFree > 0 ? (
                 <p className="rounded-lg bg-success/10 px-3 py-2 text-xs text-success">Add ₹{toFree} more for free delivery.</p>
               ) : null}
-              {hasSoldOut && <p className="rounded-lg bg-accent/10 px-3 py-2 text-xs text-accent">Remove the sold-out item(s) to place your order.</p>}
+              {hasSoldOut && <p className="rounded-lg bg-accent/10 px-3 py-2 text-xs text-accent">Remove the sold-out or unavailable item(s) to place your order.</p>}
 
               <p className="text-center text-xs text-secondary-text">
                 Orders are confirmed only after our team calls you.

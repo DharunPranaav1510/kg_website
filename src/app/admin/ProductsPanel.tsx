@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { extrasToPayload, productToExtras } from "./ProductFormExtras";
+import type { Product } from "@/data/products";
 import ProductForm, { EMPTY_DRAFT, PRODUCT_CATEGORIES, type ProductDraft } from "./ProductForm";
 import { adminApi } from "./api";
 
-type AdminProduct = Omit<ProductDraft, "pricePerKg" | "id"> & { id: string; pricePerKg: number };
+type AdminProduct = Product & { active: boolean };
 
 export default function ProductsPanel() {
   const [products, setProducts] = useState<AdminProduct[] | null>(null);
@@ -52,7 +54,7 @@ export default function ProductsPanel() {
       await adminApi(draft.id ? `/api/admin/products/${draft.id}` : "/api/admin/products", {
         method: draft.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...draft, pricePerKg: Number(draft.pricePerKg) }),
+        body: JSON.stringify({ ...draft, extras: undefined, ...extrasToPayload(draft.extras), pricePerKg: Number(draft.pricePerKg) }),
       });
       setDraft(null);
       await load();
@@ -98,7 +100,7 @@ export default function ProductsPanel() {
   }
 
   const edit = (p: AdminProduct) =>
-    setDraft({ ...p, badge: p.badge ?? "", pricePerKg: String(p.pricePerKg), inStock: p.inStock !== false });
+    setDraft({ ...p, badge: p.badge ?? "", pricePerKg: String(p.pricePerKg), inStock: p.inStock !== false, extras: productToExtras(p) });
 
   const shown = (products ?? []).filter(
     (p) =>
@@ -158,6 +160,14 @@ export default function ProductsPanel() {
                     {p.featured ? " · Featured" : ""}
                     {p.active ? "" : " · Hidden"}
                   </p>
+                  {(p.offer || p.schedule || p.gstRate != null || p.allowedWeights?.length) && (
+                    <p className="mt-0.5 flex flex-wrap gap-1 text-[10px] font-medium">
+                      {p.offer && <span className="rounded-full bg-success/10 px-2 py-0.5 text-success">Offer ₹{p.offer.price}</span>}
+                      {p.schedule && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">Timed</span>}
+                      {p.gstRate != null && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-800">GST {p.gstRate}%</span>}
+                      {!!p.allowedWeights?.length && <span className="rounded-full bg-warm-gray px-2 py-0.5 text-secondary-text">{p.allowedWeights.length} quantities</span>}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-1 text-sm">

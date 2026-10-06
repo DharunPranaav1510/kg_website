@@ -191,7 +191,8 @@ export default function HistoryPanel() {
                         {ORDER_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
                       </select>
                       <a href={whatsappLink(o)} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-xs">WhatsApp</a>
-                      <button onClick={() => printSlip(o)} className="btn-secondary !py-1.5 !px-3 !text-xs">Print</button>
+                      <button onClick={() => printSlip(o)} className="btn-secondary !py-1.5 !px-3 !text-xs" title="Small slip for the kitchen or delivery boy">Print slip</button>
+                      <a href={`/admin/bill/${o.id}`} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-xs" title="Customer bill with GST details">Print bill</a>
                       <span className="ml-auto"><BlockButton phone={o.phone} blocked={blocked.includes(o.phone)} onChanged={load} /></span>
                     </div>
                   </div>

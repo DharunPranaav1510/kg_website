@@ -21,12 +21,29 @@ export const business = {
 
   // Filled in from the admin panel (Website content > Business details).
   legal: {
-    legalName: "",
-    fssai: "",
+    gstin: "33AAGFK8402Q2ZZ",
+    legalName: "KG BROILERS & EGGS",
+    fssai: "12418011000652",
+    // Printed at the top of bills. Empty = the shop address / phone from above.
+    billAddress: "76/1, Bye-Pass Road, Hosur - 635 109",
+    billPhone: "94432 45378",
+    // Online bills are numbered PREFIX/00057 so they never clash with the counter's own bill numbers.
+    billPrefix: "WEB",
+    billFooter: "ALL IS WELL",
     grievanceName: "",
     grievanceEmail: "",
     grievancePhone: "",
   },
+
+  // GST: 5% on frozen products. Edited in Admin > Website content > Business details.
+  tax: {
+    enabled: true,
+    inclusive: false,
+    categoryRates: { "Frozen Products": 5 } as Record<string, number>,
+  },
+
+  // Short badges shown on the home page.
+  highlights: ["100% Halal", "Right-size birds"],
 
   announcement: {
     enabled: false,
@@ -40,26 +57,28 @@ export const business = {
     lng: 77.8260702,
   },
 
+  // The real timetable lives in the admin panel (Shop settings > Opening hours). This is the starting point.
   hours: {
-    display: "6:30 AM – 8:00 PM",
+    display: "6:30 AM – 5:00 PM",
     days: "Monday – Sunday",
-    allDay: true,
+    allDay: false,
     slots: [
-      { day: "Monday",    open: "6:30 AM", close: "8:00 PM" },
-      { day: "Tuesday",   open: "6:30 AM", close: "8:00 PM" },
-      { day: "Wednesday", open: "6:30 AM", close: "8:00 PM" },
-      { day: "Thursday",  open: "6:30 AM", close: "8:00 PM" },
-      { day: "Friday",    open: "6:30 AM", close: "8:00 PM" },
-      { day: "Saturday",  open: "6:30 AM", close: "8:00 PM" },
-      { day: "Sunday",    open: "6:30 AM", close: "8:00 PM" },
+      { day: "Sunday",    open: "6:30 AM", close: "5:00 PM" },
+      { day: "Monday",    open: "6:30 AM", close: "5:00 PM" },
+      { day: "Tuesday",   open: "6:30 AM", close: "5:00 PM" },
+      { day: "Wednesday", open: "6:30 AM", close: "5:00 PM" },
+      { day: "Thursday",  open: "6:30 AM", close: "5:00 PM" },
+      { day: "Friday",    open: "6:30 AM", close: "5:00 PM" },
+      { day: "Saturday",  open: "6:30 AM", close: "5:00 PM" },
     ],
   },
 
   delivery: {
     minOrder: 200, // ₹
-    fee: 30, // ₹, waived at or above freeAbove
-    freeAbove: 500, // ₹
-    slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Evening (4 – 7 PM)"],
+    fee: 50, // ₹, fixed delivery charge
+    freeAbove: 0, // ₹, orders at or above this are free. 0 = delivery is never free
+    radiusKm: 6, // delivery circle around the shop. 0 = no limit
+    slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Afternoon (1 – 4 PM)"],
     // Suggestions shown while typing the area. Customers can still type any
     // other area; edit this list to match where you actually deliver.
     areas: [

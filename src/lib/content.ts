@@ -20,12 +20,13 @@ export function revalidateContent() {
 async function readBusiness(): Promise<Business> {
   const supabase = getSupabase();
   if (!supabase) return mergeBusiness(null);
-  const { data, error } = await supabase.from("settings").select("value").eq("key", "business").maybeSingle();
+  const { data, error } = await supabase.from("settings").select("key, value").in("key", ["business", "hours"]);
   if (error) {
     console.error("Supabase business settings fetch error:", error);
     return mergeBusiness(null);
   }
-  return mergeBusiness((data?.value ?? null) as BusinessOverrides | null);
+  const by = Object.fromEntries((data ?? []).map((r) => [r.key, r.value]));
+  return mergeBusiness({ ...(by.business ?? {}), hours: by.hours ?? undefined } as BusinessOverrides);
 }
 
 export const getBusiness = unstable_cache(readBusiness, ["business-details"], cacheOpts);

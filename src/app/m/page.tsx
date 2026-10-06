@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, PhoneCall, Search, ShieldCheck, Star, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Clock, MapPin, PhoneCall, Search, ShieldCheck, Star, Truck } from "lucide-react";
 import AppBar from "@/components/mobile/AppBar";
 import ActiveOrder from "@/components/mobile/ActiveOrder";
 import FeaturedRail from "@/components/mobile/FeaturedRail";
-import ShopChip from "@/components/mobile/ShopChip";
+import HomeHero from "@/components/mobile/HomeHero";
 import ViewSwitch from "@/components/mobile/ViewSwitch";
 import { categories } from "@/data/categories";
 import { business as staticBusiness } from "@/data/business";
@@ -29,19 +29,15 @@ export default async function PhoneHome() {
       <main className="space-y-7 px-4 pt-4">
         <ActiveOrder />
 
-        {/* Hero */}
-        <section className="relative overflow-hidden rounded-3xl bg-primary-text text-white shadow-card">
-          <Image src="/images/hero/hero-chicken.jpg" alt="" fill priority sizes="(max-width: 480px) 100vw, 480px" className="object-cover opacity-55" />
-          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
-          <div className="relative flex min-h-[19rem] flex-col justify-end p-5">
-            <ShopChip />
-            <h1 className="mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh chicken, mutton and eggs, delivered in {business.address.city}.</h1>
-            <p className="mt-2 text-sm text-white/80">Pay on delivery · {d.slots.length} delivery slots a day</p>
-            <Link href="/shop" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white active:scale-[0.98] active:bg-accent-light">
-              Start ordering <ArrowRight size={17} />
-            </Link>
-          </div>
-        </section>
+        {/* Hero: switches to a calmer view while the shop is closed */}
+        <HomeHero
+          city={business.address.city}
+          slotCount={d.slots.length}
+          highlights={business.highlights}
+          phone={business.contact.phone}
+          phoneDisplay={business.contact.phoneDisplay}
+          hoursLines={business.hours.lines}
+        />
 
         {/* Search */}
         <form action="/shop" method="get" role="search" className="relative -mt-2">
@@ -77,7 +73,7 @@ export default async function PhoneHome() {
           <h2 className={`${h2} mb-3`}>Delivery in {business.address.city}</h2>
           <ul className="grid grid-cols-3 gap-2 text-center">
             {[
-              [Truck, `₹${d.fee}`, `delivery, free over ₹${d.freeAbove}`],
+              [Truck, `₹${d.fee}`, d.freeAbove > 0 ? `delivery, free over ₹${d.freeAbove}` : "delivery charge"],
               [ShieldCheck, `₹${d.minOrder}`, "minimum order"],
               [Clock, `${d.slots.length} slots`, "to choose from daily"],
             ].map(([Icon, big, small]) => {
@@ -91,7 +87,7 @@ export default async function PhoneHome() {
               );
             })}
           </ul>
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-secondary-text"><MapPin size={13} className="text-accent" /> {business.address.full}</p>
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-secondary-text"><MapPin size={13} className="text-accent" /> {d.radiusKm > 0 ? `We deliver within ${d.radiusKm} km of the shop. ` : ""}{business.address.full}</p>
         </section>
 
         {/* How it works */}

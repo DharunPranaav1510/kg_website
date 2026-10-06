@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import DeliveryStrip from "@/components/DeliveryStrip";
 import Hero from "@/components/Hero";
+import ShopHero from "@/components/ClosedHero";
 import TrustBar from "@/components/TrustBar";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import WhyKGFoods from "@/components/WhyKGFoods";
@@ -9,6 +10,7 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import CTA from "@/components/CTA";
 import { getFaqs } from "@/lib/content";
+import HighlightsStrip from "@/components/HighlightsStrip";
 import Footer from "@/components/Footer";
 
 export default async function HomePage() {
@@ -18,7 +20,10 @@ export default async function HomePage() {
       <Navbar />
       <DeliveryStrip />
       <main>
-        <Hero />
+        <ShopHero>
+          <Hero />
+        </ShopHero>
+        <HighlightsStrip />
         <TrustBar />
         <FeaturedProducts />
         <WhyKGFoods />
