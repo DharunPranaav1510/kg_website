@@ -21,10 +21,6 @@ export type AuditAction =
   | "content_changed"
   | "policy_changed"
   | "business_changed"
-  | "admin_invited"
-  | "admin_invite_revoked"
-  | "admin_joined"
-  | "admin_removed"
   | "offers_changed"
   | "bill_printed";
 

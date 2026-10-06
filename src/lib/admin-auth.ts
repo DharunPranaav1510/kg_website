@@ -58,11 +58,6 @@ export async function verifiedTotpFactors(userId: string) {
 const AUTH_CACHE_MS = 30_000;
 const authCache = new Map<string, { at: number; admin: Promise<Admin | null> }>();
 
-/** Forget every remembered session on this server (used when an admin is removed). Other servers catch up within AUTH_CACHE_MS. */
-export function clearAdminCache() {
-  authCache.clear();
-}
-
 /** Forget a session right away (used by logout). Other servers catch up within AUTH_CACHE_MS. */
 export function forgetAdminSession(token: string) {
   authCache.delete(token);

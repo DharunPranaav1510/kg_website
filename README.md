@@ -256,13 +256,3 @@ Checkout requires the customer to tick a box accepting the Terms, Privacy, Deliv
 - **Customer order page:** refreshes itself every 15 seconds while open, with a Refresh button. After delivery the customer can rate the order; Admin > Feedback lists ratings and can copy a good comment into the website reviews.
 
 Run the latest `supabase/schema.sql` for the new product and order columns and the `order_feedback` table.
-
-## Inviting new admins
-
-Admin > **Admins**: type an email and press Send invitation. The person gets an email with a link (valid 48 hours). On that page they press "Email me the code", receive a 6-digit code at the same address (valid 10 minutes, 5 tries, one new code a minute, 5 per invitation), enter it and choose their own password (12+ characters, letter and number, not a common password). That creates their login and adds them as an admin. You can resend (the old link stops working), cancel an invitation, or remove an admin (their login is deleted and they lose access at once). You cannot remove yourself or the last admin.
-
-Needs (in Vercel, then redeploy):
-- `RESEND_API_KEY` from resend.com and `RESEND_FROM`, an address on a domain you verified in Resend, for example `KG Foods <admin@kgfoods.co.in>`. Resend's test sender only delivers to your own Resend login email.
-- `SITE_URL`, for example `https://www.kgfoods.co.in`. Invitation links are built from it, never from the request.
-
-On your own computer, without a Resend key, the emails are printed in the terminal and the page shows the link and the code, so you can try the whole flow. Run the latest `supabase/schema.sql` first (new `admin_invites` table).
