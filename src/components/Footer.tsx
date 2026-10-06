@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Instagram, Facebook, MapPin, Phone, Mail, MessageSquare } from "lucide-react";
-import { business } from "@/data/business";
+import { business as staticBusiness } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 
 const footerCategories = [
 	{ label: "Chicken", href: "/shop?category=Chicken" },
@@ -30,11 +31,12 @@ const legalLinks = [
 ];
 
 const socialLinks = [
-	{ icon: Instagram, label: "Instagram", href: business.social.instagram },
-	{ icon: Facebook, label: "Facebook", href: business.social.facebook },
+	{ icon: Instagram, label: "Instagram", href: staticBusiness.social.instagram },
+	{ icon: Facebook, label: "Facebook", href: staticBusiness.social.facebook },
 ];
 
-export default function Footer() {
+export default async function Footer() {
+	const business = await getBusiness();
 	const year = new Date().getFullYear();
 	const phoneHref = `tel:${business.contact.phone}`;
 	const mailHref = `mailto:${business.contact.email}`;
@@ -171,9 +173,21 @@ export default function Footer() {
 			<div className="border-t border-white/5">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
 					<p className="text-xs text-white/30 text-center sm:text-left">
-						© {year} {business.name}. All rights reserved.
+						© {year} {business.legal.legalName || business.name}. All rights reserved.
 					</p>
+					{(business.legal.fssai || business.legal.grievanceEmail) && (
+						<p className="text-xs text-white/30 text-center">
+							{business.legal.fssai && <>FSSAI Lic. No. {business.legal.fssai}</>}
+							{business.legal.fssai && business.legal.grievanceEmail && " · "}
+							{business.legal.grievanceEmail && (
+								<>Grievance officer{business.legal.grievanceName ? `: ${business.legal.grievanceName}` : ""}, <a href={`mailto:${business.legal.grievanceEmail}`} className="underline">{business.legal.grievanceEmail}</a></>
+							)}
+						</p>
+					)}
 					<div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
+						<a href="?view=mobile" className="text-xs text-white/30 hover:text-white/60 transition-colors">
+							Mobile version
+						</a>
 						{legalLinks.map((l) => (
 							<Link
 								key={l.href}

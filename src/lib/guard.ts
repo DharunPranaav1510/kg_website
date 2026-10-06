@@ -123,3 +123,68 @@ export function softRateLimit(key: string, max: number, windowMs: number, now = 
   if (hits.size > 5000) for (const k of hits.keys()) { hits.delete(k); break; }
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Checking limits before inserting is not enough: many requests sent at the same moment all see
+// "0 orders so far" and all pass. So after an order is saved we look again, rank the recent orders
+// by time, and the order is kept only if it falls inside the limits. Earlier orders always win, so
+// at most the allowed number survive however many arrive together.
+// ---------------------------------------------------------------------------
+
+export interface RankedOrder {
+  id: string;
+  created_at: string;
+  status: string;
+  items?: { id?: string; weightKg?: number }[];
+}
+
+const byTime = (a: RankedOrder, b: RankedOrder) =>
+  new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id.localeCompare(b.id);
+
+/** Pure: is this just-saved order over a limit once everything saved so far is counted? */
+export function raceVerdict(
+  ownId: string,
+  phoneOrders: RankedOrder[],
+  ipOrders: RankedOrder[],
+  fingerprint: string,
+  now = Date.now()
+): GuardResult {
+  const deny = (error: string): GuardResult => ({ ok: false, status: 429, error });
+  const t = (o: RankedOrder) => new Date(o.created_at).getTime();
+  const hourAgo = now - 3600 * 1000;
+  const dupAfter = now - LIMITS.duplicateWindowMin * 60 * 1000;
+
+  const phone = phoneOrders.filter((o) => o.status !== "cancelled").sort(byTime);
+  const ip = [...ipOrders].sort(byTime);
+  const place = (list: RankedOrder[]) => list.findIndex((o) => o.id === ownId);
+
+  const open = phone.filter((o) => o.status === "new");
+  if (place(open) >= LIMITS.phoneOpen)
+    return deny("You already have orders waiting for confirmation. Please wait for our call, or call the shop to change them.");
+  if (place(phone.filter((o) => t(o) >= hourAgo)) >= LIMITS.phonePerHour || place(phone) >= LIMITS.phonePerDay)
+    return deny("Too many orders from this number. Please call the shop to place more.");
+  if (place(ip.filter((o) => t(o) >= hourAgo)) >= LIMITS.ipPerHour || place(ip) >= LIMITS.ipPerDay)
+    return deny("Too many orders from this device. Please try again later or call the shop.");
+
+  const own = place(phone);
+  if (own > 0) {
+    const sameCart = phone.slice(0, own).some((o) => t(o) >= dupAfter && orderFingerprint(o.items ?? []) === fingerprint);
+    if (sameCart)
+      return { ok: false, status: 409, error: "You already placed this exact order a few minutes ago. Someone from the shop will call you to confirm it." };
+  }
+  return { ok: true };
+}
+
+/** Looks at what is saved right now and applies raceVerdict to the order that was just inserted. */
+export async function verifyAfterInsert(
+  supabase: SupabaseClient,
+  opts: { orderId: string; phone: string; ipHash: string; fingerprint: string }
+): Promise<GuardResult> {
+  const dayAgo = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const [{ data: byPhone, error: e1 }, { data: byIp, error: e2 }] = await Promise.all([
+    supabase.from("orders").select("id, created_at, status, items").eq("phone", opts.phone).gte("created_at", dayAgo),
+    supabase.from("orders").select("id, created_at, status").eq("ip_hash", opts.ipHash).gte("created_at", dayAgo),
+  ]);
+  if (e1 || e2) return { ok: true }; // a lookup problem must not cancel a real customer's order
+  return raceVerdict(opts.orderId, (byPhone ?? []) as RankedOrder[], (byIp ?? []) as RankedOrder[], opts.fingerprint);
+}

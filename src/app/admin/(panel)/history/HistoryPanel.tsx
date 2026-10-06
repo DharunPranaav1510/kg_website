@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ORDER_STATUSES, STATUS_LABEL, type OrderStatus } from "@/lib/delivery";
 import { formatPhone } from "@/lib/phone";
+import { csvCell } from "@/lib/csv";
 import { adminApi } from "../../api";
 import {
   STATUS_STYLE,
@@ -22,7 +23,6 @@ const RANGES = [
   { id: "all", label: "All", days: null },
 ] as const;
 
-const csvCell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 function downloadCsv(rows: Order[]) {
   const head = ["Order #", "Placed", "Status", "Name", "Phone", "Email", "Address", "Slot", "Items", "Delivery fee", "Total", "Note"];

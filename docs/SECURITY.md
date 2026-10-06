@@ -52,3 +52,12 @@ delete from public.admin_audit where created_at < now() - interval '1 year';
 - Without real phone verification, someone can still type a number that is not theirs. The call-to-confirm rule and the limits keep the damage small.
 - Login lock-out is per email and per device (5 wrong passwords / 15 minutes). Someone who knows an admin's email could use that to briefly block the real admin from signing in; waiting 15 minutes clears it.
 - Remaining `npm audit` items are in development tools only (they never run on the live site).
+
+## Editable content
+
+- Policy text is rendered by a small formatter (`src/components/Markdown.tsx`) that never outputs raw HTML and only allows
+  links starting with `/`, `https://`, `mailto:` or `tel:`. Reviews, FAQ and business details are validated on the server
+  (`src/lib/content-schema.ts`) and shown as plain text. Review photos must be uploaded through the admin uploader.
+- All content routes (`/api/admin/content`, `/policies`, `/business`) need an admin session and an allowed Origin, and are
+  written to the activity log. Every saved policy version is kept in `policy_revisions`.
+- Orders store `consent_at` and `policy_versions` as proof of what the customer accepted.

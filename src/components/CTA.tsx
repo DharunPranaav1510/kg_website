@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Phone } from "lucide-react";
-import { business } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 
-export default function CTA() {
+export default async function CTA() {
+  const business = await getBusiness();
   return (
     <section className="py-24 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

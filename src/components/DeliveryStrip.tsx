@@ -1,13 +1,16 @@
 "use client";
 
 import { MapPin, Clock, Lock } from "lucide-react";
-import { business } from "@/data/business";
+import AnnouncementBar from "@/components/AnnouncementBar";
+import { useBusiness } from "@/context/BusinessContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
 
 export default function DeliveryStrip() {
+  const business = useBusiness();
   const shop = useShopStatus();
   return (
     <div className="bg-cream border-b border-warm-gray pt-16 sm:pt-[4.5rem]">
+      <AnnouncementBar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-center gap-x-4 sm:gap-x-8 gap-y-1 flex-wrap text-xs sm:text-sm text-secondary-text">
         {!shop.open ? (
           <span className="flex items-center gap-2 font-semibold text-accent">

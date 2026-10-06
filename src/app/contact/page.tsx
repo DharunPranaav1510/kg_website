@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createPageMetadata } from "@/lib/seo";
 import { business } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ContactForm from "@/components/ContactForm";
@@ -14,34 +15,37 @@ export const metadata = createPageMetadata({
   path: "/contact",
 });
 
-const contactCards = [
-  {
-    icon: Phone,
-    title: "Phone",
-    value: business.contact.phoneDisplay,
-    href: `tel:${business.contact.phone}`,
-  },
-  {
-    icon: Mail,
-    title: "Email",
-    value: business.contact.email,
-    href: `mailto:${business.contact.email}`,
-  },
-  {
-    icon: MapPin,
-    title: "Address",
-    value: business.address.full,
-    href: business.maps.url,
-  },
-  {
-    icon: Clock,
-    title: "Hours",
-    value: `${business.hours.display}, ${business.hours.days}`,
-    href: undefined,
-  },
-];
 
-export default function ContactPage() {
+
+export default async function ContactPage() {
+  const business = await getBusiness();
+  const contactCards = [
+    {
+      icon: Phone,
+      title: "Phone",
+      value: business.contact.phoneDisplay,
+      href: `tel:${business.contact.phone}`,
+    },
+    {
+      icon: Mail,
+      title: "Email",
+      value: business.contact.email,
+      href: `mailto:${business.contact.email}`,
+    },
+    {
+      icon: MapPin,
+      title: "Address",
+      value: business.address.full,
+      href: business.maps.url,
+    },
+    {
+      icon: Clock,
+      title: "Hours",
+      value: `${business.hours.display}, ${business.hours.days}`,
+      href: undefined,
+    },
+  ];
+
   return (
     <>
       <Navbar />

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { ShoppingCart, Menu, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { business } from "@/data/business";
+import { useBusiness } from "@/context/BusinessContext";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -16,6 +16,7 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const business = useBusiness();
   const pathname = usePathname();
   const { itemCount, isHydrated, openDrawer } = useCart();
   const isHome = pathname === "/";

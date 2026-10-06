@@ -29,6 +29,9 @@ const LABEL: Record<string, { text: string; tone: "normal" | "warn" | "bad" }> =
   order_status: { text: "Changed an order", tone: "normal" },
   number_blocked: { text: "Blocked a number", tone: "warn" },
   number_unblocked: { text: "Unblocked a number", tone: "normal" },
+  content_changed: { text: "Edited website content", tone: "normal" },
+  policy_changed: { text: "Edited a policy page", tone: "warn" },
+  business_changed: { text: "Changed business / delivery details", tone: "warn" },
 };
 const TONE = { normal: "bg-warm-gray text-secondary-text", warn: "bg-amber-100 text-amber-800", bad: "bg-red-100 text-red-700" };
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 export const LAST_ORDER_KEY = "kg-foods-last-order";
 
-export default function TrackForm() {
+export default function TrackForm({ showLast = true }: { showLast?: boolean }) {
   const router = useRouter();
   const [number, setNumber] = useState("");
   const [phone, setPhone] = useState("");
@@ -46,7 +46,7 @@ export default function TrackForm() {
 
   return (
     <div className="space-y-5">
-      {last && (
+      {showLast && last && (
         <Link href={`/order/${last.id}`} className="flex items-center justify-between rounded-2xl border border-success/30 bg-success/10 px-4 py-3.5 text-sm font-medium text-success">
           <span>Your last order on this device: #{last.number}</span>
           <span>View →</span>

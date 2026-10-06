@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Leaf, FlaskConical, Award, CheckCircle } from "lucide-react";
-import { business } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 
 const pillars = [
 	{
@@ -29,7 +29,8 @@ const pillars = [
 	},
 ];
 
-export default function WhyKGFoods() {
+export default async function WhyKGFoods() {
+  const business = await getBusiness();
 	return (
 		<section className="py-24 bg-background overflow-hidden">
 			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

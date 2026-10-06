@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { business } from "@/data/business";
 import { formatAddress, parseAddress } from "@/lib/address";
-import { deliveryFeeFor, MIN_ORDER } from "@/lib/delivery";
+import { getBusinessFresh, getPolicyVersions } from "@/lib/content";
+import { deliveryFeeFor } from "@/lib/delivery";
 import {
   clientIpHash,
   evaluateOrderLimits,
   gatherOrderStats,
   LIMITS,
   orderFingerprint,
+  verifyAfterInsert,
 } from "@/lib/guard";
 import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { getProducts } from "@/lib/products-db";
@@ -85,9 +86,14 @@ export async function POST(req: NextRequest) {
     if ("error" in addr) return fail(addr.error, 400, { field: addr.field });
     const address = addr.value;
 
+    if (body.consent !== true) {
+      return fail("Please tick the box to accept the policies", 400, { field: "consent" });
+    }
+
+    const business = await getBusinessFresh();
     const note = str(body.note, 300);
     const slot = str(body.slot, 60);
-    if (!(business.delivery.slots as readonly string[]).includes(slot)) {
+    if (!business.delivery.slots.includes(slot)) {
       return fail("Please choose a delivery slot", 400, { field: "slot" });
     }
 
@@ -129,8 +135,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (subtotal < MIN_ORDER) return fail(`Minimum order is ₹${MIN_ORDER}.`);
-    const deliveryFee = deliveryFeeFor(subtotal);
+    if (subtotal < business.delivery.minOrder) return fail(`Minimum order is ₹${business.delivery.minOrder}.`);
+    const deliveryFee = deliveryFeeFor(subtotal, business.delivery);
     const total = subtotal + deliveryFee;
 
     // Abuse limits (blocked numbers, rate limits, duplicate orders).
@@ -167,6 +173,8 @@ export async function POST(req: NextRequest) {
           delivery_fee: deliveryFee,
           slot,
           ip_hash: ipHash,
+          consent_at: new Date().toISOString(),
+          policy_versions: await getPolicyVersions(),
         })
         .select("id, order_number")
         .single();
@@ -176,6 +184,19 @@ export async function POST(req: NextRequest) {
       }
       orderId = data.id;
       orderNumber = data.order_number;
+
+      // Requests sent at the same instant can all pass the check above, so look again now that this order
+      // is saved. If it is over a limit, take it back out. Earlier orders always win.
+      const recheck = await verifyAfterInsert(supabase, {
+        orderId: data.id,
+        phone,
+        ipHash,
+        fingerprint: orderFingerprint(items),
+      });
+      if (!recheck.ok) {
+        await supabase.from("orders").delete().eq("id", data.id);
+        return fail(recheck.error, recheck.status);
+      }
     }
 
     const itemRows = items

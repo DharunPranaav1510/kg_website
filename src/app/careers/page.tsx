@@ -3,7 +3,7 @@ import { createPageMetadata } from "@/lib/seo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/PageHero";
-import { business } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 
 export const metadata = createPageMetadata({
   title: "Careers",
@@ -35,7 +35,8 @@ const openings = [
   },
 ];
 
-export default function CareersPage() {
+export default async function CareersPage() {
+  const business = await getBusiness();
   return (
     <>
       <Navbar />

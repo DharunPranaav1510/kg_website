@@ -7,8 +7,8 @@ import { Minus, Plus, ShoppingBag, Trash2, X, Clock, MessageCircle, Phone, Lock 
 import CheckoutForm, { type PlacedOrder } from "@/components/CheckoutForm";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
-import { business } from "@/data/business";
-import { amountToFreeDelivery, deliveryFeeFor, MIN_ORDER } from "@/lib/delivery";
+import { useBusiness } from "@/context/BusinessContext";
+import { amountToFreeDelivery, deliveryFeeFor } from "@/lib/delivery";
 import { formatPhone } from "@/lib/phone";
 
 type Step = "cart" | "form" | "confirmation";
@@ -16,6 +16,8 @@ type Step = "cart" | "form" | "confirmation";
 export default function CartDrawer() {
   const { items, itemCount, subtotal, isDrawerOpen, closeDrawer, updateWeight, removeItem, clearCart } = useCart();
   const shop = useShopStatus();
+  const business = useBusiness();
+  const MIN_ORDER = business.delivery.minOrder;
   const [step, setStep] = useState<Step>("cart");
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
@@ -25,6 +27,15 @@ export default function CartDrawer() {
       document.body.style.overflow = "";
     };
   }, [isDrawerOpen]);
+
+  // Lets the phone layout keep its tab bar visible except while typing the address.
+  useEffect(() => {
+    if (isDrawerOpen) document.body.dataset.cartStep = step;
+    else delete document.body.dataset.cartStep;
+    return () => {
+      delete document.body.dataset.cartStep;
+    };
+  }, [isDrawerOpen, step]);
 
   // Reset when closed. The confirmation screen is only cleared on close.
   useEffect(() => {
@@ -42,11 +53,11 @@ export default function CartDrawer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isDrawerOpen, closeDrawer]);
 
-  const deliveryFee = deliveryFeeFor(subtotal);
+  const deliveryFee = deliveryFeeFor(subtotal, business.delivery);
   const total = subtotal + deliveryFee;
   const belowMin = subtotal < MIN_ORDER;
   const hasSoldOut = items.some((i) => i.product.inStock === false);
-  const toFree = amountToFreeDelivery(subtotal);
+  const toFree = amountToFreeDelivery(subtotal, business.delivery);
   const canOrder = shop.open && !belowMin && !hasSoldOut && items.length > 0;
 
   const buildWhatsAppUrl = () => {
@@ -74,7 +85,7 @@ export default function CartDrawer() {
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
-        className="animate-slide-in-right fixed right-0 top-0 z-[70] flex h-[100dvh] w-full flex-col bg-background shadow-hover md:max-w-md"
+        className="kg-cart-drawer animate-slide-in-right fixed right-0 top-0 z-[70] flex h-[100dvh] w-full flex-col bg-background shadow-hover md:max-w-md"
       >
         <div className="flex items-center justify-between border-b border-warm-gray px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
           <div className="flex items-center gap-3">

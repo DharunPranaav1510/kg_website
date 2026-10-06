@@ -19,6 +19,21 @@ export const business = {
     email: "dskarthik63@gmail.com",
   },
 
+  // Filled in from the admin panel (Website content > Business details).
+  legal: {
+    legalName: "",
+    fssai: "",
+    grievanceName: "",
+    grievanceEmail: "",
+    grievancePhone: "",
+  },
+
+  announcement: {
+    enabled: false,
+    text: "",
+    link: "",
+  },
+
   maps: {
     url: "https://www.google.com/maps/place/KG+Meat+Mart/@12.7357689,77.8234953,1004m/data=!3m2!1e3!4b1!4m6!3m5!1s0x3bae70cf4ef5b379:0xf16ac23ad6cb2c2d!8m2!3d12.7357689!4d77.8260702!16s%2Fg%2F1w0p41v9",
     lat: 12.7357689,

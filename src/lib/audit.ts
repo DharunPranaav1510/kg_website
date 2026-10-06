@@ -17,7 +17,10 @@ export type AuditAction =
   | "products_imported"
   | "order_status"
   | "number_blocked"
-  | "number_unblocked";
+  | "number_unblocked"
+  | "content_changed"
+  | "policy_changed"
+  | "business_changed";
 
 /**
  * Write a line to the admin activity log. Never throws: a logging problem must

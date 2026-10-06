@@ -135,3 +135,61 @@ create index if not exists admin_audit_created_idx on public.admin_audit (create
 
 alter table public.rate_events enable row level security;
 alter table public.admin_audit enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Editable website content: testimonials, FAQ, policies (safe to re-run)
+-- Business details live in public.settings under the key 'business'.
+-- ---------------------------------------------------------------------------
+
+create table if not exists public.testimonials (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  role text,
+  location text,
+  image text,
+  rating int not null default 5 check (rating between 1 and 5),
+  quote text not null,
+  product text,
+  sort int not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.faqs (
+  id uuid primary key default gen_random_uuid(),
+  question text not null,
+  answer text not null,
+  sort int not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.policies (
+  slug text primary key,
+  title text not null,
+  subtitle text,
+  body text not null,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+
+-- Every saved version of a policy, so we can show what a customer agreed to.
+create table if not exists public.policy_revisions (
+  id bigint generated always as identity primary key,
+  slug text not null,
+  title text not null,
+  subtitle text,
+  body text not null,
+  saved_at timestamptz not null default now(),
+  saved_by text
+);
+create index if not exists policy_revisions_slug_idx on public.policy_revisions (slug, saved_at desc);
+
+-- Proof that the customer accepted the policies when ordering.
+alter table public.orders add column if not exists consent_at timestamptz;
+alter table public.orders add column if not exists policy_versions jsonb;
+
+alter table public.testimonials enable row level security;
+alter table public.faqs enable row level security;
+alter table public.policies enable row level security;
+alter table public.policy_revisions enable row level security;

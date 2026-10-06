@@ -1,9 +1,10 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
-import { business } from "@/data/business";
+import { useBusiness } from "@/context/BusinessContext";
 
 export default function WhatsAppFab() {
+  const business = useBusiness();
   const href = `https://wa.me/${business.contact.whatsapp.replace("+", "")}?text=${encodeURIComponent(
     "Hi KG Meat Mart, I'd like to place an order."
   )}`;

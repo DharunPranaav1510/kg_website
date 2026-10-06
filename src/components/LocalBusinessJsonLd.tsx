@@ -1,12 +1,13 @@
-import { localBusinessJsonLd } from "@/lib/seo";
+import { getBusiness } from "@/lib/content";
+import { localBusinessJsonLd, safeJsonForScript } from "@/lib/seo";
 
-export default function LocalBusinessJsonLd() {
-  const data = localBusinessJsonLd();
+export default async function LocalBusinessJsonLd() {
+  const data = localBusinessJsonLd(await getBusiness());
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonForScript(data) }}
     />
   );
 }

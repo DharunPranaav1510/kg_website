@@ -138,3 +138,17 @@ button:focus-visible {
     scroll-behavior: auto;
   }
 }
+
+/* Phone layout (served from /m through the proxy) */
+body:has(.kg-mobile) .kg-hide-on-phone { display: none !important; }
+.kg-mobile { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+.kg-mobile a, .kg-mobile button { touch-action: manipulation; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Cart on phones: sits above the tab bar so navigation stays reachable, except while filling the address form */
+body:has(.kg-mobile):not([data-cart-step="form"]) .kg-cart-drawer {
+  height: auto !important;
+  bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+body:has(.kg-mobile)[data-cart-step="form"] .kg-tabbar { display: none; }
