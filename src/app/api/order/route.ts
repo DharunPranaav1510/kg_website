@@ -1,3 +1,4 @@
+import { isValidSlot } from "@/lib/delivery";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { formatAddress, parseAddress } from "@/lib/address";
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     const note = str(body.note, 300);
     const slot = str(body.slot, 60);
-    if (!business.delivery.slots.includes(slot)) {
+    if (!isValidSlot(slot, business.delivery.slots)) {
       return fail("Please choose a delivery slot", 400, { field: "slot" });
     }
 
