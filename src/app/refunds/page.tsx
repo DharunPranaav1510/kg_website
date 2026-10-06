@@ -1,49 +1,72 @@
+import Link from "next/link";
 import { createPageMetadata } from "@/lib/seo";
 import LegalPageLayout from "@/components/LegalPageLayout";
+import { business } from "@/data/business";
 
 export const metadata = createPageMetadata({
-  title: "Refund Policy",
-  description: "KG Foods refund and replacement policy for fresh meat and poultry orders.",
+  title: "Refund & Replacement Policy",
+  description: "How refunds and replacements work for fresh meat and poultry orders from KG Foods.",
   path: "/refunds",
 });
+
+const h2 = "font-display text-xl text-primary-text mb-3";
+const link = "text-accent hover:underline";
 
 export default function RefundsPage() {
   return (
     <LegalPageLayout
-      title="Refund Policy"
+      title="Refund & Replacement"
       subtitle="We stand behind the freshness and quality of every product we deliver."
-      lastUpdated="June 1, 2025"
+      lastUpdated="October 6, 2026"
     >
       <div>
-        <h2 className="font-display text-xl text-primary-text mb-3">Quality Guarantee</h2>
+        <h2 className={h2}>How you pay</h2>
         <p>
-          If you receive a product that does not meet our freshness standards — including
-          off-odour, discolouration, or damaged packaging — contact us within 2 hours of
-          delivery with a photo. We will arrange a full replacement or refund at no extra cost.
+          Orders are paid on delivery (cash or UPI to the delivery person). We do not take
+          card or bank details on this website. Because nothing is paid in advance, a refund
+          means we either do not charge you, give your money back at your door, or send a
+          replacement.
         </p>
       </div>
       <div>
-        <h2 className="font-display text-xl text-primary-text mb-3">Eligible Refunds</h2>
+        <h2 className={h2}>Quality guarantee</h2>
+        <p>
+          If something you receive is not fresh (bad smell, discolouration, damaged or leaking
+          packaging), tell us within 2 hours of delivery with a clear photo. We will replace it
+          or refund it, whichever you prefer.
+        </p>
+      </div>
+      <div>
+        <h2 className={h2}>When we will refund or replace</h2>
         <ul className="list-disc pl-5 space-y-2">
-          <li>Products delivered in damaged or compromised cold-chain packaging</li>
-          <li>Incorrect items delivered compared to your confirmed order</li>
-          <li>Products that fail our freshness check upon delivery</li>
+          <li>The product is not fresh or the packaging is damaged.</li>
+          <li>You received a different item from what we confirmed on the call.</li>
+          <li>The weight is noticeably less than what you were charged for.</li>
         </ul>
       </div>
       <div>
-        <h2 className="font-display text-xl text-primary-text mb-3">Non-Eligible Refunds</h2>
+        <h2 className={h2}>When we cannot</h2>
         <p>
-          Refunds are not available for products that have been cooked, frozen after delivery
-          by the customer, or stored improperly. Change-of-mind returns are not accepted for
-          perishable food items as per FSSAI guidelines.
+          Fresh meat and eggs are perishable, so we cannot accept change-of-mind returns. We
+          also cannot refund products that were cooked, frozen or stored incorrectly after
+          delivery, or problems reported after the 2 hour window.
         </p>
       </div>
       <div>
-        <h2 className="font-display text-xl text-primary-text mb-3">How to Request a Refund</h2>
+        <h2 className={h2}>How to ask</h2>
         <p>
-          Call us at +91 98765 43210 or email info@kgfoods.com with your order number and a
-          brief description. Refunds are processed within 3–5 business days to your original
-          payment method.
+          Call{" "}
+          <a className={link} href={`tel:${business.contact.phone}`}>{business.contact.phoneDisplay}</a>{" "}
+          or message us on WhatsApp with your order number and a photo. If a refund is due, we
+          return the money by the same way you paid (cash or UPI) as soon as we have checked
+          the issue, usually the same day.
+        </p>
+      </div>
+      <div>
+        <h2 className={h2}>Related</h2>
+        <p>
+          See our <Link className={link} href="/cancellation">Cancellation Policy</Link> and{" "}
+          <Link className={link} href="/delivery">Delivery Policy</Link>.
         </p>
       </div>
     </LegalPageLayout>

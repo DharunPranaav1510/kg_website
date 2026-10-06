@@ -24,7 +24,9 @@ const footerLinks = [
 const legalLinks = [
 	{ label: "Privacy Policy", href: "/privacy" },
 	{ label: "Terms of Service", href: "/terms" },
-	{ label: "Refund Policy", href: "/refunds" },
+	{ label: "Refunds", href: "/refunds" },
+	{ label: "Cancellation", href: "/cancellation" },
+	{ label: "Delivery", href: "/delivery" },
 ];
 
 const socialLinks = [
