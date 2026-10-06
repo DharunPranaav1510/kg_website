@@ -3,10 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, Lock, Phone } from "lucide-react";
-import { business } from "@/data/business";
+import AnnouncementBar from "@/components/AnnouncementBar";
+import { useBusiness } from "@/context/BusinessContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
 
 export default function AppBar({ title, back }: { title?: string; back?: string }) {
+  const business = useBusiness();
   const shop = useShopStatus();
   return (
     <>
@@ -39,6 +41,7 @@ export default function AppBar({ title, back }: { title?: string; back?: string 
         </a>
       </div>
     </header>
+    <AnnouncementBar />
     {!shop.open && (
         <p role="status" className="flex items-start gap-2 bg-primary-text px-4 py-2.5 text-xs text-white">
           <Lock size={13} className="mt-0.5 flex-shrink-0" />

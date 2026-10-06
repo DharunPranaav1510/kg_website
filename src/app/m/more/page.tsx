@@ -4,6 +4,7 @@ import { BookOpen, Briefcase, ChevronRight, FileText, Info, MessageSquare, Recei
 import AppBar from "@/components/mobile/AppBar";
 import ViewSwitch from "@/components/mobile/ViewSwitch";
 import { business } from "@/data/business";
+import { getPolicyList } from "@/lib/content";
 
 export const metadata: Metadata = { title: "More — KG Foods", robots: { index: false, follow: true } };
 
@@ -19,23 +20,20 @@ const groups: { title: string; rows: { href: string; label: string; icon: typeof
   },
   {
     title: "Policies",
-    rows: [
-      { href: "/delivery", label: "Delivery", icon: Truck },
-      { href: "/cancellation", label: "Cancellation", icon: XCircle },
-      { href: "/refunds", label: "Refunds and replacements", icon: RotateCcw },
-      { href: "/privacy", label: "Privacy", icon: ShieldCheck },
-      { href: "/terms", label: "Terms of service", icon: FileText },
-    ],
+    rows: [],
   },
 ];
 
-export default function PhoneMore() {
+const policyIcons = { privacy: ShieldCheck, terms: FileText, refunds: RotateCcw, cancellation: XCircle, delivery: Truck } as const;
+
+export default async function PhoneMore() {
+  const policies = await getPolicyList();
+  const groupsWithPolicies = groups.map((g) => g.title === "Policies" ? { ...g, rows: policies.map((p) => ({ href: `/${p.slug}`, label: p.title, icon: policyIcons[p.slug] })) } : g);
   return (
     <>
       <AppBar title="More" />
       <main className="space-y-6 px-4 pt-5">
-        {groups.map((g) => (
-          <section key={g.title}>
+        {groupsWithPolicies.map((g) => (          <section key={g.title}>
             <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-secondary-text">{g.title}</h2>
             <ul className="overflow-hidden rounded-2xl border border-warm-gray/70 bg-white shadow-soft">
               {g.rows.map(({ href, label, icon: Icon }) => (

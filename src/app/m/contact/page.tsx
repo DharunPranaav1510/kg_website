@@ -1,18 +1,20 @@
 import { Clock, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
 import AppBar from "@/components/mobile/AppBar";
 import ContactForm from "@/components/ContactForm";
-import { business } from "@/data/business";
+import { business as staticBusiness } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
   title: "Contact Us",
-  description: `Get in touch with ${business.name} in Hosur. Call ${business.contact.phoneDisplay}, email ${business.contact.email}, or send us a message.`,
+  description: `Get in touch with ${staticBusiness.name} in Hosur.`,
   path: "/contact",
 });
 
 const action = "flex min-h-14 items-center gap-3 rounded-2xl border border-warm-gray/70 bg-white px-4 text-sm font-semibold text-primary-text shadow-soft active:bg-warm-gray/60";
 
-export default function PhoneContact() {
+export default async function PhoneContact() {
+  const business = await getBusiness();
   const wa = `https://wa.me/${business.contact.whatsapp.replace("+", "")}`;
   return (
     <>

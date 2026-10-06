@@ -7,21 +7,22 @@ import FeaturedRail from "@/components/mobile/FeaturedRail";
 import ShopChip from "@/components/mobile/ShopChip";
 import ViewSwitch from "@/components/mobile/ViewSwitch";
 import { categories } from "@/data/categories";
-import { business } from "@/data/business";
-import { testimonials } from "@/data/testimonials";
+import { business as staticBusiness } from "@/data/business";
+import { getBusiness, getTestimonials } from "@/lib/content";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata = createPageMetadata({
   title: "KG Foods — Fresh. Hygienic. Trusted.",
-  description: business.seo.description,
+  description: staticBusiness.seo.description,
   path: "/",
   ogImage: "/images/hero/hero-main.jpg",
 });
 
-const d = business.delivery;
 const h2 = "font-display text-xl text-primary-text";
 
-export default function PhoneHome() {
+export default async function PhoneHome() {
+  const [business, testimonials] = await Promise.all([getBusiness(), getTestimonials()]);
+  const d = business.delivery;
   return (
     <>
       <AppBar />
@@ -126,7 +127,7 @@ export default function PhoneHome() {
                   {Array.from({ length: t.rating }).map((_, i) => <Star key={i} size={14} fill="currentColor" />)}
                 </div>
                 <blockquote className="line-clamp-5 text-[13px] leading-relaxed text-secondary-text">“{t.quote}”</blockquote>
-                <figcaption className="mt-3 text-xs"><b className="text-primary-text">{t.name}</b> · {t.product}</figcaption>
+                <figcaption className="mt-3 text-xs"><b className="text-primary-text">{t.name}</b>{t.product ? ` · ${t.product}` : ""}</figcaption>
               </figure>
             ))}
           </div>

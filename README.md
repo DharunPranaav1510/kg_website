@@ -230,3 +230,17 @@ same database, cart and checkout as the desktop site. Every page has a "View des
 switched automatically once per session. To test on a computer, use the browser's device mode (it sends a phone
 browser type) or open `/?view=mobile`. Pages without a phone version (About, Blog, policies) use the normal layout.
 The site can also be added to a phone's home screen (`src/app/manifest.ts`).
+
+## Editing website content (admin)
+
+Admin > **Website content** has four tabs: **Policies** (privacy, terms, refunds, cancellation, delivery, with a live
+preview, `{{placeholders}}` for phone/fees/areas, and a history of every published version), **Business details**
+(delivery fee, minimum order, free-delivery limit, time slots, areas, phone, email, address, hours, FSSAI and grievance
+officer, and a notice bar), **Reviews** and **FAQ**. Everything goes live immediately. Delivery rules are also enforced
+on the server when an order is placed. Before this works, run the latest `supabase/schema.sql` (adds the `testimonials`,
+`faqs`, `policies` and `policy_revisions` tables and two columns on `orders`). Until content is edited, the built-in text
+is shown.
+
+Checkout requires the customer to tick a box accepting the Terms, Privacy, Delivery, Cancellation and Refund policies
+(each linked and opening in a new tab). The server rejects orders without it and stores `consent_at` and the version
+(`updated_at`) of each policy on the order.

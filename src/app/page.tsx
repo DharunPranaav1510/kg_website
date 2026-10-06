@@ -8,9 +8,11 @@ import ProcessSection from "@/components/ProcessSection";
 import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import CTA from "@/components/CTA";
+import { getFaqs } from "@/lib/content";
 import Footer from "@/components/Footer";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const faqs = await getFaqs();
   return (
     <>
       <Navbar />
@@ -22,7 +24,7 @@ export default function HomePage() {
         <WhyKGFoods />
         <ProcessSection />
         <Testimonials />
-        <FAQ />
+        {faqs.length > 0 && <FAQ items={faqs} />}
         <CTA />
       </main>
       <Footer />

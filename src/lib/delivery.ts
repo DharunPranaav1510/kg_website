@@ -1,15 +1,16 @@
-import { business } from "@/data/business";
-
-const { minOrder, fee, freeAbove } = business.delivery;
-
-export const MIN_ORDER = minOrder;
-
-export function deliveryFeeFor(subtotal: number): number {
-  return subtotal >= freeAbove || subtotal === 0 ? 0 : fee;
+/** The delivery rules in force. They come from the business details, which the admin can edit. */
+export interface DeliveryRules {
+  minOrder: number;
+  fee: number;
+  freeAbove: number;
 }
 
-export function amountToFreeDelivery(subtotal: number): number {
-  return Math.max(0, freeAbove - subtotal);
+export function deliveryFeeFor(subtotal: number, rules: DeliveryRules): number {
+  return subtotal >= rules.freeAbove || subtotal === 0 ? 0 : rules.fee;
+}
+
+export function amountToFreeDelivery(subtotal: number, rules: DeliveryRules): number {
+  return Math.max(0, rules.freeAbove - subtotal);
 }
 
 export const ORDER_STATUSES = [

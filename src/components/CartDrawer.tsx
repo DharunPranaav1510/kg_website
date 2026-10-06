@@ -7,8 +7,8 @@ import { Minus, Plus, ShoppingBag, Trash2, X, Clock, MessageCircle, Phone, Lock 
 import CheckoutForm, { type PlacedOrder } from "@/components/CheckoutForm";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
-import { business } from "@/data/business";
-import { amountToFreeDelivery, deliveryFeeFor, MIN_ORDER } from "@/lib/delivery";
+import { useBusiness } from "@/context/BusinessContext";
+import { amountToFreeDelivery, deliveryFeeFor } from "@/lib/delivery";
 import { formatPhone } from "@/lib/phone";
 
 type Step = "cart" | "form" | "confirmation";
@@ -16,6 +16,8 @@ type Step = "cart" | "form" | "confirmation";
 export default function CartDrawer() {
   const { items, itemCount, subtotal, isDrawerOpen, closeDrawer, updateWeight, removeItem, clearCart } = useCart();
   const shop = useShopStatus();
+  const business = useBusiness();
+  const MIN_ORDER = business.delivery.minOrder;
   const [step, setStep] = useState<Step>("cart");
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
@@ -51,11 +53,11 @@ export default function CartDrawer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [isDrawerOpen, closeDrawer]);
 
-  const deliveryFee = deliveryFeeFor(subtotal);
+  const deliveryFee = deliveryFeeFor(subtotal, business.delivery);
   const total = subtotal + deliveryFee;
   const belowMin = subtotal < MIN_ORDER;
   const hasSoldOut = items.some((i) => i.product.inStock === false);
-  const toFree = amountToFreeDelivery(subtotal);
+  const toFree = amountToFreeDelivery(subtotal, business.delivery);
   const canOrder = shop.open && !belowMin && !hasSoldOut && items.length > 0;
 
   const buildWhatsAppUrl = () => {

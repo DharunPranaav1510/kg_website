@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { Clock, MessageSquare, Phone, ShoppingBasket, Snowflake, Truck } from "lucide-react";
-import { business } from "@/data/business";
+import { business as staticBusiness } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 
 export const metadata: Metadata = {
-  title: `${business.shortName} | Coming soon`,
+  title: `${staticBusiness.shortName} | Coming soon`,
   description: "Our new website is under development. Fresh meat, delivered in Hosur, coming soon.",
   robots: { index: false, follow: false },
 };
@@ -17,7 +18,8 @@ const coming = [
   { icon: Truck, title: "Delivered in Hosur", text: "Pay on delivery, after we confirm by phone." },
 ];
 
-export default function MaintenancePage() {
+export default async function MaintenancePage() {
+  const business = await getBusiness();
   const custom = (process.env.MAINTENANCE_MESSAGE ?? "").trim().slice(0, 240);
   const whatsapp = `https://wa.me/${business.contact.whatsapp.replace("+", "")}`;
 
@@ -73,7 +75,7 @@ export default function MaintenancePage() {
         </ul>
 
         <p className="mt-10 text-xs text-secondary-text/70">
-          {business.name} · {business.address.city}, {business.address.state}
+          {staticBusiness.name} · {business.address.city}, {business.address.state}
         </p>
       </div>
     </main>

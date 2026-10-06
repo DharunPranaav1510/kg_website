@@ -66,7 +66,9 @@ export function createPageMetadata({
   };
 }
 
-export function localBusinessJsonLd() {
+export function localBusinessJsonLd(live?: { contact: { phone: string; email: string }; address: { street: string; city: string; state: string; pincode: string } }) {
+  const contact = live?.contact ?? business.contact;
+  const address = live?.address ?? business.address;
   return {
     "@context": "https://schema.org",
     "@type": "MeatEstablishment",
@@ -74,16 +76,16 @@ export function localBusinessJsonLd() {
     name: business.name,
     description: business.seo.description,
     url: business.website,
-    telephone: business.contact.phone,
-    email: business.contact.email,
+    telephone: contact.phone,
+    email: contact.email,
     image: `${business.website}${defaultOgImage}`,
     priceRange: "₹₹",
     address: {
       "@type": "PostalAddress",
-      streetAddress: business.address.street,
-      addressLocality: business.address.city,
-      addressRegion: business.address.state,
-      postalCode: business.address.pincode,
+      streetAddress: address.street,
+      addressLocality: address.city,
+      addressRegion: address.state,
+      postalCode: address.pincode,
       addressCountry: "IN",
     },
     geo: {

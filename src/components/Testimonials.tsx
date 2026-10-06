@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Star, Quote } from "lucide-react";
-import { testimonials } from "@/data/testimonials";
+import { getTestimonials } from "@/lib/content";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -16,7 +16,10 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-export default function Testimonials() {
+export default async function Testimonials() {
+  const testimonials = await getTestimonials();
+  if (!testimonials.length) return null;
+  const average = testimonials.reduce((n, t) => n + t.rating, 0) / testimonials.length;
   return (
     <section className="py-16 sm:py-24 bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -55,25 +58,27 @@ export default function Testimonials() {
               </blockquote>
 
               {/* Product tag */}
-              <div className="text-[11px] font-semibold tracking-[0.1em] uppercase text-accent bg-accent/8 rounded-full px-3 py-1.5 self-start mb-6">
-                {t.product}
-              </div>
+              {t.product && (
+                <div className="text-[11px] font-semibold tracking-[0.1em] uppercase text-accent bg-accent/8 rounded-full px-3 py-1.5 self-start mb-6">
+                  {t.product}
+                </div>
+              )}
 
               {/* Reviewer */}
               <div className="flex items-center gap-3 pt-5 border-t border-warm-gray">
                 <div className="relative w-11 h-11 rounded-full overflow-hidden bg-warm-gray flex-shrink-0">
-                  <Image
-                    src={t.image}
-                    alt={t.name}
-                    fill
-                    className="object-cover"
-                    sizes="44px"
-                  />
+                  {t.image ? (
+                    <Image src={t.image} alt={t.name} fill className="object-cover" sizes="44px" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center bg-accent/10 text-sm font-semibold text-accent">
+                      {t.name.trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <div className="font-semibold text-sm text-primary-text">{t.name}</div>
                   <div className="text-xs text-secondary-text mt-0.5">
-                    {t.role} · {t.location}
+                        {[t.role, t.location].filter(Boolean).join(" · ")}
                   </div>
                 </div>
               </div>
@@ -81,30 +86,13 @@ export default function Testimonials() {
           ))}
         </div>
 
-        {/* Summary bar */}
-        <div className="mt-6 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-center">
-          <div className="flex items-center gap-3">
-            <div className="flex -space-x-2">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="w-8 h-8 rounded-full bg-warm-gray border-2 border-white overflow-hidden"
-                >
-                  <div className="w-full h-full bg-gradient-to-br from-warm-gray to-cream" />
-                </div>
-              ))}
-            </div>
-            <div className="text-sm text-secondary-text">
-              <span className="font-semibold text-primary-text">10,000+</span> happy customers
-            </div>
-          </div>
-          <div className="w-px h-6 bg-warm-gray hidden sm:block" />
-          <div className="flex items-center gap-2">
-            <StarRating rating={5} />
-            <span className="text-sm text-secondary-text">
-              <span className="font-semibold text-primary-text">4.9/5</span> average rating
-            </span>
-          </div>
+        {/* Summary: worked out from the reviews shown above, never typed in by hand */}
+        <div className="mt-6 sm:mt-12 flex items-center justify-center gap-3 text-center">
+          <StarRating rating={Math.round(average)} />
+          <span className="text-sm text-secondary-text">
+            <span className="font-semibold text-primary-text">{average.toFixed(1)}/5</span> from {testimonials.length}{" "}
+            {testimonials.length === 1 ? "review" : "reviews"}
+          </span>
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@ import { business } from "@/data/business";
 import { createPageMetadata } from "@/lib/seo";
 import { fraunces, dmSans } from "@/lib/fonts";
 import { getProducts } from "@/lib/products-db";
+import { getBusiness } from "@/lib/content";
 import { getShopStatus } from "@/lib/settings";
 import Providers from "@/components/Providers";
 import AutoView from "@/components/mobile/AutoView";
@@ -25,7 +26,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [products, shop] = await Promise.all([getProducts(), getShopStatus()]);
+  const [products, shop, liveBusiness] = await Promise.all([getProducts(), getShopStatus(), getBusiness()]);
 
   return (
     <html lang="en" className={`${fraunces.variable} ${dmSans.variable}`}>
@@ -40,7 +41,7 @@ export default async function RootLayout({
         <LocalBusinessJsonLd />
       </head>
       <body className="font-body antialiased bg-background text-primary-text">
-        <Providers products={products} shop={shop}>{children}</Providers>
+        <Providers products={products} shop={shop} business={liveBusiness}>{children}</Providers>
         <BackToTop />
         <AutoView />
       </body>

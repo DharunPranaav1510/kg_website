@@ -27,6 +27,8 @@ test("only customer pages with a phone version are mapped", () => {
   assert.equal(mobileTarget("/"), "/m");
   assert.equal(mobileTarget("/shop"), "/m/shop");
   assert.equal(mobileTarget("/order/abc-123"), "/m/order/abc-123");
+  assert.equal(mobileTarget("/privacy"), "/m/legal/privacy");
+  assert.equal(mobileTarget("/policies"), "/m/more");
   assert.equal(mobileTarget("/about"), null);
   assert.equal(mobileTarget("/order/a/b"), null);
 });

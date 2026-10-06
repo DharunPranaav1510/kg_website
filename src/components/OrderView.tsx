@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, Phone } from "lucide-react";
-import { business } from "@/data/business";
+import { getBusiness } from "@/lib/content";
 import { getSupabase } from "@/lib/supabase";
 import type { OrderStatus } from "@/lib/delivery";
 
@@ -29,6 +29,7 @@ interface OrderItem {
 
 /** The order status card, shared by the full site and the phone layout. */
 export default async function OrderView({ id }: { id: string }) {
+  const business = await getBusiness();
   const supabase = getSupabase();
   const { data: order } =
     supabase && UUID.test(id)

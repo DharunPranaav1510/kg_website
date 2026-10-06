@@ -7,7 +7,7 @@ import LocationButton from "@/components/LocationButton";
 import Turnstile, { turnstileConfigured } from "@/components/Turnstile";
 import { rememberOrder } from "@/components/mobile/orderStatus";
 import { useCart } from "@/context/CartContext";
-import { business } from "@/data/business";
+import { useBusiness } from "@/context/BusinessContext";
 import { normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 
 const CUSTOMER_KEY = "kg-foods-customer";
@@ -43,8 +43,8 @@ const EMPTY: Fields = {
   street: "",
   area: "",
   landmark: "",
-  pincode: business.address.pincode,
-  slot: business.delivery.slots[0],
+  pincode: "",
+  slot: "",
   note: "",
 };
 
@@ -98,7 +98,10 @@ export default function CheckoutForm({
   onPlaced: (order: PlacedOrder) => void;
 }) {
   const { items, clearCart } = useCart();
-  const [f, setF] = useState<Fields>(EMPTY);
+  const business = useBusiness();
+  const [f, setF] = useState<Fields>({ ...EMPTY, pincode: business.address.pincode, slot: business.delivery.slots[0] ?? "" });
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState("");
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -149,8 +152,13 @@ export default function CheckoutForm({
     const e = validate();
     setErrors(e);
     const firstBad = order.find((k) => e[k]);
+    if (!consent) setConsentError("Please tick the box to accept the policies before sending your order.");
     if (firstBad) {
       document.getElementById(`ck-${firstBad}`)?.focus();
+      return;
+    }
+    if (!consent) {
+      document.getElementById("ck-consent")?.focus();
       return;
     }
 
@@ -178,6 +186,7 @@ export default function CheckoutForm({
           },
           slot: f.slot,
           note: f.note,
+          consent: true,
           items: items.map((i) => ({ id: i.product.id, weightKg: i.weightKg })),
           website: honeypot,
           startedAt: startedAt.current,
@@ -186,7 +195,9 @@ export default function CheckoutForm({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (data.field && data.field in EMPTY) {
+        if (data.field === "consent") {
+          setConsentError(data.error);
+        } else if (data.field && data.field in EMPTY) {
           setErrors({ [data.field]: data.error });
           document.getElementById(`ck-${data.field}`)?.focus();
         } else {
@@ -375,12 +386,24 @@ export default function CheckoutForm({
         <p className="mb-3 text-center text-xs font-medium text-amber-800">
           Not confirmed until we call you. Pay on delivery.
         </p>
-        <p className="mb-3 text-center text-[11px] leading-snug text-secondary-text">
-          We use your name, number and address only to confirm and deliver this order. See our{" "}
-          <Link href="/privacy" target="_blank" className="text-accent underline">Privacy Policy</Link>,{" "}
-          <Link href="/delivery" target="_blank" className="text-accent underline">Delivery</Link> and{" "}
-          <Link href="/cancellation" target="_blank" className="text-accent underline">Cancellation</Link> policies.
-        </p>
+        <label className="mb-3 flex cursor-pointer items-start gap-2.5 text-xs leading-snug text-secondary-text">
+          <input
+            id="ck-consent"
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setConsentError(""); }}
+            className="mt-0.5 h-5 w-5 flex-shrink-0 accent-accent"
+          />
+          <span>
+            I have read and accept the{" "}
+            <Link href="/terms" target="_blank" className="text-accent underline">Terms</Link>,{" "}
+            <Link href="/privacy" target="_blank" className="text-accent underline">Privacy</Link>,{" "}
+            <Link href="/delivery" target="_blank" className="text-accent underline">Delivery</Link>,{" "}
+            <Link href="/cancellation" target="_blank" className="text-accent underline">Cancellation</Link> and{" "}
+            <Link href="/refunds" target="_blank" className="text-accent underline">Refund</Link> policies. You may use my details only to confirm and deliver this order.
+          </span>
+        </label>
+        {consentError && <p role="alert" className="mb-3 text-xs font-medium text-accent">{consentError}</p>}
         <div className="flex gap-3">
           <button type="button" onClick={onBack} className="min-h-12 w-1/3 rounded-full border border-warm-gray text-sm font-medium transition-colors hover:border-accent/40">
             Back

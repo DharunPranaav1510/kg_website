@@ -3,38 +3,7 @@
 import { useState } from "react";
 import { Plus, Minus } from "lucide-react";
 
-const faqs = [
-	{
-		question: "How fresh is the meat when it arrives?",
-		answer:
-			"All our products are processed and packed fresh each morning. We use cold-chain logistics with insulated packaging to ensure your order stays between 0–4°C from our facility to your door. Most orders arrive within 4–6 hours of dispatch.",
-	},
-	{
-		question: "Do you use any preservatives or additives?",
-		answer:
-			"Never. KG Foods products contain zero preservatives, artificial colours, or additives of any kind. What you order is exactly what you get — clean, natural meat and poultry. Our products have a shorter shelf life than supermarket alternatives, because they're actually fresh.",
-	},
-	{
-		question: "What areas do you currently deliver to?",
-		answer:
-			"We deliver across Hosur including Anna Nagar and surrounding neighbourhoods. Same-day delivery is available for orders placed before 12:00 PM. Call us to confirm availability for your area.",
-	},
-	{
-		question: "What is your return or refund policy?",
-		answer:
-			"If your order arrives damaged, spoiled, or incorrect, contact us within 2 hours of delivery with photos and we'll issue a full refund or replacement immediately. Your satisfaction and trust are non-negotiable for us — we'll always make it right.",
-	},
-	{
-		question: "Are your products halal-certified?",
-		answer:
-			"Yes. All KG Foods chicken and mutton products are processed in accordance with halal standards by certified personnel. Our facility holds a halal certification which is available on request.",
-	},
-	{
-		question: "Can I schedule a delivery in advance?",
-		answer:
-			"Absolutely. At checkout you can choose your preferred delivery date and morning time slot. We recommend scheduling at least one day in advance for guaranteed availability, especially for bulk or special orders.",
-	},
-];
+
 
 function FAQItem({
 	question,
@@ -84,7 +53,8 @@ function FAQItem({
 	);
 }
 
-export default function FAQ() {
+export default function FAQ({ items }: { items: { question: string; answer: string }[] }) {
+	const faqs = items;
 	const [openIndex, setOpenIndex] = useState<number | null>(0);
 
 	return (

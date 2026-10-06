@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { ChevronRight, PhoneCall, Truck } from "lucide-react";
-import { business } from "@/data/business";
+import { useBusiness } from "@/context/BusinessContext";
 import { useSavedOrders } from "./useSavedOrders";
 
 /** Home-screen reminder for the newest order that is still open. */
 export default function ActiveOrder() {
+  const business = useBusiness();
   const { orders, status } = useSavedOrders();
   const open = orders?.find((o) => status[o.id] === "new" || status[o.id] === "confirmed" || status[o.id] === "out_for_delivery");
   if (!open) return null;

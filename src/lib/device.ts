@@ -14,6 +14,8 @@ export function mobileTarget(pathname: string): string | null {
   if (pathname === "/") return "/m";
   if (pathname === "/shop" || pathname === "/track" || pathname === "/contact" || pathname === "/more") return `/m${pathname}`;
   if (/^\/order\/[^/]+$/.test(pathname)) return `/m${pathname}`;
+  if (/^\/(privacy|terms|refunds|cancellation|delivery)$/.test(pathname)) return `/m/legal${pathname}`;
+  if (pathname === "/policies") return "/m/more";
   return null;
 }
 
