@@ -9,7 +9,6 @@ import { Field, Notice, Switch, fieldCls, useFlash } from "./ui";
 interface Form {
   phone: string; whatsapp: string; email: string;
   street: string; city: string; state: string; pincode: string;
-  hoursDisplay: string; hoursDays: string;
   minOrder: string; fee: string; freeAbove: string; radiusKm: string; slots: string; areas: string;
   lat: string; lng: string;
   gstOn: boolean; gstInclusive: boolean; rates: Record<string, string>;
@@ -24,7 +23,6 @@ const CATEGORIES = shopCategories.filter((c) => c !== "All");
 const toForm = (b: Business): Form => ({
   phone: b.contact.phoneDisplay, whatsapp: phoneDisplay(b.contact.whatsapp), email: b.contact.email,
   street: b.address.street, city: b.address.city, state: b.address.state, pincode: b.address.pincode,
-  hoursDisplay: b.hours.display, hoursDays: b.hours.days,
   minOrder: String(b.delivery.minOrder), fee: String(b.delivery.fee), freeAbove: b.delivery.freeAbove > 0 ? String(b.delivery.freeAbove) : "", radiusKm: b.delivery.radiusKm > 0 ? String(b.delivery.radiusKm) : "",
   slots: b.delivery.slots.join("\n"), areas: b.delivery.areas.join("\n"),
   lat: String(b.maps.lat), lng: String(b.maps.lng),
@@ -85,7 +83,6 @@ export default function BusinessEditor() {
       const body = {
         contact: { phone: form.phone, whatsapp: form.whatsapp, email: form.email },
         address: { street: form.street, city: form.city, state: form.state, pincode: form.pincode },
-        hours: { display: form.hoursDisplay, days: form.hoursDays },
         delivery: { minOrder: form.minOrder, fee: form.fee, freeAbove: form.freeAbove, radiusKm: form.radiusKm, slots: lines(form.slots), areas: lines(form.areas) },
         location: { lat: form.lat, lng: form.lng },
         tax: { enabled: form.gstOn, inclusive: form.gstInclusive, categoryRates: form.rates },
@@ -161,16 +158,13 @@ export default function BusinessEditor() {
         <textarea rows={3} className={fieldCls} value={form.highlights} onChange={(e) => set("highlights", e.target.value)} placeholder={"100% Halal\nRight-size birds"} />
       </Section>
 
-      <Section title="Contact and opening hours">
+      <Section title="Contact">
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Shop phone">{input("phone", { inputMode: "tel", placeholder: "96778 33339" })}</Field>
           <Field label="WhatsApp number">{input("whatsapp", { inputMode: "tel" })}</Field>
           <Field label="Email">{input("email", { type: "email" })}</Field>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Opening hours">{input("hoursDisplay", { placeholder: "6:30 AM – 8:00 PM" })}</Field>
-          <Field label="Days open">{input("hoursDays", { placeholder: "Monday – Sunday" })}</Field>
-        </div>
+        <p className="text-xs text-secondary-text">Opening hours are set under <a href="/admin/settings" className="font-medium text-accent underline">Shop settings</a>.</p>
       </Section>
 
       <Section title="Address">

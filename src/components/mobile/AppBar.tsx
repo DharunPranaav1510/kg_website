@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, Lock, Phone } from "lucide-react";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import { useBusiness } from "@/context/BusinessContext";
+import ClosedNotice from "@/components/ClosedNotice";
 import { useShopStatus } from "@/context/ShopStatusContext";
 
 export default function AppBar({ title, back }: { title?: string; back?: string }) {
@@ -42,12 +43,7 @@ export default function AppBar({ title, back }: { title?: string; back?: string 
       </div>
     </header>
     <AnnouncementBar />
-    {!shop.open && (
-        <p role="status" className="flex items-start gap-2 bg-primary-text px-4 py-2.5 text-xs text-white">
-          <Lock size={13} className="mt-0.5 flex-shrink-0" />
-          <span><b>Orders paused.</b> {shop.message || "We're closed right now. Please check back soon."}</span>
-        </p>
-      )}
+    {!shop.open && <ClosedNotice className="bg-primary-text px-4 py-2.5 text-xs text-white" />}
     </>
   );
 }

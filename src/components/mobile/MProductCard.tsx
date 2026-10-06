@@ -11,7 +11,8 @@ import { qtyLabel, tap } from "./format";
 
 export default function MProductCard({ product, className = "" }: { product: Product; className?: string }) {
   const { addItem, getWeight } = useCart();
-  const open = useShopStatus().open;
+  const shop = useShopStatus();
+  const open = shop.open;
   const pr = useProductPricing(product);
   const soldOut = product.inStock === false;
   const notNow = product.unavailableNote;
@@ -49,7 +50,7 @@ export default function MProductCard({ product, className = "" }: { product: Pro
           ) : notNow ? (
             <p className="flex items-center justify-center gap-1 rounded-xl bg-warm-gray px-2 py-2 text-center text-[11px] font-medium leading-tight text-secondary-text"><Clock size={12} className="flex-shrink-0" />{notNow}</p>
           ) : !open ? (
-            <p className="rounded-full bg-warm-gray py-2.5 text-center text-xs font-medium text-secondary-text">Orders paused</p>
+            <p className="rounded-full bg-warm-gray py-2.5 text-center text-xs font-medium text-secondary-text">{shop.blockedLabel || "Orders paused"}</p>
           ) : inCart ? (
             <QtyControl product={product} qty={qty} />
           ) : (

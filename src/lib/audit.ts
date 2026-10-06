@@ -21,6 +21,7 @@ export type AuditAction =
   | "content_changed"
   | "policy_changed"
   | "business_changed"
+  | "hours_changed"
   | "offers_changed"
   | "bill_printed";
 

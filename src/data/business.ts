@@ -57,18 +57,19 @@ export const business = {
     lng: 77.8260702,
   },
 
+  // The real timetable lives in the admin panel (Shop settings > Opening hours). This is the starting point.
   hours: {
-    display: "6:30 AM – 8:00 PM",
+    display: "6:30 AM – 5:00 PM",
     days: "Monday – Sunday",
-    allDay: true,
+    allDay: false,
     slots: [
-      { day: "Monday",    open: "6:30 AM", close: "8:00 PM" },
-      { day: "Tuesday",   open: "6:30 AM", close: "8:00 PM" },
-      { day: "Wednesday", open: "6:30 AM", close: "8:00 PM" },
-      { day: "Thursday",  open: "6:30 AM", close: "8:00 PM" },
-      { day: "Friday",    open: "6:30 AM", close: "8:00 PM" },
-      { day: "Saturday",  open: "6:30 AM", close: "8:00 PM" },
-      { day: "Sunday",    open: "6:30 AM", close: "8:00 PM" },
+      { day: "Sunday",    open: "6:30 AM", close: "5:00 PM" },
+      { day: "Monday",    open: "6:30 AM", close: "5:00 PM" },
+      { day: "Tuesday",   open: "6:30 AM", close: "5:00 PM" },
+      { day: "Wednesday", open: "6:30 AM", close: "5:00 PM" },
+      { day: "Thursday",  open: "6:30 AM", close: "5:00 PM" },
+      { day: "Friday",    open: "6:30 AM", close: "5:00 PM" },
+      { day: "Saturday",  open: "6:30 AM", close: "5:00 PM" },
     ],
   },
 
@@ -77,7 +78,7 @@ export const business = {
     fee: 50, // ₹, fixed delivery charge
     freeAbove: 0, // ₹, orders at or above this are free. 0 = delivery is never free
     radiusKm: 6, // delivery circle around the shop. 0 = no limit
-    slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Evening (4 – 7 PM)"],
+    slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Afternoon (1 – 4 PM)"],
     // Suggestions shown while typing the area. Customers can still type any
     // other area; edit this list to match where you actually deliver.
     areas: [

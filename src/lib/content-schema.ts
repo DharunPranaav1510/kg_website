@@ -1,10 +1,11 @@
 import { business as defaults } from "@/data/business";
 import { isAllowedImageUrl } from "@/lib/image-url";
+import { DEFAULT_HOURS, slotsFromWeek, summarizeHours, type OpeningHours } from "@/lib/hours";
 
 export interface Business extends Omit<typeof defaults, "contact" | "address" | "hours" | "delivery" | "legal" | "announcement" | "tax" | "highlights" | "maps"> {
   contact: { phone: string; phoneDisplay: string; whatsapp: string; email: string };
   address: { street: string; city: string; state: string; pincode: string; full: string };
-  hours: { display: string; days: string; allDay: boolean; slots: { day: string; open: string; close: string }[] };
+  hours: { display: string; days: string; allDay: boolean; slots: { day: string; open: string; close: string }[]; lines: string[]; schedule: OpeningHours };
   delivery: { minOrder: number; fee: number; freeAbove: number; radiusKm: number; slots: string[]; areas: string[] };
   tax: { enabled: boolean; inclusive: boolean; categoryRates: Record<string, number> };
   highlights: string[];
@@ -17,7 +18,8 @@ export interface Business extends Omit<typeof defaults, "contact" | "address" | 
 export interface BusinessOverrides {
   contact?: Partial<Pick<Business["contact"], "phone" | "whatsapp" | "email">>;
   address?: Partial<Pick<Business["address"], "street" | "city" | "state" | "pincode">>;
-  hours?: Partial<Business["hours"]>;
+  /** The weekly timetable and special days, saved from Shop settings. */
+  hours?: OpeningHours;
   delivery?: Partial<Pick<Business["delivery"], "minOrder" | "fee" | "freeAbove" | "radiusKm" | "slots" | "areas">>;
   location?: { lat: number; lng: number };
   tax?: Partial<Business["tax"]>;
@@ -50,7 +52,11 @@ export function mergeBusiness(overrides: BusinessOverrides | null | undefined): 
     ...defaults,
     contact,
     address,
-    hours: { ...defaults.hours, slots: [...defaults.hours.slots], ...o.hours },
+    hours: (() => {
+      const schedule = o.hours ?? DEFAULT_HOURS;
+      const sum = summarizeHours(schedule);
+      return { allDay: false, display: sum.display, days: sum.days, lines: sum.lines, slots: slotsFromWeek(schedule), schedule };
+    })(),
     delivery: { ...defaults.delivery, slots: [...defaults.delivery.slots], areas: [...defaults.delivery.areas], ...o.delivery },
     // An empty saved value falls back to the built-in one, so bills never print blank shop details.
     legal: Object.fromEntries(
@@ -78,7 +84,6 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
   const b = (input ?? {}) as Record<string, Record<string, unknown> | undefined>;
   const c = b.contact ?? {};
   const a = b.address ?? {};
-  const h = b.hours ?? {};
   const d = b.delivery ?? {};
   const l = b.legal ?? {};
   const n = b.announcement ?? {};
@@ -98,10 +103,6 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
   const pincode = str(a.pincode, 6);
   if (!street || !city || !state) return { ok: false, error: "Fill in the street, city and state." };
   if (!/^\d{6}$/.test(pincode)) return { ok: false, error: "The pincode must be 6 digits." };
-
-  const hoursText = str(h.display, 60);
-  const daysText = str(h.days, 60);
-  if (!hoursText || !daysText) return { ok: false, error: "Fill in the opening hours and days." };
 
   const minOrder = num(d.minOrder);
   const fee = num(d.fee);
@@ -152,7 +153,6 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
     value: {
       contact: { phone, whatsapp, email },
       address: { street, city, state, pincode },
-      hours: { display: hoursText, days: daysText },
       delivery: { minOrder, fee, freeAbove, radiusKm, slots, areas },
       location: { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 },
       tax: { enabled: x.enabled !== false, inclusive: x.inclusive === true, categoryRates: rates },

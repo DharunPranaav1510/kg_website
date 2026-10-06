@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2, X, Clock, MessageCircle, Phone, Lock } from "lucide-react";
 import CheckoutForm, { type PlacedOrder } from "@/components/CheckoutForm";
 import { useCart } from "@/context/CartContext";
+import ClosedNotice from "@/components/ClosedNotice";
 import { useShopStatus } from "@/context/ShopStatusContext";
 import { useBusiness } from "@/context/BusinessContext";
 import { amountToFreeDelivery, deliveryFeeFor } from "@/lib/delivery";
@@ -249,10 +250,7 @@ export default function CartDrawer() {
               </div>
 
               {!shop.open ? (
-                <p className="flex items-start gap-2 rounded-lg bg-primary-text px-3 py-2.5 text-xs text-white">
-                  <Lock size={14} className="mt-0.5 flex-shrink-0" />
-                  <span><b>Orders are paused.</b> {shop.message || "We're closed right now. Please check back soon."}</span>
-                </p>
+                <ClosedNotice className="rounded-lg bg-primary-text px-3 py-2.5 text-xs text-white" />
               ) : belowMin ? (
                 <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Minimum order is ₹{MIN_ORDER}. Add ₹{MIN_ORDER - subtotal} more to continue.</p>
               ) : toFree > 0 ? (

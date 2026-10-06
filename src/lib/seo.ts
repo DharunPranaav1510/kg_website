@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { business } from "@/data/business";
+import { DEFAULT_HOURS, type OpeningHours } from "@/lib/hours";
+import { DAY_NAMES } from "@/lib/pricing";
 
 const defaultOgImage = "/images/hero/hero-main.jpg";
 
@@ -66,7 +68,7 @@ export function createPageMetadata({
   };
 }
 
-export function localBusinessJsonLd(live?: { contact: { phone: string; email: string }; address: { street: string; city: string; state: string; pincode: string } }) {
+export function localBusinessJsonLd(live?: { contact: { phone: string; email: string }; address: { street: string; city: string; state: string; pincode: string }; hours: { schedule: OpeningHours } }) {
   const contact = live?.contact ?? business.contact;
   const address = live?.address ?? business.address;
   return {
@@ -93,22 +95,9 @@ export function localBusinessJsonLd(live?: { contact: { phone: string; email: st
       latitude: business.maps.lat,
       longitude: business.maps.lng,
     },
-    openingHoursSpecification: [
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-          "Sunday",
-        ],
-        opens: "06:30",
-        closes: "20:00",
-      },
-    ],
+    openingHoursSpecification: (live?.hours.schedule.week ?? DEFAULT_HOURS.week).flatMap((d, i) =>
+      d.open ? [{ "@type": "OpeningHoursSpecification", dayOfWeek: DAY_NAMES[i], opens: d.from, closes: d.to }] : []
+    ),
     sameAs: Object.values(business.social).filter(Boolean),
   };
 }

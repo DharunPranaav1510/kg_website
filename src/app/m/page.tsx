@@ -4,7 +4,7 @@ import { ArrowRight, BadgeCheck, Clock, MapPin, PhoneCall, Search, ShieldCheck, 
 import AppBar from "@/components/mobile/AppBar";
 import ActiveOrder from "@/components/mobile/ActiveOrder";
 import FeaturedRail from "@/components/mobile/FeaturedRail";
-import ShopChip from "@/components/mobile/ShopChip";
+import HomeHero from "@/components/mobile/HomeHero";
 import ViewSwitch from "@/components/mobile/ViewSwitch";
 import { categories } from "@/data/categories";
 import { business as staticBusiness } from "@/data/business";
@@ -29,26 +29,15 @@ export default async function PhoneHome() {
       <main className="space-y-7 px-4 pt-4">
         <ActiveOrder />
 
-        {/* Hero */}
-        <section className="relative overflow-hidden rounded-3xl bg-primary-text text-white shadow-card">
-          <Image src="/images/hero/hero-chicken.jpg" alt="" fill priority sizes="(max-width: 480px) 100vw, 480px" className="object-cover opacity-55" />
-          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
-          <div className="relative flex min-h-[19rem] flex-col justify-end p-5">
-            <ShopChip />
-            {business.highlights.length > 0 && (
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {business.highlights.map((h) => (
-                  <li key={h} className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur"><BadgeCheck size={12} className="text-emerald-300" />{h}</li>
-                ))}
-              </ul>
-            )}
-            <h1 className="mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh chicken, mutton and eggs, delivered in {business.address.city}.</h1>
-            <p className="mt-2 text-sm text-white/80">Pay on delivery · {d.slots.length} delivery slots a day</p>
-            <Link href="/shop" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white active:scale-[0.98] active:bg-accent-light">
-              Start ordering <ArrowRight size={17} />
-            </Link>
-          </div>
-        </section>
+        {/* Hero: switches to a calmer view while the shop is closed */}
+        <HomeHero
+          city={business.address.city}
+          slotCount={d.slots.length}
+          highlights={business.highlights}
+          phone={business.contact.phone}
+          phoneDisplay={business.contact.phoneDisplay}
+          hoursLines={business.hours.lines}
+        />
 
         {/* Search */}
         <form action="/shop" method="get" role="search" className="relative -mt-2">

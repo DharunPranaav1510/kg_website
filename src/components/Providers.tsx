@@ -23,7 +23,7 @@ export default function Providers({
 }) {
   return (
     <BusinessProvider business={business}>
-      <ShopStatusProvider status={shop}>
+      <ShopStatusProvider status={shop} hours={business.hours.schedule}>
         <ProductsProvider products={products}>
           <CartProvider>
             {children}

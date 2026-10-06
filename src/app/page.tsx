@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import DeliveryStrip from "@/components/DeliveryStrip";
 import Hero from "@/components/Hero";
+import ShopHero from "@/components/ClosedHero";
 import TrustBar from "@/components/TrustBar";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import WhyKGFoods from "@/components/WhyKGFoods";
@@ -19,7 +20,9 @@ export default async function HomePage() {
       <Navbar />
       <DeliveryStrip />
       <main>
-        <Hero />
+        <ShopHero>
+          <Hero />
+        </ShopHero>
         <HighlightsStrip />
         <TrustBar />
         <FeaturedProducts />

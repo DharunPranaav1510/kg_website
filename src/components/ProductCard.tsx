@@ -29,7 +29,8 @@ const shortQty = (product: Product, w: number) => `${fraction(w)} ${product.isEg
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem, updateWeight, getWeight } = useCart();
-  const shopOpen = useShopStatus().open;
+  const shop = useShopStatus();
+  const shopOpen = shop.open;
   const [picking, setPicking] = useState(false);
   const pr = useProductPricing(product);
   const [draftWeight, setDraftWeight] = useState(pr.first);
@@ -153,7 +154,7 @@ export default function ProductCard({ product }: { product: Product }) {
           ) : notNow ? (
             <p className="rounded-full bg-warm-gray px-3 py-2.5 text-center text-sm font-medium text-secondary-text">{notNow}</p>
           ) : !shopOpen ? (
-            <p className="rounded-full bg-warm-gray py-2.5 text-center text-sm font-medium text-secondary-text">Orders paused</p>
+            <p className="rounded-full bg-warm-gray py-2.5 text-center text-sm font-medium text-secondary-text">{shop.blockedLabel || "Orders paused"}</p>
           ) : soldOut ? (
             <p className="rounded-full bg-warm-gray py-2.5 text-center text-sm font-medium text-secondary-text">Sold out today</p>
           ) : (

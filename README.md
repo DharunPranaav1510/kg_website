@@ -220,6 +220,14 @@ Set `MAINTENANCE_MODE=true` in Vercel (Settings → Environment Variables, then 
 `MAINTENANCE_BYPASS_KEY` (8+ random characters) and open `/?preview=<key>`; `/?preview=off` locks it again.
 `MAINTENANCE_MESSAGE` replaces the default sentence on the page.
 
+## Opening hours and the closed view
+
+Default hours are 6:30 AM to 5:00 PM, every day (Indian time). In the admin go to **Shop settings → Opening hours**
+to change any day, mark a day off, or add special days (a holiday, or different hours on one date). Outside the
+hours customers see a "closed" hero (desktop and phone) with when you open next, Add buttons say "Opens ...",
+and the server refuses orders. The **Pause orders** switch below the hours stops orders earlier (sold out) and
+wins over the timetable. Hours are saved in the existing `settings` table (key `hours`), so no schema change.
+
 ## Phone layout
 
 Phones get an app-style version of the customer pages (home, shop, orders, order status, contact, more) at the

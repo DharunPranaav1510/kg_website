@@ -16,6 +16,7 @@ import { getProducts } from "@/lib/products-db";
 import { distanceKm, isAllowedWeight, priceCart, unavailableNote } from "@/lib/pricing";
 import type { Product } from "@/data/products";
 import { allow } from "@/lib/ratelimit";
+import { shopNow } from "@/lib/hours";
 import { getShopStatusFresh } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -70,13 +71,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Shop closed? Checked against the database, never a cached copy.
-    const shop = await getShopStatusFresh();
-    if (!shop.open) {
-      return fail(
-        `We're not taking orders right now. ${shop.message}`.trim(),
-        403,
-        { closed: true }
-      );
+    const [shop, business] = await Promise.all([getShopStatusFresh(), getBusinessFresh()]);
+    const live = shopNow(business.hours.schedule, shop);
+    if (!live.open) {
+      return fail(`We're not taking orders right now. ${live.message}`.trim(), 403, { closed: true, reason: live.reason });
     }
 
     const name = str(body.name, 80);
@@ -99,7 +97,6 @@ export async function POST(req: NextRequest) {
       return fail("Please tick the box to accept the policies", 400, { field: "consent" });
     }
 
-    const business = await getBusinessFresh();
     const note = str(body.note, 300);
     const slot = str(body.slot, 60);
     if (!business.delivery.slots.includes(slot)) {

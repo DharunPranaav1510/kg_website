@@ -12,7 +12,8 @@ import { qtyLabel, tap } from "./format";
 /** One product per row: thumbnail, name and price, and the add / quantity control on the right. */
 export default function MProductRow({ product }: { product: Product }) {
   const { addItem, getWeight } = useCart();
-  const open = useShopStatus().open;
+  const shop = useShopStatus();
+  const open = shop.open;
   const pr = useProductPricing(product);
   const soldOut = product.inStock === false;
   const notNow = product.unavailableNote;
@@ -54,7 +55,7 @@ export default function MProductRow({ product }: { product: Product }) {
           ) : notNow ? (
             <span className="flex max-w-[8.5rem] items-center gap-1 rounded-xl bg-warm-gray px-2.5 py-1.5 text-[11px] font-medium leading-tight text-secondary-text"><Clock size={12} className="flex-shrink-0" />{notNow}</span>
           ) : !open ? (
-            <span className="rounded-full bg-warm-gray px-3 py-2 text-xs font-medium text-secondary-text">Paused</span>
+            <span className="max-w-[8.5rem] rounded-xl bg-warm-gray px-3 py-2 text-center text-[11px] font-medium leading-tight text-secondary-text">{shop.blockedLabel || "Paused"}</span>
           ) : inCart ? (
             <div className="flex-shrink-0"><QtyControl product={product} qty={qty} compact /></div>
           ) : (
