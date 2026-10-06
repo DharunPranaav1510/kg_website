@@ -25,6 +25,10 @@ export const POLICY_VARIABLES: { name: string; label: string }[] = [
   { name: "grievance_phone", label: "Grievance phone" },
   { name: "delivery_fee", label: "Delivery fee (₹)" },
   { name: "free_above", label: "Free delivery above (₹)" },
+  { name: "delivery_charge_text", label: "Delivery charge sentence" },
+  { name: "radius_text", label: "Delivery radius" },
+  { name: "gst_text", label: "GST sentence" },
+  { name: "gstin", label: "GSTIN" },
   { name: "min_order", label: "Minimum order (₹)" },
   { name: "areas", label: "Delivery areas" },
   { name: "slots", label: "Delivery slots" },
@@ -38,7 +42,7 @@ export const DEFAULT_POLICIES: Record<PolicySlug, PolicyDoc> = {
 When you place an order we collect your name, mobile number, delivery address (house number, street, area, landmark and pincode), delivery time preference, any note you write, and what you ordered. Your email address is optional. When you use our contact form we collect your name, mobile number, message and, if you choose to give it, your email address.
 
 ## Your location (optional)
-If you tap "Use my current location" at checkout, your browser asks for permission and shares your coordinates with us so our delivery team can find you. To fill in your street and area, the coordinates are also sent to OpenStreetMap's address lookup service (nominatim.openstreetmap.org). You can decline, and type your address instead.
+If you tap "Use my current location" at checkout, your browser asks for permission and shares your coordinates with us so our delivery team can find you. You can also place a pin on a map instead. The map pictures are loaded from OpenStreetMap (tile.openstreetmap.org), which can see your device's internet address, and to fill in your street and area the pin's coordinates are sent to OpenStreetMap's address lookup service (nominatim.openstreetmap.org). We use the pin to check that we deliver to you and to find your house. You can decline, but we need a pin to take an order because we deliver within a set distance of the shop.
 
 ## How we use your data
 We use your details to call you to confirm your order, deliver it, and answer your questions. An order is confirmed only after someone from {{shop_name}} contacts you. Payment is made on delivery. We do not take card or UPI details on this website. We do not sell your personal information. We share your name, number and address only with the people who deliver your order.
@@ -72,11 +76,12 @@ These terms apply when you order from {{shop_name}} ({{legal_name}}), {{address}
 
 ## Prices and payment
 - Prices are per kilogram or per dozen, as shown on the website, in Indian rupees. The final bill is for the weight we actually pack.
-- Delivery fee: ₹{{delivery_fee}}, free on orders of ₹{{free_above}} or more. Minimum order: ₹{{min_order}}.
+- Delivery charge: {{delivery_charge_text}}. Minimum order: ₹{{min_order}}.
+- {{gst_text}}
 - Payment is made on delivery. We do not take online payments on this website.
 
 ## Delivery
-We deliver within {{city}}. Delivery times are confirmed when we call you. See our [Delivery Policy](/delivery).
+We deliver within {{radius_text}}. Delivery times are confirmed when we call you. See our [Delivery Policy](/delivery).
 
 ## Quality
 Please check your order when it arrives and store it properly. If something is not right, follow our [Refund Policy](/refunds). We are not responsible for spoilage caused by storage after delivery.
@@ -139,12 +144,13 @@ You pay on delivery, so cancelling before delivery needs no refund. For problems
     title: "Delivery Policy",
     subtitle: "Where, when and how much.",
     body: `## Where we deliver
-We deliver within {{city}}. Areas we usually cover include {{areas}}. If your area is not listed, call us and we will tell you if we can reach you.
+We deliver within {{radius_text}}, measured in a straight line from the shop. At checkout you pin your address on a map and we tell you straight away if it is outside the area. Areas we usually cover include {{areas}}. If you think we should reach you, call us.
 
 ## Minimum order and charges
 - Minimum order: ₹{{min_order}}.
-- Delivery charge: ₹{{delivery_fee}}. It is free on orders of ₹{{free_above}} or more.
-- Prices are per kg or dozen and the final bill is for the weight we actually pack.
+- Delivery charge: {{delivery_charge_text}}.
+- {{gst_text}}
+- Prices are per kg or dozen. The weight you receive can differ slightly from the quantity you chose, within the shop's accepted tolerance. You are charged the fixed amount shown at checkout.
 
 ## Time slots
 {{slots}}

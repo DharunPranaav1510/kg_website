@@ -9,6 +9,39 @@ export interface Product {
   isEgg?: boolean;
   featured?: boolean;
   inStock?: boolean; // undefined = in stock
+  /** Quantities a customer may choose (kg, or dozens for eggs). Missing = the standard steps. */
+  allowedWeights?: number[];
+  /** GST % for this product. Missing = the category's rate from the admin tax settings. */
+  gstRate?: number | null;
+  /** HSN code printed on the bill (optional). */
+  hsn?: string;
+  /** A temporary lower price. Shown crossed out against the normal price. */
+  offer?: ProductOffer;
+  /** When the product can be seen / ordered. Missing = always. */
+  schedule?: ProductSchedule;
+  /** Worked out in the browser from `schedule`; never stored. */
+  unavailableNote?: string;
+}
+
+export interface ProductOffer {
+  price: number;
+  label?: string;
+  /** ISO timestamps. Missing = no start / no end. */
+  from?: string;
+  to?: string;
+}
+
+export interface ProductSchedule {
+  /** 0 = Sunday ... 6 = Saturday. Missing or empty = every day. */
+  days?: number[];
+  /** "HH:MM" in Indian time. */
+  startTime?: string;
+  endTime?: string;
+  /** "YYYY-MM-DD" in Indian time. */
+  fromDate?: string;
+  toDate?: string;
+  /** true = not shown at all outside the window; false = shown but cannot be ordered. */
+  hideWhenUnavailable?: boolean;
 }
 
 export const shopCategories = [

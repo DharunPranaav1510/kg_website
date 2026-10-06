@@ -10,7 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import { type Product } from "@/data/products";
-import { useProducts } from "@/context/ProductsContext";
+import { useBusiness } from "@/context/BusinessContext";
+import { useAllProducts } from "@/context/ProductsContext";
+import { defaultWeight, priceCart, snapWeight, type PricedCart } from "@/lib/pricing";
 
 const STORAGE_KEY = "kg-foods-cart";
 const EXPIRY_KEY = "kg-foods-cart-expiry";
@@ -24,7 +26,12 @@ export interface CartItem {
 interface CartContextValue {
   items: CartItem[];
   itemCount: number; // unique products
+  /** Total of the items, before GST that is added on top and before delivery. */
   subtotal: number;
+  /** GST added on top of the subtotal (0 when prices already include GST). */
+  gstExtra: number;
+  /** The priced lines, with offers, GST and the figures printed on the bill. */
+  priced: PricedCart;
   isHydrated: boolean;
   isDrawerOpen: boolean;
   openDrawer: () => void;
@@ -68,7 +75,8 @@ function saveCartToStorage(cart: Record<string, number>) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const products = useProducts();
+  const products = useAllProducts();
+  const tax = useBusiness().tax;
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
   const [isHydrated, setIsHydrated] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -88,25 +96,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .map(([productId, weightKg]) => {
         const product = products.find((p) => p.id === productId);
         if (!product || weightKg <= 0) return null;
-        return { product, weightKg };
+        // An older cart may hold a quantity the shop no longer offers: move to the nearest allowed one.
+        return { product, weightKg: snapWeight(product, weightKg) };
       })
       .filter((item): item is CartItem => item !== null);
   }, [cartMap, products]);
 
   const itemCount = useMemo(() => Object.keys(cartMap).length, [cartMap]);
 
-  const subtotal = useMemo(() => {
-    return items.reduce((sum, item) => {
-      const line = Math.round(item.product.pricePerKg * item.weightKg);
-      return sum + line;
-    }, 0);
-  }, [items]);
+  const priced = useMemo(() => priceCart(items, tax), [items, tax]);
+  const subtotal = priced.subtotal;
+  const gstExtra = priced.gstExtra;
 
-  const addItem = useCallback((productId: string, weightKg = 0.5) => {
-    const w = Math.max(0.25, Math.min(3, Number(weightKg ?? 0.5)));
-    // overwrite behavior
-    setCartMap((prev) => ({ ...prev, [productId]: w }));
-  }, []);
+  const addItem = useCallback(
+    (productId: string, weightKg?: number) => {
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
+      // No quantity given: the usual starting quantity. Otherwise the nearest allowed one.
+      const w = weightKg === undefined ? defaultWeight(product) : snapWeight(product, weightKg);
+      setCartMap((prev) => ({ ...prev, [productId]: w }));
+    },
+    [products]
+  );
 
   const removeItem = useCallback((productId: string) => {
     setCartMap((prev) => {
@@ -116,27 +127,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const updateWeight = useCallback((productId: string, weightKg: number) => {
-    const w = Number(weightKg);
-    if (isNaN(w) || w <= 0) {
-      // remove item if zero or invalid
-      setCartMap((prev) => {
-        const next = { ...prev };
-        delete next[productId];
-        return next;
-      });
-      return;
-    }
-
-    const clamped = Math.max(0.25, Math.min(3, Math.round(w * 100) / 100));
-    setCartMap((prev) => ({ ...prev, [productId]: clamped }));
-  }, []);
+  const updateWeight = useCallback(
+    (productId: string, weightKg: number) => {
+      const w = Number(weightKg);
+      if (isNaN(w) || w <= 0) {
+        setCartMap((prev) => {
+          const next = { ...prev };
+          delete next[productId];
+          return next;
+        });
+        return;
+      }
+      const product = products.find((p) => p.id === productId);
+      const clamped = product ? snapWeight(product, w) : Math.round(w * 100) / 100;
+      setCartMap((prev) => ({ ...prev, [productId]: clamped }));
+    },
+    [products]
+  );
 
   const clearCart = useCallback(() => {
     setCartMap({});
   }, []);
 
-  const getWeight = useCallback((productId: string) => cartMap[productId] ?? 0, [cartMap]);
+  const getWeight = useCallback((productId: string) => items.find((i) => i.product.id === productId)?.weightKg ?? 0, [items]);
 
   const openDrawer = useCallback(() => setIsDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setIsDrawerOpen(false), []);
@@ -147,6 +160,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       itemCount,
       subtotal,
+      gstExtra,
+      priced,
       isHydrated,
       isDrawerOpen,
       openDrawer,
@@ -162,6 +177,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       itemCount,
       subtotal,
+      gstExtra,
+      priced,
       isHydrated,
       isDrawerOpen,
       openDrawer,

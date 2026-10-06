@@ -21,7 +21,7 @@ export default function DeliveryStrip() {
           <>
             <span className="flex items-center gap-1.5 font-medium">
               <MapPin size={14} className="text-accent flex-shrink-0" />
-              Delivering across {business.address.city}
+              {business.delivery.radiusKm > 0 ? `Delivering within ${business.delivery.radiusKm} km of the shop` : `Delivering across ${business.address.city}`}
             </span>
             <span className="hidden sm:block w-px h-3.5 bg-warm-gray" />
             <span className="flex items-center gap-1.5">

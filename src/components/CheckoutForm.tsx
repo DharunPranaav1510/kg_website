@@ -86,12 +86,14 @@ function Field({
 
 export default function CheckoutForm({
   subtotal,
+  gstExtra,
   deliveryFee,
   total,
   onBack,
   onPlaced,
 }: {
   subtotal: number;
+  gstExtra: number;
   deliveryFee: number;
   total: number;
   onBack: () => void;
@@ -100,6 +102,7 @@ export default function CheckoutForm({
   const { items, clearCart } = useCart();
   const business = useBusiness();
   const [f, setF] = useState<Fields>({ ...EMPTY, pincode: business.address.pincode, slot: business.delivery.slots[0] ?? "" });
+  const [locationError, setLocationError] = useState("");
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState("");
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
@@ -152,11 +155,18 @@ export default function CheckoutForm({
     const e = validate();
     setErrors(e);
     const firstBad = order.find((k) => e[k]);
+    const needsPin = business.delivery.radiusKm > 0 && !gps;
+    if (needsPin) setLocationError("Please pin your delivery location so we can check we deliver to you.");
     if (!consent) setConsentError("Please tick the box to accept the policies before sending your order.");
+    if (needsPin && !firstBad) {
+      document.getElementById("ck-location")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     if (firstBad) {
       document.getElementById(`ck-${firstBad}`)?.focus();
       return;
     }
+    if (needsPin) return;
     if (!consent) {
       document.getElementById("ck-consent")?.focus();
       return;
@@ -197,6 +207,9 @@ export default function CheckoutForm({
       if (!res.ok) {
         if (data.field === "consent") {
           setConsentError(data.error);
+        } else if (data.field === "location") {
+          setLocationError(data.error);
+          document.getElementById("ck-location")?.scrollIntoView({ block: "center", behavior: "smooth" });
         } else if (data.field && data.field in EMPTY) {
           setErrors({ [data.field]: data.error });
           document.getElementById(`ck-${data.field}`)?.focus();
@@ -298,10 +311,13 @@ export default function CheckoutForm({
         <section className="space-y-4" aria-labelledby="ck-address">
           <h3 id="ck-address" className="font-display text-lg">Delivery address <span className="text-sm font-normal text-secondary-text">· Hosur</span></h3>
           <LocationButton
-            pinned={!!gps}
+            pinned={gps}
+            required={business.delivery.radiusKm > 0}
+            error={locationError}
             onClear={() => setGps(null)}
             onFound={(loc) => {
               setGps({ lat: loc.lat, lng: loc.lng });
+              setLocationError("");
               setErrors((e) => ({ ...e, street: loc.street ? undefined : e.street, area: loc.area ? undefined : e.area, pincode: undefined }));
               setF((cur) => ({
                 ...cur,
@@ -379,7 +395,7 @@ export default function CheckoutForm({
       <div className="border-t border-warm-gray bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-6">
         <div className="mb-2 flex items-baseline justify-between text-sm">
           <span className="text-secondary-text">
-            ₹{subtotal} + delivery {deliveryFee ? `₹${deliveryFee}` : "free"}
+            ₹{subtotal}{gstExtra ? ` + GST ₹${gstExtra}` : ""} + delivery {deliveryFee ? `₹${deliveryFee}` : "free"}
           </span>
           <span className="font-display text-xl">₹{total}</span>
         </div>

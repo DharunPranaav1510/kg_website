@@ -6,6 +6,8 @@ import { Check, PencilLine } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
 import type { Product } from "@/data/products";
+import { useProductPricing } from "@/components/useProductPricing";
+import { fraction } from "@/components/mobile/format";
 
 const badgeColors: Record<string, string> = {
   Bestseller: "bg-amber-100 text-amber-800",
@@ -22,32 +24,26 @@ const categoryBorder: Record<string, string> = {
   "Ready To Cook":   "border-t-[3px] border-t-accent",
 };
 
-const EGG_OPTIONS = [
-  { label: "½ Dozen", value: 0.5 },
-  { label: "1 Dozen", value: 1 },
-  { label: "2 Dozen", value: 2 },
-];
-
-const fmtQty = (product: Product, w: number) =>
-  product.isEgg ? `${w === 0.5 ? "½" : w} dozen` : `${w} kg`;
+const fmtQty = (product: Product, w: number) => `${fraction(w)} ${product.isEgg ? "dozen" : "kg"}`;
+const shortQty = (product: Product, w: number) => `${fraction(w)} ${product.isEgg ? "dz" : "kg"}`;
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem, updateWeight, getWeight } = useCart();
   const shopOpen = useShopStatus().open;
   const [picking, setPicking] = useState(false);
-  const [draftWeight, setDraftWeight] = useState(0.5);
+  const pr = useProductPricing(product);
+  const [draftWeight, setDraftWeight] = useState(pr.first);
 
   const soldOut = product.inStock === false;
-  const quickOptions = product.isEgg
-    ? [{ label: "1 dz", value: 1 }, { label: "2 dz", value: 2 }]
-    : [{ label: "½ kg", value: 0.5 }, { label: "1 kg", value: 1 }, { label: "2 kg", value: 2 }];
+  const notNow = product.unavailableNote;
+  const quickOptions = pr.quick.map((value) => ({ label: shortQty(product, value), value }));
 
   const cartWeight = getWeight(product.id);
   const inCart = cartWeight > 0;
-  const priceFor = (w: number) => Math.round(product.pricePerKg * w);
+  const priceFor = pr.priceFor;
 
   const openPicker = () => {
-    setDraftWeight(inCart ? cartWeight : product.isEgg ? 1 : 0.5);
+    setDraftWeight(inCart ? cartWeight : pr.quick[0] ?? pr.first);
     setPicking(true);
   };
 
@@ -95,42 +91,34 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
           <h3 className="font-display text-base leading-tight text-primary-text sm:text-lg">{product.name}</h3>
           <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-secondary-text">{product.description}</p>
-          <p className="mt-1.5 flex items-baseline gap-1.5">
-            <span className="text-lg font-bold text-primary-text">₹{product.pricePerKg}</span>
+          <p className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5">
+            <span className="text-lg font-bold text-primary-text">₹{pr.price}</span>
+            {pr.onOffer && <span className="text-sm text-secondary-text line-through">₹{pr.listPrice}</span>}
             <span className="text-xs text-secondary-text">/ {product.isEgg ? "dozen" : "kg"}</span>
-            <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />Fresh daily
-            </span>
-          </p>
+            {pr.onOffer && <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">{pr.off}% off</span>}
+            </p>
+          {(pr.gstNote || (pr.onOffer && pr.offerLabel)) && (
+            <p className="mt-0.5 text-[11px] text-secondary-text">
+              {pr.onOffer && pr.offerLabel && <b className="text-success">{pr.offerLabel}</b>}
+              {pr.onOffer && pr.offerLabel && pr.gstNote && " · "}
+              {pr.gstNote}
+            </p>
+          )}
         </div>
       </div>
 
       {picking && (
         <div className="mt-3.5 rounded-2xl border border-warm-gray bg-cream p-3">
-          {product.isEgg ? (
-            <div className="mb-3 flex gap-2">
-              {EGG_OPTIONS.map((opt) => (
-                <button key={opt.value} type="button" onClick={() => setDraftWeight(opt.value)}
-                  className={`min-h-11 flex-1 rounded-full border text-sm font-semibold transition-all ${
-                    draftWeight === opt.value ? "border-accent bg-accent text-white" : "border-warm-gray bg-white text-primary-text"
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-secondary-text">Weight</span>
-                <span className="font-semibold text-primary-text">{draftWeight} kg</span>
-              </div>
-              <input type="range" min={0.25} max={3} step={0.25} value={draftWeight}
-                onChange={(e) => setDraftWeight(Number(e.target.value))}
-                aria-label={`Weight of ${product.name} in kilograms`}
-                className="mb-1 h-11 w-full accent-accent" />
-              <div className="flex justify-between text-xs text-secondary-text"><span>0.25 kg</span><span>3 kg</span></div>
-            </>
-          )}
+          <div className="mb-3 flex flex-wrap gap-2" role="radiogroup" aria-label={`Quantity of ${product.name}`}>
+            {pr.allowed.map((w) => (
+              <button key={w} type="button" role="radio" aria-checked={draftWeight === w} onClick={() => setDraftWeight(w)}
+                className={`min-h-11 min-w-[4.25rem] flex-1 rounded-full border px-3 text-sm font-semibold transition-all ${
+                  draftWeight === w ? "border-accent bg-accent text-white" : "border-warm-gray bg-white text-primary-text"
+                }`}>
+                {shortQty(product, w)}
+              </button>
+            ))}
+          </div>
           <div className="my-3 text-center text-2xl font-bold text-primary-text">₹{priceFor(draftWeight)}</div>
           <div className="flex gap-2">
             <button type="button" onClick={confirmAdd}
@@ -162,12 +150,14 @@ export default function ProductCard({ product }: { product: Product }) {
                 Remove
               </button>
             </div>
+          ) : notNow ? (
+            <p className="rounded-full bg-warm-gray px-3 py-2.5 text-center text-sm font-medium text-secondary-text">{notNow}</p>
           ) : !shopOpen ? (
             <p className="rounded-full bg-warm-gray py-2.5 text-center text-sm font-medium text-secondary-text">Orders paused</p>
           ) : soldOut ? (
             <p className="rounded-full bg-warm-gray py-2.5 text-center text-sm font-medium text-secondary-text">Sold out today</p>
           ) : (
-            <div className={`grid gap-2 ${quickOptions.length === 3 ? "grid-cols-4" : "grid-cols-3"}`} role="group" aria-label={`Quick add ${product.name}`}>
+            <div className={`grid gap-2 ${quickOptions.length >= 3 ? "grid-cols-4" : quickOptions.length === 2 ? "grid-cols-3" : "grid-cols-2"}`} role="group" aria-label={`Quick add ${product.name}`}>
               {quickOptions.map((opt) => (
                 <button key={opt.value} type="button" onClick={() => addItem(product.id, opt.value)}
                   className="flex min-h-12 flex-col items-center justify-center rounded-xl border border-warm-gray bg-white py-1.5 text-center transition-all hover:border-accent hover:bg-accent/5 active:scale-95">

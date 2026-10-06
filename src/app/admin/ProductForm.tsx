@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Check, Loader2, X } from "lucide-react";
 import { shopCategories } from "@/data/products";
+import ProductFormExtras, { EMPTY_EXTRAS, type ExtrasDraft } from "./ProductFormExtras";
 
 export const PRODUCT_CATEGORIES = shopCategories.filter((c) => c !== "All");
 
@@ -18,6 +19,7 @@ export interface ProductDraft {
   featured?: boolean;
   inStock?: boolean;
   active: boolean;
+  extras: ExtrasDraft;
 }
 
 export const EMPTY_DRAFT: ProductDraft = {
@@ -31,6 +33,7 @@ export const EMPTY_DRAFT: ProductDraft = {
   featured: false,
   inStock: true,
   active: true,
+  extras: EMPTY_EXTRAS,
 };
 
 const BADGES = ["New", "Bestseller", "Popular", "Premium"];
@@ -257,6 +260,8 @@ export default function ProductForm({
               <Switch checked={!!draft.isEgg} onChange={(v) => set("isEgg", v)} title="Sold per dozen" hint="For eggs: the price is per dozen, not per kg." />
             </div>
           </section>
+
+          <ProductFormExtras value={draft.extras} onChange={(extras) => set("extras", extras)} isEgg={!!draft.isEgg} price={Number(draft.pricePerKg) || 0} />
 
           {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         </div>

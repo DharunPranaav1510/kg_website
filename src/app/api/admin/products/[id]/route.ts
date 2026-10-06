@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 import {
+  extrasToRow,
   parseProductInput,
   revalidateStorefront,
   rowToProduct,
@@ -35,6 +36,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       featured: p.featured,
       in_stock: p.inStock,
       active: p.active,
+      ...extrasToRow(p),
     })
     .eq("id", id)
     .select()

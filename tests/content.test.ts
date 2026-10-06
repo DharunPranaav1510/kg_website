@@ -24,8 +24,11 @@ const goodBusiness = () => ({
   contact: { phone: "96778 33339", whatsapp: "", email: "Shop@Example.com" },
   address: { street: "NH 44", city: "Hosur", state: "Tamil Nadu", pincode: "635109" },
   hours: { display: "6:30 AM – 8:00 PM", days: "Monday – Sunday" },
-  delivery: { minOrder: "200", fee: 30, freeAbove: "500", slots: ["Morning", "Evening", "Morning"], areas: ["Anna Nagar", ""] },
-  legal: { legalName: "KG Meat Mart", fssai: "12345678901234", grievanceName: "Karthik", grievanceEmail: "g@example.com", grievancePhone: "9677833339" },
+  delivery: { minOrder: "200", fee: 50, freeAbove: "", radiusKm: "6", slots: ["Morning", "Evening", "Morning"], areas: ["Anna Nagar", ""] },
+  location: { lat: "12.7357689", lng: "77.8260702" },
+  tax: { enabled: true, inclusive: false, categoryRates: { "Frozen Products": "5", Eggs: "" } },
+  highlights: ["100% Halal", "", "Right-size birds"],
+  legal: { gstin: "33ABCDE1234F1Z5", legalName: "KG Meat Mart", fssai: "12345678901234", grievanceName: "Karthik", grievanceEmail: "g@example.com", grievancePhone: "9677833339" },
   announcement: { enabled: true, text: "Closed on Sunday", link: "/delivery" },
 });
 
@@ -46,6 +49,11 @@ test("business details: valid input is cleaned", () => {
   assert.deepEqual(r.value.delivery?.slots, ["Morning", "Evening"]); // duplicates removed
   assert.deepEqual(r.value.delivery?.areas, ["Anna Nagar"]); // blanks dropped
   assert.equal(r.value.delivery?.minOrder, 200);
+  assert.equal(r.value.delivery?.freeAbove, 0); // empty = delivery is never free
+  assert.equal(r.value.delivery?.radiusKm, 6);
+  assert.deepEqual(r.value.tax?.categoryRates, { "Frozen Products": 5 }); // empty rates are dropped
+  assert.deepEqual(r.value.highlights, ["100% Halal", "Right-size birds"]);
+  assert.equal(r.value.legal?.gstin, "33ABCDE1234F1Z5");
 });
 
 test("business details: bad input is rejected with a reason", () => {
@@ -54,6 +62,10 @@ test("business details: bad input is rejected with a reason", () => {
     ["email", (b) => (b.contact.email = "nope")],
     ["pincode", (b) => (b.address.pincode = "12")],
     ["fee", (b) => ((b.delivery as { fee: unknown }).fee = -5)],
+    ["radius", (b) => ((b.delivery as { radiusKm: unknown }).radiusKm = "500")],
+    ["shop location", (b) => ((b.location as { lat: unknown }).lat = "55")],
+    ["gst rate", (b) => ((b.tax.categoryRates as Record<string, unknown>)["Frozen Products"] = "90")],
+    ["gstin", (b) => (b.legal.gstin = "12345")],
     ["slots", (b) => (b.delivery.slots = [])],
     ["fssai", (b) => (b.legal.fssai = "123")],
     ["banner link", (b) => (b.announcement.link = "javascript:alert(1)")],
@@ -74,11 +86,17 @@ test("merging keeps defaults and recomputes derived fields", () => {
   assert.equal(b.contact.phoneDisplay, "+91 96778 33339");
   assert.equal(b.address.full, "NH 44, Hosur, Tamil Nadu 635109");
   assert.equal(b.name, "KG Meat Mart"); // untouched fields stay
-  assert.equal(mergeBusiness(null).delivery.fee > 0, true);
+  assert.equal(mergeBusiness(null).delivery.fee, 50);
+  assert.equal(mergeBusiness(null).delivery.radiusKm, 6);
+  assert.equal(mergeBusiness(null).tax.categoryRates["Frozen Products"], 5);
+  assert.ok(Math.abs(b.maps.lat - 12.7357689) < 1e-5); // saved to 6 decimals
 });
 
 test("delivery rules come from the business details", () => {
   const rules = { minOrder: 100, fee: 40, freeAbove: 300 };
+  const never = { minOrder: 100, fee: 50, freeAbove: 0 };
+  assert.equal(deliveryFeeFor(5000, never), 50); // freeAbove 0 = never free
+  assert.equal(amountToFreeDelivery(100, never), 0);
   assert.equal(deliveryFeeFor(150, rules), 40);
   assert.equal(deliveryFeeFor(300, rules), 0);
   assert.equal(deliveryFeeFor(0, rules), 0);
@@ -99,7 +117,7 @@ test("testimonials, FAQ and policies are validated", () => {
 test("placeholders are filled in and unknown ones are left visible", () => {
   const vars = policyVariables(mergeBusiness(null));
   const out = fillVars("Fee ₹{{delivery_fee}}, call {{phone}}, {{typo_here}}", vars);
-  assert.match(out, /Fee ₹30/);
+  assert.match(out, /Fee ₹50/);
   assert.match(out, /\+91 96778 33339/);
   assert.match(out, /\{\{typo_here\}\}/);
 });

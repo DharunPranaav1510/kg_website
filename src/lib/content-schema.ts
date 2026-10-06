@@ -1,12 +1,15 @@
 import { business as defaults } from "@/data/business";
 import { isAllowedImageUrl } from "@/lib/image-url";
 
-export interface Business extends Omit<typeof defaults, "contact" | "address" | "hours" | "delivery" | "legal" | "announcement"> {
+export interface Business extends Omit<typeof defaults, "contact" | "address" | "hours" | "delivery" | "legal" | "announcement" | "tax" | "highlights" | "maps"> {
   contact: { phone: string; phoneDisplay: string; whatsapp: string; email: string };
   address: { street: string; city: string; state: string; pincode: string; full: string };
   hours: { display: string; days: string; allDay: boolean; slots: { day: string; open: string; close: string }[] };
-  delivery: { minOrder: number; fee: number; freeAbove: number; slots: string[]; areas: string[] };
-  legal: { legalName: string; fssai: string; grievanceName: string; grievanceEmail: string; grievancePhone: string };
+  delivery: { minOrder: number; fee: number; freeAbove: number; radiusKm: number; slots: string[]; areas: string[] };
+  tax: { enabled: boolean; inclusive: boolean; categoryRates: Record<string, number> };
+  highlights: string[];
+  maps: { url: string; lat: number; lng: number };
+  legal: { gstin: string; legalName: string; fssai: string; grievanceName: string; grievanceEmail: string; grievancePhone: string };
   announcement: { enabled: boolean; text: string; link: string };
 }
 
@@ -15,7 +18,10 @@ export interface BusinessOverrides {
   contact?: Partial<Pick<Business["contact"], "phone" | "whatsapp" | "email">>;
   address?: Partial<Pick<Business["address"], "street" | "city" | "state" | "pincode">>;
   hours?: Partial<Business["hours"]>;
-  delivery?: Partial<Pick<Business["delivery"], "minOrder" | "fee" | "freeAbove" | "slots" | "areas">>;
+  delivery?: Partial<Pick<Business["delivery"], "minOrder" | "fee" | "freeAbove" | "radiusKm" | "slots" | "areas">>;
+  location?: { lat: number; lng: number };
+  tax?: Partial<Business["tax"]>;
+  highlights?: string[];
   legal?: Partial<Business["legal"]>;
   announcement?: Partial<Business["announcement"]>;
 }
@@ -47,6 +53,9 @@ export function mergeBusiness(overrides: BusinessOverrides | null | undefined): 
     hours: { ...defaults.hours, slots: [...defaults.hours.slots], ...o.hours },
     delivery: { ...defaults.delivery, slots: [...defaults.delivery.slots], areas: [...defaults.delivery.areas], ...o.delivery },
     legal: { ...defaults.legal, ...o.legal },
+    tax: { ...defaults.tax, categoryRates: { ...defaults.tax.categoryRates }, ...o.tax },
+    highlights: o.highlights ?? [...defaults.highlights],
+    maps: o.location ? { ...defaults.maps, lat: o.location.lat, lng: o.location.lng } : defaults.maps,
     announcement: { ...defaults.announcement, ...o.announcement },
   };
 }
@@ -70,6 +79,8 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
   const d = b.delivery ?? {};
   const l = b.legal ?? {};
   const n = b.announcement ?? {};
+  const x = (b.tax ?? {}) as Record<string, unknown>;
+  const loc = (b.location ?? {}) as Record<string, unknown>;
 
   const phone = shopPhone(str(c.phone, 30));
   if (!phone) return { ok: false, error: "Enter the shop phone as a 10 digit number." };
@@ -91,16 +102,31 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
 
   const minOrder = num(d.minOrder);
   const fee = num(d.fee);
-  const freeAbove = num(d.freeAbove);
+  const freeAbove = d.freeAbove === "" || d.freeAbove == null ? 0 : num(d.freeAbove);
   for (const [label, v, max] of [["Minimum order", minOrder, 5000], ["Delivery fee", fee, 1000], ["Free delivery limit", freeAbove, 20000]] as const) {
     if (!Number.isInteger(v) || v < 0 || v > max) return { ok: false, error: `${label} must be a whole number between 0 and ${max}.` };
   }
+  const radiusKm = d.radiusKm === "" || d.radiusKm == null ? 0 : num(d.radiusKm);
+  if (!(radiusKm >= 0 && radiusKm <= 100)) return { ok: false, error: "The delivery radius must be between 0 and 100 km (0 means no limit)." };
+  const lat = num(loc.lat);
+  const lng = num(loc.lng);
+  if (!(lat >= 6 && lat <= 38 && lng >= 68 && lng <= 98)) return { ok: false, error: "The shop's map position must be a place in India (latitude 6 to 38, longitude 68 to 98)." };
+
+  const rates: Record<string, number> = {};
+  for (const [cat, raw] of Object.entries((x.categoryRates ?? {}) as Record<string, unknown>)) {
+    const r = raw === "" || raw == null ? 0 : num(raw);
+    if (!(r >= 0 && r <= 40)) return { ok: false, error: `The GST rate for ${cat} must be between 0 and 40.` };
+    if (r > 0) rates[cat.slice(0, 60)] = Math.round(r * 100) / 100;
+  }
+  const highlights = (Array.isArray(b.highlights) ? (b.highlights as unknown[]) : []).map((h) => str(h, 40)).filter(Boolean).slice(0, 6);
   const list = (v: unknown, max: number, len: number) =>
     (Array.isArray(v) ? v : []).map((x) => str(x, len)).filter(Boolean).slice(0, max);
   const slots = [...new Set(list(d.slots, 8, 60))];
   if (!slots.length) return { ok: false, error: "Add at least one delivery time slot." };
   const areas = [...new Set(list(d.areas, 60, 60))];
 
+  const gstin = str(l.gstin, 15).toUpperCase();
+  if (gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) return { ok: false, error: "A GSTIN has 15 characters, like 33ABCDE1234F1Z5. Leave it empty if you are not GST registered." };
   const fssai = str(l.fssai, 20);
   if (fssai && !/^\d{14}$/.test(fssai)) return { ok: false, error: "An FSSAI number has 14 digits. Leave it empty if you do not have one yet." };
   const grievanceEmail = str(l.grievanceEmail, 120).toLowerCase();
@@ -120,8 +146,12 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
       contact: { phone, whatsapp, email },
       address: { street, city, state, pincode },
       hours: { display: hoursText, days: daysText },
-      delivery: { minOrder, fee, freeAbove, slots, areas },
+      delivery: { minOrder, fee, freeAbove, radiusKm, slots, areas },
+      location: { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 },
+      tax: { enabled: x.enabled !== false, inclusive: x.inclusive === true, categoryRates: rates },
+      highlights,
       legal: {
+        gstin,
         legalName: str(l.legalName, 120),
         fssai,
         grievanceName: str(l.grievanceName, 80),
@@ -205,15 +235,32 @@ export function policyVariables(b: Business): Record<string, string> {
     city: b.address.city,
     hours: `${b.hours.display}, ${b.hours.days}`,
     fssai: dash(lg.fssai),
+    gstin: dash(lg.gstin),
     grievance_name: lg.grievanceName || "our team",
     grievance_email: lg.grievanceEmail || b.contact.email,
     grievance_phone: lg.grievancePhone || b.contact.phoneDisplay,
     delivery_fee: String(b.delivery.fee),
-    free_above: String(b.delivery.freeAbove),
+    free_above: b.delivery.freeAbove > 0 ? String(b.delivery.freeAbove) : "not offered",
+    delivery_charge_text:
+      b.delivery.freeAbove > 0
+        ? `₹${b.delivery.fee}, free on orders of ₹${b.delivery.freeAbove} or more`
+        : `a flat ₹${b.delivery.fee} on every order`,
+    radius_text: b.delivery.radiusKm > 0 ? `${b.delivery.radiusKm} km of the shop` : b.address.city,
+    gst_text: gstText(b),
     min_order: String(b.delivery.minOrder),
     areas: b.delivery.areas.length ? b.delivery.areas.join(", ") : b.address.city,
     slots: b.delivery.slots.map((s) => `- ${s}`).join("\n"),
   };
+}
+
+/** One sentence about GST for the policies, from the tax settings. */
+function gstText(b: Business): string {
+  if (!b.tax.enabled) return "No GST is charged.";
+  const rated = Object.entries(b.tax.categoryRates).filter(([, r]) => r > 0).map(([c, r]) => `${r}% on ${c}`);
+  if (!rated.length) return "No GST is charged.";
+  return b.tax.inclusive
+    ? `GST (${rated.join(", ")}) is already included in the prices and shown on your bill.`
+    : `GST (${rated.join(", ")}) is added to the price at checkout and shown on your bill.`;
 }
 
 export function fillVars(text: string, vars: Record<string, string>): string {

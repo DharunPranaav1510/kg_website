@@ -13,6 +13,8 @@ import {
 } from "@/lib/guard";
 import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { getProducts } from "@/lib/products-db";
+import { distanceKm, isAllowedWeight, priceCart, unavailableNote } from "@/lib/pricing";
+import type { Product } from "@/data/products";
 import { allow } from "@/lib/ratelimit";
 import { getShopStatusFresh } from "@/lib/settings";
 import { getSupabase } from "@/lib/supabase";
@@ -22,6 +24,13 @@ import { verifyTurnstile } from "@/lib/turnstile";
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
+
+const fractionText = (n: number) => {
+  const whole = Math.floor(n + 1e-9);
+  const rest = Math.round((n - whole) * 100) / 100;
+  const sym = rest === 0.25 ? "¼" : rest === 0.5 ? "½" : rest === 0.75 ? "¾" : "";
+  return rest !== 0 && !sym ? String(n) : `${whole || ""}${sym}` || "0";
+};
 
 const esc = (v: unknown) =>
   String(v ?? "")
@@ -101,43 +110,68 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(rawItems) || rawItems.length === 0) return fail("Your cart is empty");
     if (rawItems.length > 30) return fail("Too many items");
 
-    // Prices come from the catalogue, never from the browser.
+    // Prices, offers, GST, quantities and time rules all come from the shop's data, never from the browser.
     const catalogue = await getProducts();
-    let subtotal = 0;
-    const items: {
-      id: string;
-      name: string;
-      category: string;
-      quantity: string;
-      weightKg: number;
-      price: number;
-    }[] = [];
+    const now = Date.now();
+    const chosen: { product: Product; weightKg: number }[] = [];
     const seen = new Set<string>();
     for (const item of rawItems as { id?: string; weightKg?: number }[]) {
       const product = catalogue.find((p) => p.id === item?.id);
-      const weight = Number(item?.weightKg);
-      if (!product || !Number.isFinite(weight) || weight <= 0 || weight > 3 || seen.has(product.id)) {
+      const weight = Math.round(Number(item?.weightKg) * 100) / 100;
+      if (!product || !Number.isFinite(weight) || weight <= 0 || seen.has(product.id)) {
         return fail("Some items are no longer available. Please refresh and try again.");
       }
       seen.add(product.id);
       if (product.inStock === false) {
         return fail(`${product.name} is sold out. Please remove it and try again.`, 409);
       }
-      const price = Math.round(product.pricePerKg * weight);
-      subtotal += price;
-      items.push({
-        id: product.id,
-        name: product.name,
-        category: product.category,
-        quantity: product.isEgg ? `${weight === 0.5 ? "½" : weight} dozen` : `${weight} kg`,
-        weightKg: weight,
-        price,
-      });
+      const note = unavailableNote(product, now);
+      if (note) return fail(`${product.name} can't be ordered right now. ${note}.`, 409);
+      if (!isAllowedWeight(product, weight)) {
+        return fail(`${weight} ${product.isEgg ? "dozen" : "kg"} isn't available for ${product.name}. Please pick another quantity.`, 409);
+      }
+      chosen.push({ product, weightKg: weight });
     }
 
+    const priced = priceCart(chosen, business.tax, now);
+    const subtotal = priced.subtotal;
     if (subtotal < business.delivery.minOrder) return fail(`Minimum order is ₹${business.delivery.minOrder}.`);
     const deliveryFee = deliveryFeeFor(subtotal, business.delivery);
-    const total = subtotal + deliveryFee;
+    const total = priced.payable + deliveryFee;
+    const items = priced.lines.map((l) => {
+      const product = chosen.find((c) => c.product.id === l.id)!.product;
+      return {
+        id: l.id,
+        name: l.name,
+        category: l.category,
+        quantity: `${fractionText(l.weightKg)} ${product.isEgg ? "dozen" : "kg"}`,
+        weightKg: l.weightKg,
+        price: l.price,
+        unitPrice: l.unitPrice,
+        listPrice: l.listPrice,
+        gstRate: l.gstRate,
+        gstAmount: l.gstAmount,
+        hsn: l.hsn || undefined,
+      };
+    });
+
+    // Delivery area: a circle around the shop. The customer's pin on the map decides.
+    let distance: number | null = null;
+    if (business.delivery.radiusKm > 0) {
+      if (address.lat === undefined || address.lng === undefined) {
+        return fail("Please pin your delivery location on the map so we can check we deliver there.", 400, { field: "location" });
+      }
+      distance = Math.round(distanceKm({ lat: address.lat, lng: address.lng }, business.maps) * 100) / 100;
+      if (distance > business.delivery.radiusKm) {
+        return fail(
+          `Sorry, we only deliver within ${business.delivery.radiusKm} km of the shop and this location is about ${distance.toFixed(1)} km away. Please call us if you think this is wrong.`,
+          422,
+          { field: "location" }
+        );
+      }
+    } else if (address.lat !== undefined && address.lng !== undefined) {
+      distance = Math.round(distanceKm({ lat: address.lat, lng: address.lng }, business.maps) * 100) / 100;
+    }
 
     // Abuse limits (blocked numbers, rate limits, duplicate orders).
     const supabase = getSupabase();
@@ -171,6 +205,10 @@ export async function POST(req: NextRequest) {
           items,
           total,
           delivery_fee: deliveryFee,
+          subtotal,
+          gst_total: priced.gstTotal,
+          gst_inclusive: business.tax.inclusive,
+          distance_km: distance,
           slot,
           ip_hash: ipHash,
           consent_at: new Date().toISOString(),
@@ -228,7 +266,8 @@ export async function POST(req: NextRequest) {
         </div>
         <div style="background:#fff;padding:0 32px 28px;border:1px solid #eee;border-top:none;">
           <table style="width:100%;border-collapse:collapse;font-size:15px;"><tbody>${itemRows}</tbody></table>
-          <p style="margin:12px 0 0;font-size:14px;">Delivery: ${deliveryFee ? `₹${deliveryFee}` : "Free"}</p>
+          ${priced.gstTotal > 0 ? `<p style="margin:12px 0 0;font-size:14px;">GST ${business.tax.inclusive ? "(included)" : ""}: ₹${priced.gstTotal.toFixed(2)}</p>` : ""}
+          <p style="margin:6px 0 0;font-size:14px;">Delivery: ${deliveryFee ? `₹${deliveryFee}` : "Free"}</p>
           <p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#D63E0A;">Total ₹${total}</p>
         </div>
       </div>

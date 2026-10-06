@@ -9,6 +9,7 @@ import Testimonials from "@/components/Testimonials";
 import FAQ from "@/components/FAQ";
 import CTA from "@/components/CTA";
 import { getFaqs } from "@/lib/content";
+import HighlightsStrip from "@/components/HighlightsStrip";
 import Footer from "@/components/Footer";
 
 export default async function HomePage() {
@@ -19,6 +20,7 @@ export default async function HomePage() {
       <DeliveryStrip />
       <main>
         <Hero />
+        <HighlightsStrip />
         <TrustBar />
         <FeaturedProducts />
         <WhyKGFoods />

@@ -21,12 +21,23 @@ export const business = {
 
   // Filled in from the admin panel (Website content > Business details).
   legal: {
+    gstin: "",
     legalName: "",
     fssai: "",
     grievanceName: "",
     grievanceEmail: "",
     grievancePhone: "",
   },
+
+  // GST: 5% on frozen products. Edited in Admin > Website content > Business details.
+  tax: {
+    enabled: true,
+    inclusive: false,
+    categoryRates: { "Frozen Products": 5 } as Record<string, number>,
+  },
+
+  // Short badges shown on the home page.
+  highlights: ["100% Halal", "Right-size birds"],
 
   announcement: {
     enabled: false,
@@ -57,8 +68,9 @@ export const business = {
 
   delivery: {
     minOrder: 200, // ₹
-    fee: 30, // ₹, waived at or above freeAbove
-    freeAbove: 500, // ₹
+    fee: 50, // ₹, fixed delivery charge
+    freeAbove: 0, // ₹, orders at or above this are free. 0 = delivery is never free
+    radiusKm: 6, // delivery circle around the shop. 0 = no limit
     slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Evening (4 – 7 PM)"],
     // Suggestions shown while typing the area. Customers can still type any
     // other area; edit this list to match where you actually deliver.

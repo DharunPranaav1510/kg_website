@@ -16,7 +16,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${turnstile ? " https://challenges.cloudflare.com" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob:${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
+  `img-src 'self' data: blob: https://tile.openstreetmap.org${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   "font-src 'self' data:",
   // nominatim.openstreetmap.org: "use my location" address lookup
   `connect-src 'self' https://nominatim.openstreetmap.org${turnstile ? " https://challenges.cloudflare.com" : ""}${isDev ? " ws: wss:" : ""}`,

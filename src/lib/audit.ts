@@ -20,7 +20,9 @@ export type AuditAction =
   | "number_unblocked"
   | "content_changed"
   | "policy_changed"
-  | "business_changed";
+  | "business_changed"
+  | "offers_changed"
+  | "bill_printed";
 
 /**
  * Write a line to the admin activity log. Never throws: a logging problem must

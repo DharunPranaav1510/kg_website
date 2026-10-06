@@ -193,3 +193,32 @@ alter table public.testimonials enable row level security;
 alter table public.faqs enable row level security;
 alter table public.policies enable row level security;
 alter table public.policy_revisions enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Allowed weights, GST, offers, time-based availability, bills, feedback (safe to re-run)
+-- ---------------------------------------------------------------------------
+
+alter table public.products add column if not exists allowed_weights numeric[];
+alter table public.products add column if not exists gst_rate numeric(5, 2);
+alter table public.products add column if not exists hsn text;
+alter table public.products add column if not exists offer_price numeric(10, 2);
+alter table public.products add column if not exists offer_label text;
+alter table public.products add column if not exists offer_from timestamptz;
+alter table public.products add column if not exists offer_to timestamptz;
+alter table public.products add column if not exists schedule jsonb;
+
+alter table public.orders add column if not exists subtotal numeric(10, 2);
+alter table public.orders add column if not exists gst_total numeric(10, 2) not null default 0;
+alter table public.orders add column if not exists gst_inclusive boolean not null default false;
+alter table public.orders add column if not exists distance_km numeric(6, 2);
+
+-- One feedback entry per order, written by the customer from their order page.
+create table if not exists public.order_feedback (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null unique references public.orders (id) on delete cascade,
+  rating int not null check (rating between 1 and 5),
+  comment text,
+  created_at timestamptz not null default now()
+);
+create index if not exists order_feedback_created_idx on public.order_feedback (created_at desc);
+alter table public.order_feedback enable row level security;

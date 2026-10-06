@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { getProducts } from "@/lib/products-db";
-import ProductCard from "@/components/ProductCard";
+import FeaturedGrid from "@/components/FeaturedGrid";
 
-export default async function FeaturedProducts() {
-  const featuredProducts = (await getProducts()).filter((p) => p.featured);
+export default function FeaturedProducts() {
 
   return (
     <section className="py-16 sm:py-24 bg-cream">
@@ -26,11 +24,7 @@ export default async function FeaturedProducts() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <FeaturedGrid />
       </div>
     </section>
   );

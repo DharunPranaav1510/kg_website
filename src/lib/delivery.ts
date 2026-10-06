@@ -2,15 +2,16 @@
 export interface DeliveryRules {
   minOrder: number;
   fee: number;
+  /** Orders at or above this are delivered free. 0 = never free. */
   freeAbove: number;
 }
 
 export function deliveryFeeFor(subtotal: number, rules: DeliveryRules): number {
-  return subtotal >= rules.freeAbove || subtotal === 0 ? 0 : rules.fee;
+  return subtotal === 0 || (rules.freeAbove > 0 && subtotal >= rules.freeAbove) ? 0 : rules.fee;
 }
 
 export function amountToFreeDelivery(subtotal: number, rules: DeliveryRules): number {
-  return Math.max(0, rules.freeAbove - subtotal);
+  return rules.freeAbove > 0 ? Math.max(0, rules.freeAbove - subtotal) : 0;
 }
 
 export const ORDER_STATUSES = [

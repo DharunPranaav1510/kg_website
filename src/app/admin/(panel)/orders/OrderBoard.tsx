@@ -399,7 +399,8 @@ export default function OrderBoard() {
                           </p>
                           <div className="flex flex-wrap gap-2 pt-1">
                             <a href={whatsappLink(o)} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-xs">WhatsApp</a>
-                            <button onClick={() => printSlip(o)} className="btn-secondary !py-1.5 !px-3 !text-xs">Print</button>
+                            <button onClick={() => printSlip(o)} className="btn-secondary !py-1.5 !px-3 !text-xs" title="Small slip for the kitchen or delivery boy">Print slip</button>
+                      <a href={`/admin/bill/${o.id}`} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-xs" title="Customer bill with GST details">Print bill</a>
                             {PREV[o.status] && o.status !== "cancelled" && (
                               <button onClick={() => changeStatus(o, PREV[o.status]!, false)} className="text-xs text-secondary-text hover:underline">
                                 ← Move back

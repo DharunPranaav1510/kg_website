@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 import {
+  extrasToRow,
   parseProductInput,
   productToRow,
   revalidateStorefront,
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("products")
-    .insert({ ...productToRow({ ...p, id: slugify(p.name) }), active: p.active })
+    .insert({ ...productToRow({ ...p, id: slugify(p.name) }), ...extrasToRow(p), active: p.active })
     .select()
     .single();
   if (error) {

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, PhoneCall, Search, ShieldCheck, Star, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Clock, MapPin, PhoneCall, Search, ShieldCheck, Star, Truck } from "lucide-react";
 import AppBar from "@/components/mobile/AppBar";
 import ActiveOrder from "@/components/mobile/ActiveOrder";
 import FeaturedRail from "@/components/mobile/FeaturedRail";
@@ -35,6 +35,13 @@ export default async function PhoneHome() {
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
           <div className="relative flex min-h-[19rem] flex-col justify-end p-5">
             <ShopChip />
+            {business.highlights.length > 0 && (
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {business.highlights.map((h) => (
+                  <li key={h} className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur"><BadgeCheck size={12} className="text-emerald-300" />{h}</li>
+                ))}
+              </ul>
+            )}
             <h1 className="mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh chicken, mutton and eggs, delivered in {business.address.city}.</h1>
             <p className="mt-2 text-sm text-white/80">Pay on delivery · {d.slots.length} delivery slots a day</p>
             <Link href="/shop" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white active:scale-[0.98] active:bg-accent-light">
@@ -77,7 +84,7 @@ export default async function PhoneHome() {
           <h2 className={`${h2} mb-3`}>Delivery in {business.address.city}</h2>
           <ul className="grid grid-cols-3 gap-2 text-center">
             {[
-              [Truck, `₹${d.fee}`, `delivery, free over ₹${d.freeAbove}`],
+              [Truck, `₹${d.fee}`, d.freeAbove > 0 ? `delivery, free over ₹${d.freeAbove}` : "delivery charge"],
               [ShieldCheck, `₹${d.minOrder}`, "minimum order"],
               [Clock, `${d.slots.length} slots`, "to choose from daily"],
             ].map(([Icon, big, small]) => {
@@ -91,7 +98,7 @@ export default async function PhoneHome() {
               );
             })}
           </ul>
-          <p className="mt-3 flex items-center gap-1.5 text-xs text-secondary-text"><MapPin size={13} className="text-accent" /> {business.address.full}</p>
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-secondary-text"><MapPin size={13} className="text-accent" /> {d.radiusKm > 0 ? `We deliver within ${d.radiusKm} km of the shop. ` : ""}{business.address.full}</p>
         </section>
 
         {/* How it works */}
