@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { extrasToPayload, productToExtras } from "./ProductFormExtras";
+import type { Product } from "@/data/products";
 import ProductForm, { EMPTY_DRAFT, PRODUCT_CATEGORIES, type ProductDraft } from "./ProductForm";
 import { adminApi } from "./api";
 
-type AdminProduct = Omit<ProductDraft, "pricePerKg" | "id"> & { id: string; pricePerKg: number };
+type AdminProduct = Product & { active: boolean };
 
 export default function ProductsPanel() {
   const [products, setProducts] = useState<AdminProduct[] | null>(null);
