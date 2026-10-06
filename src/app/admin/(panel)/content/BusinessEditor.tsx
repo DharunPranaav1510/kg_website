@@ -14,6 +14,7 @@ interface Form {
   lat: string; lng: string;
   gstOn: boolean; gstInclusive: boolean; rates: Record<string, string>;
   highlights: string;
+  billAddress: string; billPhone: string; billPrefix: string; billFooter: string;
   gstin: string; legalName: string; fssai: string; grievanceName: string; grievanceEmail: string; grievancePhone: string;
   annOn: boolean; annText: string; annLink: string;
 }
@@ -30,6 +31,7 @@ const toForm = (b: Business): Form => ({
   gstOn: b.tax.enabled, gstInclusive: b.tax.inclusive,
   rates: Object.fromEntries(CATEGORIES.map((c) => [c, b.tax.categoryRates[c] ? String(b.tax.categoryRates[c]) : ""])),
   highlights: b.highlights.join("\n"),
+  billAddress: b.legal.billAddress, billPhone: b.legal.billPhone, billPrefix: b.legal.billPrefix, billFooter: b.legal.billFooter,
   gstin: b.legal.gstin, legalName: b.legal.legalName, fssai: b.legal.fssai, grievanceName: b.legal.grievanceName, grievanceEmail: b.legal.grievanceEmail, grievancePhone: b.legal.grievancePhone,
   annOn: b.announcement.enabled, annText: b.announcement.text, annLink: b.announcement.link,
 });
@@ -88,7 +90,7 @@ export default function BusinessEditor() {
         location: { lat: form.lat, lng: form.lng },
         tax: { enabled: form.gstOn, inclusive: form.gstInclusive, categoryRates: form.rates },
         highlights: lines(form.highlights),
-        legal: { gstin: form.gstin, legalName: form.legalName, fssai: form.fssai, grievanceName: form.grievanceName, grievanceEmail: form.grievanceEmail, grievancePhone: form.grievancePhone },
+        legal: { billAddress: form.billAddress, billPhone: form.billPhone, billPrefix: form.billPrefix, billFooter: form.billFooter, gstin: form.gstin, legalName: form.legalName, fssai: form.fssai, grievanceName: form.grievanceName, grievanceEmail: form.grievanceEmail, grievancePhone: form.grievancePhone },
         announcement: { enabled: form.annOn, text: form.annText, link: form.annLink },
       };
       const { business } = await adminApi("/api/admin/business", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -180,13 +182,19 @@ export default function BusinessEditor() {
         </div>
       </Section>
 
-      <Section title="Legal details" hint="Shown in the footer and filled into the policies. Leave empty what you do not have yet.">
+      <Section title="Legal details and bill" hint="Shown in the footer, filled into the policies and printed at the top of every bill.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="GSTIN" optional hint="15 characters. Printed on the bill.">{input("gstin", { maxLength: 15 })}</Field>
           <Field label="Legal business name" optional>{input("legalName")}</Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="FSSAI licence / registration number" optional hint="14 digits. Food sellers must show it.">{input("fssai", { inputMode: "numeric", maxLength: 14 })}</Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Address printed on bills" optional hint="Empty = the shop address above.">{input("billAddress")}</Field>
+          <Field label="Phone printed on bills" optional hint="Empty = the shop phone above.">{input("billPhone", { inputMode: "tel" })}</Field>
+          <Field label="Bill number prefix" hint="Bills read PREFIX/00057, so online bills never clash with your counter's numbers.">{input("billPrefix", { maxLength: 8 })}</Field>
+          <Field label="Message at the bottom of bills" optional>{input("billFooter", { maxLength: 80 })}</Field>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Grievance officer name" optional>{input("grievanceName")}</Field>

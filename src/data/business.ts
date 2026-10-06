@@ -21,9 +21,15 @@ export const business = {
 
   // Filled in from the admin panel (Website content > Business details).
   legal: {
-    gstin: "",
-    legalName: "",
-    fssai: "",
+    gstin: "33AAGFK8402Q2ZZ",
+    legalName: "KG BROILERS & EGGS",
+    fssai: "12418011000652",
+    // Printed at the top of bills. Empty = the shop address / phone from above.
+    billAddress: "76/1, Bye-Pass Road, Hosur - 635 109",
+    billPhone: "94432 45378",
+    // Online bills are numbered PREFIX/00057 so they never clash with the counter's own bill numbers.
+    billPrefix: "WEB",
+    billFooter: "ALL IS WELL",
     grievanceName: "",
     grievanceEmail: "",
     grievancePhone: "",

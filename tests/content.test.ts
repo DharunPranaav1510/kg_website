@@ -28,7 +28,7 @@ const goodBusiness = () => ({
   location: { lat: "12.7357689", lng: "77.8260702" },
   tax: { enabled: true, inclusive: false, categoryRates: { "Frozen Products": "5", Eggs: "" } },
   highlights: ["100% Halal", "", "Right-size birds"],
-  legal: { gstin: "33ABCDE1234F1Z5", legalName: "KG Meat Mart", fssai: "12345678901234", grievanceName: "Karthik", grievanceEmail: "g@example.com", grievancePhone: "9677833339" },
+  legal: { gstin: "33ABCDE1234F1Z5", billAddress: "76/1, Bye-Pass Road, Hosur", billPhone: "94432 45378", billPrefix: "web1", billFooter: "Thank you", legalName: "KG Meat Mart", fssai: "12345678901234", grievanceName: "Karthik", grievanceEmail: "g@example.com", grievancePhone: "9677833339" },
   announcement: { enabled: true, text: "Closed on Sunday", link: "/delivery" },
 });
 
@@ -54,6 +54,8 @@ test("business details: valid input is cleaned", () => {
   assert.deepEqual(r.value.tax?.categoryRates, { "Frozen Products": 5 }); // empty rates are dropped
   assert.deepEqual(r.value.highlights, ["100% Halal", "Right-size birds"]);
   assert.equal(r.value.legal?.gstin, "33ABCDE1234F1Z5");
+  assert.equal(r.value.legal?.billPhone, "94432 45378");
+  assert.equal(r.value.legal?.billPrefix, "WEB1"); // upper-cased
 });
 
 test("business details: bad input is rejected with a reason", () => {
@@ -87,6 +89,8 @@ test("merging keeps defaults and recomputes derived fields", () => {
   assert.equal(b.address.full, "NH 44, Hosur, Tamil Nadu 635109");
   assert.equal(b.name, "KG Meat Mart"); // untouched fields stay
   assert.equal(mergeBusiness(null).delivery.fee, 50);
+  assert.equal(mergeBusiness(null).legal.fssai, "12418011000652"); // the shop's printed-bill details are built in
+  assert.equal(mergeBusiness({ legal: { fssai: "" } }).legal.fssai, "12418011000652"); // a blank saved value falls back
   assert.equal(mergeBusiness(null).delivery.radiusKm, 6);
   assert.equal(mergeBusiness(null).tax.categoryRates["Frozen Products"], 5);
   assert.ok(Math.abs(b.maps.lat - 12.7357689) < 1e-5); // saved to 6 decimals

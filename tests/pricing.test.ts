@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildBill, rupeesInWords } from "../src/lib/bill";
+import { billNumber, buildBill, financialYear, rupeesInWords } from "../src/lib/bill";
+import { stateFromGstin } from "../src/lib/states";
 import { productMovement } from "../src/lib/movement";
 import {
   allowedWeightsFor,
@@ -143,8 +144,8 @@ test("product input: weights, GST, HSN, offer and schedule are validated", () =>
 
 test("bill: GST on top, round off, tax rows", () => {
   const items = [
-    { name: "Samosas", quantity: "1 kg", price: 240, unitPrice: 240, gstRate: 5, gstAmount: 12, hsn: "1905" },
-    { name: "Chicken", quantity: "½ kg", price: 100, unitPrice: 200, gstRate: 0, gstAmount: 0 },
+    { name: "Samosas", quantity: "1 kg", weightKg: 1, price: 240, unitPrice: 240, gstRate: 5, gstAmount: 12, hsn: "1905" },
+    { name: "Chicken", quantity: "½ kg", weightKg: 0.5, price: 100, unitPrice: 200, gstRate: 0, gstAmount: 0 },
   ];
   const b = buildBill({ order_number: 7, created_at: "2026-10-04T05:00:00Z", items, total: 402, delivery_fee: 50, gst_total: 12, gst_inclusive: false });
   assert.equal(b.taxableTotal, 340);
@@ -152,10 +153,15 @@ test("bill: GST on top, round off, tax rows", () => {
   assert.equal(b.itemsTotal, 352);
   assert.equal(b.roundOff, 0);
   assert.deepEqual(b.taxRows, [{ rate: 5, taxable: 240, cgst: 6, sgst: 6 }]);
+  assert.equal(b.lines[0].rateIncl, 252); // per kg with GST
+  assert.equal(b.lines[0].rateExcl, 240); // per kg without GST
+  assert.equal(b.lines[1].rateIncl, 200);
   const inc = buildBill({ order_number: 8, created_at: "2026-10-04T05:00:00Z", items: [{ ...items[0], gstAmount: 11.43 }], total: 290, delivery_fee: 50, gst_inclusive: true });
   assert.equal(inc.lines[0].taxable, 228.57);
   assert.equal(inc.lines[0].amount, 240);
   assert.equal(inc.itemsTotal, 240);
+  assert.equal(inc.lines[0].rateIncl, 240);
+  assert.equal(inc.lines[0].rateExcl, 228.57);
   // an old order without GST fields still prints
   const old = buildBill({ order_number: 1, created_at: "2026-01-01T00:00:00Z", items: [{ name: "Eggs", quantity: "1 dozen", price: 90 }], total: 140, delivery_fee: 50 });
   assert.equal(old.gstTotal, 0);
@@ -184,4 +190,17 @@ test("slow movers", () => {
   assert.equal(m.a.lastOrderedAt, "2026-10-03T00:00:00Z");
   assert.equal(m.b.qty, 1); // matched by name for older orders
   assert.equal(m.c.orders, 0); // cancelled orders do not count
+});
+
+test("bill header details", () => {
+  assert.deepEqual(stateFromGstin("33AAGFK8402Q2ZZ"), { name: "Tamil Nadu", code: "33" });
+  assert.equal(stateFromGstin("99XXXXXXXXXXXXX"), null);
+  assert.equal(stateFromGstin(""), null);
+  // Indian financial year: April to March, judged in Indian time
+  assert.equal(financialYear("2026-10-06T05:00:00Z"), "2026-2027");
+  assert.equal(financialYear("2027-03-31T10:00:00Z"), "2026-2027");
+  assert.equal(financialYear("2027-03-31T19:00:00Z"), "2027-2028"); // already 1 April in India
+  assert.equal(financialYear("2026-01-15T00:00:00Z"), "2025-2026");
+  assert.equal(billNumber("WEB", 57), "WEB/00057");
+  assert.equal(billNumber("", 123456), "WEB/123456");
 });

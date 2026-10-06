@@ -48,13 +48,13 @@ export default async function BillPage({ params }: { params: Promise<{ id: strin
         gst_inclusive: order.gst_inclusive,
       }}
       shop={{
-        name: business.name,
-        legalName: business.legal.legalName,
-        address: business.address.full,
-        phone: business.contact.phoneDisplay,
-        email: business.contact.email,
+        name: business.legal.legalName || business.name,
+        address: business.legal.billAddress || business.address.full,
+        phone: business.legal.billPhone || business.contact.phoneDisplay,
         gstin: business.legal.gstin,
         fssai: business.legal.fssai,
+        prefix: business.legal.billPrefix,
+        footer: business.legal.billFooter,
         website: business.website,
       }}
     />

@@ -3,6 +3,7 @@
 export interface BillItem {
   name: string;
   quantity: string;
+  weightKg?: number;
   price: number;
   unitPrice?: number;
   listPrice?: number;
@@ -28,6 +29,9 @@ export interface BillLine {
   hsn: string;
   quantity: string;
   rate: number | null; // per kg / dozen, as charged
+  /** Per kg / dozen including GST, and excluding it (the two "Rate" columns of the shop's printed bill). */
+  rateIncl: number | null;
+  rateExcl: number | null;
   taxable: number;
   gstRate: number;
   gst: number;
@@ -62,16 +66,20 @@ export function buildBill(o: BillOrder): Bill {
     const rate = Number(it.gstRate) || 0;
     // Saved price is what the customer pays for the goods; GST sits inside it (inclusive) or on top of it.
     const taxable = inclusive ? r2(it.price - gst) : it.price;
+    const amount = inclusive ? it.price : r2(it.price + gst);
+    const w = Number(it.weightKg) || 0;
     return {
       n: i + 1,
       name: it.name,
       hsn: it.hsn ?? "",
       quantity: it.quantity,
       rate: it.unitPrice ?? null,
+      rateIncl: w > 0 ? r2(amount / w) : null,
+      rateExcl: w > 0 ? r2(taxable / w) : null,
       taxable,
       gstRate: rate,
       gst,
-      amount: inclusive ? it.price : r2(it.price + gst),
+      amount,
     };
   });
 
@@ -135,3 +143,15 @@ export function rupeesInWords(amount: number): string {
   ].filter(Boolean);
   return `Rupees ${parts.join(" ")} Only`;
 }
+
+/** Indian financial year of a date, e.g. 6 Oct 2026 -> "2026-2027" (April to March). */
+export function financialYear(date: Date | string | number): string {
+  const d = new Date(date);
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", year: "numeric", month: "numeric" }).formatToParts(d);
+  const y = Number(parts.find((p) => p.type === "year")!.value);
+  const m = Number(parts.find((p) => p.type === "month")!.value);
+  return m >= 4 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+}
+
+/** "WEB" + 57 -> "WEB/00057" */
+export const billNumber = (prefix: string, orderNumber: number) => `${prefix || "WEB"}/${String(orderNumber).padStart(5, "0")}`;

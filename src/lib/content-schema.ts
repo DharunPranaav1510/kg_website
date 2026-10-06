@@ -9,7 +9,7 @@ export interface Business extends Omit<typeof defaults, "contact" | "address" | 
   tax: { enabled: boolean; inclusive: boolean; categoryRates: Record<string, number> };
   highlights: string[];
   maps: { url: string; lat: number; lng: number };
-  legal: { gstin: string; legalName: string; fssai: string; grievanceName: string; grievanceEmail: string; grievancePhone: string };
+  legal: { billAddress: string; billPhone: string; billPrefix: string; billFooter: string; gstin: string; legalName: string; fssai: string; grievanceName: string; grievanceEmail: string; grievancePhone: string };
   announcement: { enabled: boolean; text: string; link: string };
 }
 
@@ -52,7 +52,10 @@ export function mergeBusiness(overrides: BusinessOverrides | null | undefined): 
     address,
     hours: { ...defaults.hours, slots: [...defaults.hours.slots], ...o.hours },
     delivery: { ...defaults.delivery, slots: [...defaults.delivery.slots], areas: [...defaults.delivery.areas], ...o.delivery },
-    legal: { ...defaults.legal, ...o.legal },
+    // An empty saved value falls back to the built-in one, so bills never print blank shop details.
+    legal: Object.fromEntries(
+      (Object.keys(defaults.legal) as (keyof Business["legal"])[]).map((k) => [k, (o.legal?.[k] as string | undefined) || defaults.legal[k]])
+    ) as Business["legal"],
     tax: { ...defaults.tax, categoryRates: { ...defaults.tax.categoryRates }, ...o.tax },
     highlights: o.highlights ?? [...defaults.highlights],
     maps: o.location ? { ...defaults.maps, lat: o.location.lat, lng: o.location.lng } : defaults.maps,
@@ -129,6 +132,10 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
   if (gstin && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)) return { ok: false, error: "A GSTIN has 15 characters, like 33ABCDE1234F1Z5. Leave it empty if you are not GST registered." };
   const fssai = str(l.fssai, 20);
   if (fssai && !/^\d{14}$/.test(fssai)) return { ok: false, error: "An FSSAI number has 14 digits. Leave it empty if you do not have one yet." };
+  const billPhoneRaw = str(l.billPhone, 30);
+  const billPhoneE164 = billPhoneRaw ? shopPhone(billPhoneRaw) : "";
+  if (billPhoneE164 === null) return { ok: false, error: "Enter the phone printed on bills as a 10 digit number." };
+  const billPrefix = str(l.billPrefix, 8).toUpperCase().replace(/[^A-Z0-9]/g, "") || "WEB";
   const grievanceEmail = str(l.grievanceEmail, 120).toLowerCase();
   if (grievanceEmail && !EMAIL.test(grievanceEmail)) return { ok: false, error: "Enter a valid grievance email." };
   const grievancePhoneRaw = str(l.grievancePhone, 30);
@@ -151,6 +158,10 @@ export function validateBusiness(input: unknown): Checked<BusinessOverrides> {
       tax: { enabled: x.enabled !== false, inclusive: x.inclusive === true, categoryRates: rates },
       highlights,
       legal: {
+        billAddress: str(l.billAddress, 160),
+        billPhone: billPhoneE164 ? `${billPhoneE164.slice(3, 8)} ${billPhoneE164.slice(8)}` : "",
+        billPrefix,
+        billFooter: str(l.billFooter, 80),
         gstin,
         legalName: str(l.legalName, 120),
         fssai,
