@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { PhoneCall } from "lucide-react";
 import LocationButton from "@/components/LocationButton";
 import Turnstile, { turnstileConfigured } from "@/components/Turnstile";
+import { rememberOrder } from "@/components/mobile/MyOrders";
 import { useCart } from "@/context/CartContext";
 import { business } from "@/data/business";
 import { normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
@@ -216,6 +217,7 @@ export default function CheckoutForm({
       if (data.id && data.orderNumber) {
         try {
           window.localStorage.setItem("kg-foods-last-order", JSON.stringify({ id: data.id, number: data.orderNumber }));
+          rememberOrder({ id: data.id, number: data.orderNumber, total: data.total ?? total, at: Date.now() });
         } catch {
           /* private mode: fine */
         }

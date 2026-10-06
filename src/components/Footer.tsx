@@ -174,6 +174,9 @@ export default function Footer() {
 						© {year} {business.name}. All rights reserved.
 					</p>
 					<div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
+						<a href="?view=mobile" className="text-xs text-white/30 hover:text-white/60 transition-colors">
+							Mobile version
+						</a>
 						{legalLinks.map((l) => (
 							<Link
 								key={l.href}

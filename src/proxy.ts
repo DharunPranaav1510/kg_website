@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mobileTarget, VIEW_COOKIE, wantsMobile, type ViewPreference } from "@/lib/device";
 
 /**
  * "Under development" switch.
@@ -22,11 +23,67 @@ function sameKey(a: string, b: string) {
   return diff === 0;
 }
 
+/**
+ * Phones get the app-style screens under /m, served from the same URLs.
+ * ?view=mobile | desktop remembers a choice; ?view=auto forgets it.
+ * ?auto=1 makes the choice last only for this browser session (used by the width check).
+ */
+function phoneRouting(req: NextRequest): NextResponse {
+  const { pathname, searchParams } = req.nextUrl;
+
+  // The /m tree is an implementation detail: never reachable directly.
+  if (pathname === "/m" || pathname.startsWith("/m/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname === "/m" ? "/" : pathname.slice(2);
+    return NextResponse.redirect(url);
+  }
+
+  const choice = searchParams.get("view");
+  if (choice !== null) {
+    const clean = req.nextUrl.clone();
+    clean.searchParams.delete("view");
+    clean.searchParams.delete("auto");
+    const res = NextResponse.redirect(clean);
+    res.headers.set("Cache-Control", "no-store");
+    if (choice === "mobile" || choice === "desktop") {
+      res.cookies.set(VIEW_COOKIE, choice, {
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        ...(searchParams.get("auto") ? {} : { maxAge: 60 * 60 * 24 * 30 }),
+      });
+    } else {
+      res.cookies.delete(VIEW_COOKIE);
+    }
+    return res;
+  }
+
+  const target = mobileTarget(pathname);
+  const raw = req.cookies.get(VIEW_COOKIE)?.value;
+  const pref: ViewPreference = raw === "mobile" || raw === "desktop" ? raw : null;
+  const mobile = wantsMobile(pref, req.headers.get("user-agent"));
+
+  if (target && mobile) {
+    const url = req.nextUrl.clone();
+    url.pathname = target;
+    const res = NextResponse.rewrite(url);
+    res.headers.set("Vary", "User-Agent, Cookie");
+    return res;
+  }
+  if (pathname === "/more") return NextResponse.redirect(new URL("/", req.url));
+
+  const res = NextResponse.next();
+  if (target) res.headers.set("Vary", "User-Agent, Cookie");
+  return res;
+}
+
 export function proxy(req: NextRequest) {
-  if (!on()) return NextResponse.next();
+  const { pathname } = req.nextUrl;
+  const customerPage = !pathname.startsWith("/api/") && !pathname.startsWith("/admin");
+  if (!on()) return customerPage ? phoneRouting(req) : NextResponse.next();
 
   const key = (process.env.MAINTENANCE_BYPASS_KEY ?? "").trim();
-  const { pathname, searchParams } = req.nextUrl;
+  const { searchParams } = req.nextUrl;
 
   if (key.length >= 8) {
     const offered = searchParams.get("preview");
@@ -48,7 +105,7 @@ export function proxy(req: NextRequest) {
       }
       return res;
     }
-    if (sameKey(req.cookies.get(COOKIE)?.value ?? "", key)) return NextResponse.next();
+    if (sameKey(req.cookies.get(COOKIE)?.value ?? "", key)) return customerPage ? phoneRouting(req) : NextResponse.next();
   }
 
   const headers = { "Retry-After": "3600", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" };

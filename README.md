@@ -219,3 +219,14 @@ Set `MAINTENANCE_MODE=true` in Vercel (Settings → Environment Variables, then 
 `.env.local` and the site works normally on your machine. To preview the real site while it is hidden, set
 `MAINTENANCE_BYPASS_KEY` (8+ random characters) and open `/?preview=<key>`; `/?preview=off` locks it again.
 `MAINTENANCE_MESSAGE` replaces the default sentence on the page.
+
+## Phone layout
+
+Phones get an app-style version of the customer pages (home, shop, orders, order status, contact, more) at the
+**same URLs**, with a bottom tab bar (Home, Shop, Cart, Orders, More), quick add/remove steppers and a full-screen
+cart. `src/proxy.ts` picks it from the browser type and rewrites to the screens in `src/app/m/`; they share the
+same database, cart and checkout as the desktop site. Every page has a "View desktop site" / "Mobile version" link
+(`?view=desktop` or `?view=mobile`, remembered for 30 days; `?view=auto` forgets it). A narrow window on desktop is
+switched automatically once per session. To test on a computer, use the browser's device mode (it sends a phone
+browser type) or open `/?view=mobile`. Pages without a phone version (About, Blog, policies) use the normal layout.
+The site can also be added to a phone's home screen (`src/app/manifest.ts`).
