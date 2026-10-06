@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, MapPin, PhoneCall, Search, ShieldCheck, Star, Truck } from "lucide-react";
 import AppBar from "@/components/mobile/AppBar";
+import ActiveOrder from "@/components/mobile/ActiveOrder";
 import FeaturedRail from "@/components/mobile/FeaturedRail";
 import ShopChip from "@/components/mobile/ShopChip";
 import ViewSwitch from "@/components/mobile/ViewSwitch";
@@ -25,13 +26,15 @@ export default function PhoneHome() {
     <>
       <AppBar />
       <main className="space-y-7 px-4 pt-4">
+        <ActiveOrder />
+
         {/* Hero */}
         <section className="relative overflow-hidden rounded-3xl bg-primary-text text-white shadow-card">
           <Image src="/images/hero/hero-chicken.jpg" alt="" fill priority sizes="(max-width: 480px) 100vw, 480px" className="object-cover opacity-55" />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
           <div className="relative flex min-h-[19rem] flex-col justify-end p-5">
             <ShopChip />
-            <h1 className="mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh meat, cut to order. Delivered in {business.address.city}.</h1>
+            <h1 className="mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh chicken, mutton and eggs, delivered in {business.address.city}.</h1>
             <p className="mt-2 text-sm text-white/80">Pay on delivery · {d.slots.length} delivery slots a day</p>
             <Link href="/shop" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white active:scale-[0.98] active:bg-accent-light">
               Start ordering <ArrowRight size={17} />
@@ -62,7 +65,7 @@ export default function PhoneHome() {
         {/* Popular */}
         <section>
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className={h2}>Fresh today</h2>
+            <h2 className={h2}>Popular items</h2>
             <Link href="/shop" className="text-sm font-semibold text-accent">See all</Link>
           </div>
           <FeaturedRail />
@@ -73,9 +76,9 @@ export default function PhoneHome() {
           <h2 className={`${h2} mb-3`}>Delivery in {business.address.city}</h2>
           <ul className="grid grid-cols-3 gap-2 text-center">
             {[
-              [Truck, `₹${d.fee}`, `free over ₹${d.freeAbove}`],
+              [Truck, `₹${d.fee}`, `delivery, free over ₹${d.freeAbove}`],
               [ShieldCheck, `₹${d.minOrder}`, "minimum order"],
-              [Clock, `${d.slots.length} slots`, "morning to evening"],
+              [Clock, `${d.slots.length} slots`, "to choose from daily"],
             ].map(([Icon, big, small]) => {
               const I = Icon as typeof Truck;
               return (
@@ -97,7 +100,7 @@ export default function PhoneHome() {
             {[
               ["Pick your cuts", "Add what you need. Prices are per kg or dozen."],
               ["We call you", "Your order is confirmed only after our team phones you."],
-              ["Fresh to your door", "We cut and pack it, you pay on delivery."],
+              ["Delivery", "We bring it to your door and you pay on delivery."],
             ].map(([t, s], i) => (
               <li key={t} className="flex gap-3 rounded-2xl border border-warm-gray/70 bg-white p-3.5">
                 <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">{i + 1}</span>
@@ -115,7 +118,7 @@ export default function PhoneHome() {
 
         {/* Reviews */}
         <section>
-          <h2 className={`${h2} mb-3`}>Loved by Hosur families</h2>
+          <h2 className={`${h2} mb-3`}>Customer reviews</h2>
           <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4">
             {testimonials.slice(0, 5).map((t) => (
               <figure key={t.id} className="w-[17rem] flex-shrink-0 snap-start rounded-2xl border border-warm-gray/70 bg-white p-4 shadow-soft">

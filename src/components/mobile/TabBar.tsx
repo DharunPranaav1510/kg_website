@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { ClipboardList, Home, LayoutGrid, Menu, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { tap } from "./format";
@@ -16,14 +17,18 @@ const tabs = [
 
 export default function TabBar() {
   const pathname = usePathname();
-  const { itemCount, isHydrated, openDrawer, isDrawerOpen } = useCart();
-  if (isDrawerOpen) return null;
+  const { itemCount, isHydrated, closeDrawer, toggleDrawer, isDrawerOpen } = useCart();
+
+  // Going to another screen always leaves the cart.
+  useEffect(() => {
+    closeDrawer();
+  }, [pathname, closeDrawer]);
 
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-50 border-t border-warm-gray/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+    <nav aria-label="Main" className="kg-tabbar fixed inset-x-0 bottom-0 z-[75] border-t border-warm-gray/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <ul className="mx-auto grid h-16 max-w-lg grid-cols-5">
         {tabs.map(({ href, label, icon: Icon, match }) => {
-          const active = match(pathname);
+          const active = href === "#cart" ? isDrawerOpen : !isDrawerOpen && match(pathname);
           const body = (
             <>
               <span className={`relative flex h-7 w-12 items-center justify-center rounded-full transition-colors ${active ? "bg-accent/12 text-accent" : "text-secondary-text"}`}>
@@ -41,11 +46,11 @@ export default function TabBar() {
           return (
             <li key={label}>
               {href === "#cart" ? (
-                <button type="button" onClick={() => { tap(); openDrawer(); }} className={`${cls} w-full`} aria-label={`Cart, ${itemCount} items`}>
+                <button type="button" onClick={() => { tap(); toggleDrawer(); }} className={`${cls} w-full`} aria-label={`Cart, ${itemCount} items`}>
                   {body}
                 </button>
               ) : (
-                <Link href={href} className={cls} aria-current={active ? "page" : undefined} onClick={tap}>
+                <Link href={href} className={cls} aria-current={active ? "page" : undefined} onClick={() => { tap(); closeDrawer(); }}>
                   {body}
                 </Link>
               )}

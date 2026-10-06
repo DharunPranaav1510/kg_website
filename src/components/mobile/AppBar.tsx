@@ -9,6 +9,7 @@ import { useShopStatus } from "@/context/ShopStatusContext";
 export default function AppBar({ title, back }: { title?: string; back?: string }) {
   const shop = useShopStatus();
   return (
+    <>
     <header className="sticky top-0 z-40 border-b border-warm-gray/70 bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
       <div className="flex h-14 items-center gap-2 px-3">
         {back ? (
@@ -37,12 +38,13 @@ export default function AppBar({ title, back }: { title?: string; back?: string 
           <Phone size={15} /> Call
         </a>
       </div>
-      {!shop.open && (
-        <p role="status" className="flex items-start gap-2 bg-primary-text px-4 py-2 text-xs text-white">
+    </header>
+    {!shop.open && (
+        <p role="status" className="flex items-start gap-2 bg-primary-text px-4 py-2.5 text-xs text-white">
           <Lock size={13} className="mt-0.5 flex-shrink-0" />
           <span><b>Orders paused.</b> {shop.message || "We're closed right now. Please check back soon."}</span>
         </p>
       )}
-    </header>
+    </>
   );
 }

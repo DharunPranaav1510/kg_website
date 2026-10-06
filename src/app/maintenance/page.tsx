@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const coming = [
   { icon: ShoppingBasket, title: "Order online", text: "Pick your cuts and send the order in a minute." },
-  { icon: Snowflake, title: "Fresh, every day", text: "Cut and packed to order, never stored for days." },
+  { icon: Snowflake, title: "Chicken, mutton, eggs", text: "The same fresh range you know from the shop." },
   { icon: Truck, title: "Delivered in Hosur", text: "Pay on delivery, after we confirm by phone." },
 ];
 

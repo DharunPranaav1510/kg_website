@@ -26,6 +26,15 @@ export default function CartDrawer() {
     };
   }, [isDrawerOpen]);
 
+  // Lets the phone layout keep its tab bar visible except while typing the address.
+  useEffect(() => {
+    if (isDrawerOpen) document.body.dataset.cartStep = step;
+    else delete document.body.dataset.cartStep;
+    return () => {
+      delete document.body.dataset.cartStep;
+    };
+  }, [isDrawerOpen, step]);
+
   // Reset when closed. The confirmation screen is only cleared on close.
   useEffect(() => {
     if (!isDrawerOpen) {
@@ -74,7 +83,7 @@ export default function CartDrawer() {
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
-        className="animate-slide-in-right fixed right-0 top-0 z-[70] flex h-[100dvh] w-full flex-col bg-background shadow-hover md:max-w-md"
+        className="kg-cart-drawer animate-slide-in-right fixed right-0 top-0 z-[70] flex h-[100dvh] w-full flex-col bg-background shadow-hover md:max-w-md"
       >
         <div className="flex items-center justify-between border-b border-warm-gray px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
           <div className="flex items-center gap-3">

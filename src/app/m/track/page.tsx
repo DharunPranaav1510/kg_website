@@ -16,7 +16,7 @@ export default function PhoneOrders() {
         <MyOrders />
         <h2 className="mb-1 px-1 font-display text-xl">Find an order</h2>
         <p className="mb-4 px-1 text-sm text-secondary-text">Use the order number we gave you and the mobile number you ordered with.</p>
-        <TrackForm />
+        <TrackForm showLast={false} />
       </main>
     </>
   );

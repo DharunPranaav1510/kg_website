@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { PhoneCall } from "lucide-react";
 import LocationButton from "@/components/LocationButton";
 import Turnstile, { turnstileConfigured } from "@/components/Turnstile";
-import { rememberOrder } from "@/components/mobile/MyOrders";
+import { rememberOrder } from "@/components/mobile/orderStatus";
 import { useCart } from "@/context/CartContext";
 import { business } from "@/data/business";
 import { normalizeEmail, normalizeIndianMobile } from "@/lib/phone";

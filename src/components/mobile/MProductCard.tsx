@@ -18,7 +18,7 @@ export default function MProductCard({ product, className = "" }: { product: Pro
 
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl border bg-white shadow-soft transition-shadow ${inCart ? "border-success/40 ring-1 ring-success/25" : "border-warm-gray/70"} ${className}`}>
-      <div className="relative aspect-[4/3] bg-warm-gray">
+      <div className="relative aspect-[3/2] bg-warm-gray">
         <Image src={product.image} alt={product.name} fill sizes="(max-width: 480px) 50vw, 240px" className={`object-cover ${soldOut ? "opacity-60 grayscale" : ""}`} />
         {product.badge && !soldOut && (
           <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-accent shadow-soft">{product.badge}</span>
@@ -31,8 +31,8 @@ export default function MProductCard({ product, className = "" }: { product: Pro
 
       <div className="flex flex-1 flex-col p-3">
         <p className="text-[10px] font-medium uppercase tracking-wide text-secondary-text">{product.category}</p>
-        <h3 className="mt-0.5 line-clamp-2 min-h-[2.5rem] font-display text-[15px] leading-tight text-primary-text">{product.name}</h3>
-        <p className="mt-1 flex items-baseline gap-1">
+        <h3 className="mt-0.5 line-clamp-2 font-display text-[15px] leading-tight text-primary-text">{product.name}</h3>
+        <p className="mt-auto flex items-baseline gap-1 pt-2">
           <span className="text-base font-bold text-primary-text">₹{product.pricePerKg}</span>
           <span className="text-[11px] text-secondary-text">/ {product.isEgg ? "dozen" : "kg"}</span>
         </p>
@@ -57,7 +57,7 @@ export default function MProductCard({ product, className = "" }: { product: Pro
             </div>
           ) : (
             <button type="button" onClick={() => { tap(); addItem(product.id, defaultQty(product)); }} className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full border border-accent/40 bg-accent/5 text-sm font-semibold text-accent transition-transform active:scale-95 active:bg-accent/15">
-              <Plus size={16} /> Add · {qtyLabel(product, defaultQty(product))}
+              <Plus size={16} /> Add {qtyLabel(product, defaultQty(product))}
             </button>
           )}
         </div>
