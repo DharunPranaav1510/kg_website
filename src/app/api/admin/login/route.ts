@@ -23,16 +23,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter your email and password" }, { status: 400 });
   }
 
-  // Lock out guessing: per device and per email, shared across all servers.
+  // Lock out guessing without letting a stranger lock the owner out. Three counters:
+  //  - this device + this email: 5 tries (the normal "you typed it wrong" limit)
+  //  - this device, any email: 10 tries
+  //  - this email from anywhere: 40 tries, so one attacker cannot block the real admin
+  //    with a handful of wrong passwords, but spreading guesses over many devices still stops.
   const ip = clientIpHash(req);
+  const pair = `${email}|${ip}`;
   if (
+    !(await underLimit(supabase, "admin_login_fail_pair", pair, 5, WINDOW)) ||
     !(await underLimit(supabase, "admin_login_fail_ip", ip, 10, WINDOW)) ||
-    !(await underLimit(supabase, "admin_login_fail_email", email, 5, WINDOW))
+    !(await underLimit(supabase, "admin_login_fail_email", email, 40, WINDOW))
   ) {
     return tooMany();
   }
   const reject = async (why: string) => {
-    await Promise.all([record(supabase, "admin_login_fail_ip", ip), record(supabase, "admin_login_fail_email", email)]);
+    await Promise.all([
+      record(supabase, "admin_login_fail_pair", pair),
+      record(supabase, "admin_login_fail_ip", ip),
+      record(supabase, "admin_login_fail_email", email),
+    ]);
     await audit("login_failed", why, undefined, email);
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   };

@@ -9,6 +9,7 @@ import {
   gatherOrderStats,
   LIMITS,
   orderFingerprint,
+  verifyAfterInsert,
 } from "@/lib/guard";
 import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { getProducts } from "@/lib/products-db";
@@ -183,6 +184,19 @@ export async function POST(req: NextRequest) {
       }
       orderId = data.id;
       orderNumber = data.order_number;
+
+      // Requests sent at the same instant can all pass the check above, so look again now that this order
+      // is saved. If it is over a limit, take it back out. Earlier orders always win.
+      const recheck = await verifyAfterInsert(supabase, {
+        orderId: data.id,
+        phone,
+        ipHash,
+        fingerprint: orderFingerprint(items),
+      });
+      if (!recheck.ok) {
+        await supabase.from("orders").delete().eq("id", data.id);
+        return fail(recheck.error, recheck.status);
+      }
     }
 
     const itemRows = items

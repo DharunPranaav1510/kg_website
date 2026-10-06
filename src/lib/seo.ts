@@ -112,3 +112,15 @@ export function localBusinessJsonLd(live?: { contact: { phone: string; email: st
     sameAs: Object.values(business.social).filter(Boolean),
   };
 }
+/**
+ * JSON for a <script type="application/ld+json"> tag. JSON.stringify leaves "<" alone, so a value such as
+ * "</script><script>..." would end the tag and run. Escaping < > & and the two line separators keeps it data.
+ */
+export function safeJsonForScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
