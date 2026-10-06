@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PhoneCall } from "lucide-react";
 import LocationButton from "@/components/LocationButton";
@@ -371,6 +372,12 @@ export default function CheckoutForm({
         </div>
         <p className="mb-3 text-center text-xs font-medium text-amber-800">
           Not confirmed until we call you. Pay on delivery.
+        </p>
+        <p className="mb-3 text-center text-[11px] leading-snug text-secondary-text">
+          We use your name, number and address only to confirm and deliver this order. See our{" "}
+          <Link href="/privacy" target="_blank" className="text-accent underline">Privacy Policy</Link>,{" "}
+          <Link href="/delivery" target="_blank" className="text-accent underline">Delivery</Link> and{" "}
+          <Link href="/cancellation" target="_blank" className="text-accent underline">Cancellation</Link> policies.
         </p>
         <div className="flex gap-3">
           <button type="button" onClick={onBack} className="min-h-12 w-1/3 rounded-full border border-warm-gray text-sm font-medium transition-colors hover:border-accent/40">

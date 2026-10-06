@@ -11,6 +11,20 @@ export function decodeAal(jwt: string): string | null {
   }
 }
 
+/** Unverified claims. Only used to start database lookups early; identity is still confirmed with Supabase. */
+export function peekClaims(jwt: string): { sub: string | null; email: string | null; aal: string | null } {
+  try {
+    const p = JSON.parse(Buffer.from(jwt.split(".")[1] ?? "", "base64url").toString("utf8"));
+    return {
+      sub: typeof p.sub === "string" ? p.sub : null,
+      email: typeof p.email === "string" ? p.email.toLowerCase() : null,
+      aal: typeof p.aal === "string" ? p.aal : null,
+    };
+  } catch {
+    return { sub: null, email: null, aal: null };
+  }
+}
+
 export type Access = "ok" | "deny" | "setup";
 
 /**

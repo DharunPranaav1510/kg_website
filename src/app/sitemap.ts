@@ -13,6 +13,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/privacy",  priority: 0.3,  changeFrequency: "yearly"  as const },
     { path: "/terms",    priority: 0.3,  changeFrequency: "yearly"  as const },
     { path: "/refunds",  priority: 0.3,  changeFrequency: "yearly"  as const },
+    { path: "/cancellation", priority: 0.3, changeFrequency: "yearly" as const },
+    { path: "/delivery", priority: 0.4, changeFrequency: "yearly" as const },
   ];
 
   return staticRoutes.map(({ path, priority, changeFrequency }) => ({

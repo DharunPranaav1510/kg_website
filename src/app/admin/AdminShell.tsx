@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { adminApi } from "./api";
+import { usePoll } from "./usePoll";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
@@ -61,13 +62,10 @@ export default function AdminShell({
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 20000);
     window.addEventListener(SHOP_CHANGED_EVENT, refresh);
-    return () => {
-      clearInterval(t);
-      window.removeEventListener(SHOP_CHANGED_EVENT, refresh);
-    };
+    return () => window.removeEventListener(SHOP_CHANGED_EVENT, refresh);
   }, [refresh]);
+  usePoll(refresh, 30000);
 
   useEffect(() => setMenuOpen(false), [pathname]);
 

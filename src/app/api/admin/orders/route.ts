@@ -26,11 +26,18 @@ export async function GET(req: NextRequest) {
   // How often has each customer ordered before? Helps spot dummy orders.
   const phones = [...new Set(data.map((o) => o.phone))];
   const history: Record<string, { orders: number; delivered: number; cancelled: number }> = {};
-  // In batches of 100 numbers so the request URL stays short.
-  for (const batch of chunk(phones, 100)) {
-    const { data: all } = await fetchAll<{ phone: string; status: string }>((from, to) =>
-      supabase.from("orders").select("phone, status").in("phone", batch).order("id", { ascending: true }).range(from, to)
-    );
+  // In batches of 100 numbers so the request URL stays short. All at once.
+  const [batches, { data: blocked }] = await Promise.all([
+    Promise.all(
+      chunk(phones, 100).map((batch) =>
+        fetchAll<{ phone: string; status: string }>((from, to) =>
+          supabase.from("orders").select("phone, status").in("phone", batch).order("id", { ascending: true }).range(from, to)
+        )
+      )
+    ),
+    supabase.from("blocked_phones").select("phone"),
+  ]);
+  for (const { data: all } of batches) {
     for (const row of all) {
       const h = (history[row.phone] ??= { orders: 0, delivered: 0, cancelled: 0 });
       h.orders++;
@@ -39,7 +46,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const { data: blocked } = await supabase.from("blocked_phones").select("phone");
   return NextResponse.json({
     orders: data,
     history,

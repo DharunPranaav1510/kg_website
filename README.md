@@ -204,6 +204,18 @@ Honeypot field, minimum form-fill time, limits per phone (2 waiting, 3/hour, 6/d
 
 Every order gets a sequential **order number** (#57) shown to the customer on the confirmation screen, to staff on every order card, and searchable in the admin. Customers can follow an order any time from **Track Order** (footer): order number + the mobile number they ordered with. The longer link `/order/<id>` is unguessable and is used behind the scenes. Products have an automatic ID too (shown in the edit form).
 
+## Speed
+
+If the admin feels slow, read **`docs/PERFORMANCE.md`** (the main fix is setting the Vercel function region to match Supabase).
+
 ## Security
 
 See **`docs/SECURITY.md`** for what is protected, the one-time owner checklist (two-step login, Turnstile, backups, keys) and what to do if something goes wrong. Environment variables are listed in `.env.example`. Admin extras: **Security** (two-step login, sign out of all devices) and **Activity log** in the sidebar.
+
+## Under-development page
+
+Set `MAINTENANCE_MODE=true` in Vercel (Settings → Environment Variables, then redeploy) to show everyone an
+"under development" page (HTTP 503, hidden from search engines; API calls get a 503 too). Leave it unset in
+`.env.local` and the site works normally on your machine. To preview the real site while it is hidden, set
+`MAINTENANCE_BYPASS_KEY` (8+ random characters) and open `/?preview=<key>`; `/?preview=off` locks it again.
+`MAINTENANCE_MESSAGE` replaces the default sentence on the page.

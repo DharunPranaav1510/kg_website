@@ -6,6 +6,7 @@ export default function LoginForm() {
   const [step, setStep] = useState<"password" | "code">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,7 +75,12 @@ export default function LoginForm() {
             </label>
             <label className="block text-sm font-medium text-primary-text">
               Password
-              <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={input} />
+              <span className="relative mt-1 block">
+                <input type={showPw ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={`${input} !mt-0 pr-20`} />
+                <button type="button" onClick={() => setShowPw((v) => !v)} aria-pressed={showPw} className="absolute inset-y-0 right-3 text-sm font-medium text-accent">
+                  {showPw ? "Hide" : "Show"}
+                </button>
+              </span>
             </label>
           </>
         ) : (
