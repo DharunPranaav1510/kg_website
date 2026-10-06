@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Star, Quote } from "lucide-react";
 import { getTestimonials } from "@/lib/content";
 
@@ -66,15 +65,6 @@ export default async function Testimonials() {
 
               {/* Reviewer */}
               <div className="flex items-center gap-3 pt-5 border-t border-warm-gray">
-                <div className="relative w-11 h-11 rounded-full overflow-hidden bg-warm-gray flex-shrink-0">
-                  {t.image ? (
-                    <Image src={t.image} alt={t.name} fill className="object-cover" sizes="44px" />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center bg-accent/10 text-sm font-semibold text-accent">
-                      {t.name.trim().charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
                 <div>
                   <div className="font-semibold text-sm text-primary-text">{t.name}</div>
                   <div className="text-xs text-secondary-text mt-0.5">
