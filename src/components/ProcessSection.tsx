@@ -13,7 +13,7 @@ const steps = [
     step: "02",
     title: "Selection",
     description:
-      "Every animal is carefully inspected for health and quality before it enters our processing chain. Anything below standard is rejected.",
+      "Every bird is carefully inspected for health and quality before it enters our processing chain. Anything below standard is rejected.",
   },
   {
     icon: Scissors,
