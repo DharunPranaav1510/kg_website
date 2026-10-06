@@ -32,6 +32,8 @@ const LABEL: Record<string, { text: string; tone: "normal" | "warn" | "bad" }> =
   content_changed: { text: "Edited website content", tone: "normal" },
   policy_changed: { text: "Edited a policy page", tone: "warn" },
   hours_changed: { text: "Changed opening hours", tone: "normal" },
+  admin_added: { text: "Added an admin", tone: "warn" },
+  admin_removed: { text: "Removed an admin", tone: "warn" },
   offers_changed: { text: "Changed offers", tone: "normal" },
   bill_printed: { text: "Printed a bill", tone: "normal" },
   business_changed: { text: "Changed business / delivery details", tone: "warn" },

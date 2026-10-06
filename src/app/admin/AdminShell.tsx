@@ -1,5 +1,6 @@
 "use client";
 
+import { isOwner } from "@/lib/owner";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import {
   Package,
   Settings,
   ShieldCheck,
+  Users,
   Store,
   ScrollText,
   X,
@@ -38,6 +40,7 @@ const NAV = [
   { href: "/admin/settings", label: "Shop settings", icon: Settings },
   { href: "/admin/activity", label: "Activity log", icon: ScrollText },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
+  { href: "/admin/admins", label: "Admins", icon: Users, ownerOnly: true },
 ] as const;
 
 interface Summary {
@@ -156,7 +159,7 @@ export default function AdminShell({
       </button>
 
       <ul className="flex flex-col gap-1">
-        {NAV.map(({ href, label, icon: Icon, ...rest }) => {
+        {NAV.filter((n) => !("ownerOnly" in n) || isOwner(email)).map(({ href, label, icon: Icon, ...rest }) => {
           const badge = "badge" in rest && rest.badge ? summary?.newOrders ?? 0 : 0;
           return (
             <li key={href}>
