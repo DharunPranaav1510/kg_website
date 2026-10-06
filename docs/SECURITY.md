@@ -61,3 +61,11 @@ delete from public.admin_audit where created_at < now() - interval '1 year';
 - All content routes (`/api/admin/content`, `/policies`, `/business`) need an admin session and an allowed Origin, and are
   written to the activity log. Every saved policy version is kept in `policy_revisions`.
 - Orders store `consent_at` and `policy_versions` as proof of what the customer accepted.
+
+## Admin invitations
+
+- The link holds a 256-bit random token; only its SHA-256 hash is stored. The 6-digit code is stored as an HMAC bound to that invitation, is emailed only to the invited address, expires in 10 minutes, allows 5 wrong tries, and is only sent when the invited person presses the button (so mail scanners that open links cannot trigger it).
+- Accepting claims the invitation with a single conditional update, so it can be used once even if two requests race. If creating the login fails the invitation is given back.
+- The public routes (`/api/admin/invite/*`) check the Origin, are rate limited per device and per invitation, and give one generic answer for unknown, expired, cancelled or used links.
+- Emailed links use `SITE_URL`, not the Host header, so a forged header cannot redirect an invitation.
+- Removing an admin deletes their `admins` row and their login. Invites, joins and removals are in the activity log.

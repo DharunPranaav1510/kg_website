@@ -222,3 +222,29 @@ create table if not exists public.order_feedback (
 );
 create index if not exists order_feedback_created_idx on public.order_feedback (created_at desc);
 alter table public.order_feedback enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Inviting new admins by email (safe to re-run)
+-- ---------------------------------------------------------------------------
+
+alter table public.admins add column if not exists added_by text;
+alter table public.admins add column if not exists added_at timestamptz not null default now();
+
+-- One row per invitation. Only hashes are stored: the link token and the emailed code cannot be read back.
+create table if not exists public.admin_invites (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  token_hash text not null unique,
+  otp_hash text,
+  otp_expires_at timestamptz,
+  otp_attempts int not null default 0,
+  otp_sends int not null default 0,
+  last_otp_sent_at timestamptz,
+  expires_at timestamptz not null,
+  invited_by text not null,
+  created_at timestamptz not null default now(),
+  used_at timestamptz,
+  revoked_at timestamptz
+);
+create index if not exists admin_invites_email_idx on public.admin_invites (lower(email));
+alter table public.admin_invites enable row level security;

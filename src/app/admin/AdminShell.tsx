@@ -10,6 +10,7 @@ import {
   IndianRupee,
   MessageSquareHeart,
   Tag,
+  UserPlus,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -36,6 +37,7 @@ const NAV = [
   { href: "/admin/content", label: "Website content", icon: FileText },
   { href: "/admin/settings", label: "Shop settings", icon: Settings },
   { href: "/admin/activity", label: "Activity log", icon: ScrollText },
+  { href: "/admin/team", label: "Admins", icon: UserPlus },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
 ] as const;
 
