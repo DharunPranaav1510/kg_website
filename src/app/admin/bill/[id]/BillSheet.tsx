@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Printer, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { billNumber, buildBill, financialYear, rupeesInWords, type BillOrder } from "@/lib/bill";
 import { formatPhone } from "@/lib/phone";
 import { stateFromGstin } from "@/lib/states";
@@ -24,7 +24,30 @@ const MODES = ["To be paid on delivery", "Cash", "UPI", "Card"] as const;
 type Mode = (typeof MODES)[number];
 
 export default function BillSheet({ order, shop }: { order: Order; shop: Shop }) {
-  const [size, setSize] = useState<"thermal" | "a4">("thermal");
+  const [size, setSizeState] = useState<"thermal" | "a4">("thermal");
+  // A shop has one printer, so the last paper size is remembered on this device.
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("kg-bill-paper");
+      if (v === "a4" || v === "thermal") setSizeState(v);
+    } catch {
+      /* private mode */
+    }
+  }, []);
+  const setSize = (v: "thermal" | "a4") => {
+    setSizeState(v);
+    try {
+      localStorage.setItem("kg-bill-paper", v);
+    } catch {
+      /* ignore */
+    }
+  };
+  const missing = [
+    !shop.gstin && "GSTIN",
+    !shop.fssai && "FSSAI number",
+    !shop.address && "bill address",
+    !shop.phone && "bill phone",
+  ].filter(Boolean) as string[];
   const [mode, setMode] = useState<Mode>(order.status === "delivered" ? "Cash" : "To be paid on delivery");
   const [tendered, setTendered] = useState("");
   const bill = buildBill(order);
@@ -47,27 +70,38 @@ export default function BillSheet({ order, shop }: { order: Order; shop: Shop })
         @media print { .no-print { display: none !important; } body { background: #fff !important; } .bill { box-shadow: none !important; margin: 0 !important; } }`}</style>
 
       <div className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-warm-gray bg-white px-4 py-3">
-        <span className="mr-auto font-medium">Bill {billNumber(shop.prefix, order.order_number)}</span>
-        <label className="flex items-center gap-2 text-sm">
+        <button
+          onClick={() => (window.opener ? window.close() : (window.location.href = "/admin/orders"))}
+          className="flex min-h-12 items-center gap-2 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream"
+        >
+          <ArrowLeft size={18} /> Back to order
+        </button>
+        <span className="mr-auto text-base font-medium">Bill {billNumber(shop.prefix, order.order_number)}</span>
+        <label className="flex items-center gap-2 text-base">
           Payment
-          <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} className="rounded-full border border-warm-gray bg-white px-3 py-1.5 text-sm">
+          <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} className="min-h-12 rounded-full border border-warm-gray bg-white px-3 text-base">
             {MODES.map((m) => <option key={m}>{m}</option>)}
           </select>
         </label>
         {mode === "Cash" && (
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-base">
             Cash tendered
-            <input value={tendered} onChange={(e) => setTendered(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(bill.total)} className="w-24 rounded-full border border-warm-gray px-3 py-1.5 text-sm" />
+            <input value={tendered} onChange={(e) => setTendered(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" placeholder={String(bill.total)} className="min-h-12 w-28 rounded-full border border-warm-gray px-3 text-base" />
           </label>
         )}
-        <span className="flex rounded-full border border-warm-gray p-0.5 text-sm" role="radiogroup" aria-label="Paper size">
-          {([["thermal", "Receipt 80 mm"], ["a4", "A4 paper"]] as const).map(([v, l]) => (
-            <button key={v} role="radio" aria-checked={size === v} onClick={() => setSize(v)} className={`rounded-full px-3.5 py-1.5 ${size === v ? "bg-primary-text text-white" : ""}`}>{l}</button>
+        <span className="flex rounded-full border border-warm-gray p-0.5 text-base" role="radiogroup" aria-label="Paper size">
+          {([["thermal", "80 mm receipt"], ["a4", "A4"]] as const).map(([v, l]) => (
+            <button key={v} role="radio" aria-checked={size === v} onClick={() => setSize(v)} className={`min-h-12 rounded-full px-4 ${size === v ? "bg-primary-text text-white" : ""}`}>{l}</button>
           ))}
         </span>
-        <button onClick={() => window.print()} className="btn-primary !px-6 !py-2.5"><Printer size={16} /> Print</button>
-        <button onClick={() => window.close()} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray"><X size={18} /></button>
+        <button onClick={() => window.print()} className="btn-primary min-h-12 !px-8 !text-base"><Printer size={18} /> Print</button>
       </div>
+
+      {missing.length > 0 && (
+        <p className="no-print border-b border-yellow-300 bg-yellow-50 px-4 py-3 text-base text-yellow-900">
+          {missing.join(", ")} {missing.length === 1 ? "is" : "are"} missing from this bill. Add {missing.length === 1 ? "it" : "them"} in Website content, Business details, Legal and bill details.
+        </p>
+      )}
 
       <div className={`bill mx-auto my-6 bg-white text-primary-text shadow-card print:my-0 ${thermal ? "w-[80mm] p-3 text-[11px] leading-snug" : "w-full max-w-[210mm] p-8 text-sm"}`}>
         {/* Header, in the order of the shop's own printed bill */}
