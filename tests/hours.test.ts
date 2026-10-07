@@ -67,3 +67,26 @@ test("summary groups days with the same hours", () => {
   assert.deepEqual(s.lines, ["Monday – Saturday: 6:30 AM – 5:00 PM", "Sunday: Closed"]);
   assert.equal(s.days, "Monday – Saturday");
 });
+
+test("opening late for today lasts only for that day", () => {
+  const forced = { open: true, message: "", forceOpenOn: "2026-10-05" };
+  const late = shopNow(DEFAULT_HOURS, forced, at("2026-10-05T19:30:00"));
+  assert.equal(late.open, true);
+  assert.equal(late.extended, true);
+  assert.equal(late.closesAt, "midnight");
+  // Before the hours open the same day it also counts.
+  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-05T05:00:00")).open, true);
+  // Inside normal hours it is just a normal open shop.
+  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-05T10:00:00")).extended, false);
+  // The next day the hours apply again.
+  const next = shopNow(DEFAULT_HOURS, forced, at("2026-10-06T19:30:00"));
+  assert.equal(next.open, false);
+  assert.equal(next.reason, "after_close");
+  // Pausing always wins.
+  assert.equal(shopNow(DEFAULT_HOURS, { ...forced, open: false }, at("2026-10-05T19:30:00")).reason, "paused");
+});
+
+test("a closed shop knows when it opens next, for a countdown", () => {
+  const s = shopNow(DEFAULT_HOURS, on, at("2026-10-05T20:00:00"));
+  assert.equal(s.opensAt, at("2026-10-06T06:30:00"));
+});

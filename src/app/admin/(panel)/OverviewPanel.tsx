@@ -9,6 +9,7 @@ import { usePoll } from "../usePoll";
 import { useOrderActions } from "../orderActions";
 import OrderPanel from "../OrderPanel";
 import { SHOP_CHANGED_EVENT, rupees, useUi } from "../ui";
+import { useForceOpen } from "../shopActions";
 import { STATUS_STYLE, WAIT_LIMITS, formatAge, itemsSummary, type CustomerHistory, type Order, type OrdersResponse } from "../orderUtils";
 
 interface ProductLite {
@@ -26,7 +27,7 @@ export default function OverviewPanel() {
   const [history, setHistory] = useState<Record<string, CustomerHistory>>({});
   const [blocked, setBlocked] = useState<string[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
-  const [shop, setShop] = useState<{ open: boolean; message: string } | null>(null);
+  const [shop, setShop] = useState<{ open: boolean; message: string; forceOpenOn?: string } | null>(null);
   const [hours, setHours] = useState<OpeningHours | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
@@ -82,6 +83,8 @@ export default function OverviewPanel() {
   const waitTone = !waiting[0] ? "border-warm-gray bg-white" : waitMins >= late ? "border-red-300 bg-red-50" : waitMins >= warn ? "border-amber-300 bg-amber-50" : "border-warm-gray bg-white";
   const ofYesterday = salesYesterday > 0 ? Math.round((sales / salesYesterday) * 100) : null;
 
+  const force = useForceOpen(shop?.message ?? "", load);
+
   async function resume() {
     if (!shop) return;
     setResuming(true);
@@ -132,10 +135,21 @@ export default function OverviewPanel() {
             <button onClick={resume} disabled={resuming} className="btn-primary min-h-12 !text-base disabled:opacity-60">{resuming ? "Resuming…" : "Resume orders"}</button>
           </section>
         ) : (
-          <Link href="/admin/settings" className="mb-5 block rounded-2xl border border-warm-gray bg-gray-100 p-4 text-base text-secondary-text">
-            <b>Shop is closed</b>{status.opensLabel ? `, opens ${status.opensLabel}` : ""}. Customers can browse but cannot order. <span className="text-accent">Opening hours →</span>
-          </Link>
+          <section className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-warm-gray bg-gray-100 p-4 text-secondary-text">
+            <p className="min-w-[14rem] flex-1 text-base">
+              <b>Shop is closed</b>{status.opensLabel ? `, opens ${status.opensLabel}` : ""}. Customers can browse but cannot order. <Link href="/admin/settings" className="text-accent hover:underline">Opening hours →</Link>
+            </p>
+            <button onClick={() => force.run(true)} disabled={force.busy} className="min-h-12 rounded-full bg-success px-6 text-base font-semibold text-white hover:opacity-90 disabled:opacity-60">
+              {force.busy ? "Working…" : "Open for the rest of today"}
+            </button>
+          </section>
         ))}
+      {status?.open && status.extended && (
+        <section className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-success/40 bg-success/10 p-4">
+          <p className="min-w-[14rem] flex-1 text-base"><b>Open late today.</b> Customers can order until midnight. Tomorrow the usual hours apply again.</p>
+          <button onClick={() => force.run(false)} disabled={force.busy} className="min-h-12 rounded-full border border-warm-gray bg-white px-6 text-base font-semibold hover:bg-cream disabled:opacity-60">Close for today</button>
+        </section>
+      )}
 
       {/* 2. Needs attention */}
       <section className="mb-5 rounded-2xl border border-warm-gray bg-white p-4">

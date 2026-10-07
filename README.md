@@ -228,7 +228,7 @@ Default hours are 6:30 AM to 5:00 PM, every day (Indian time). In the admin go t
 to change any day, mark a day off, or add special days (a holiday, or different hours on one date). Outside the
 hours customers see a "closed" hero (desktop and phone) with when you open next, Add buttons say "Opens ...",
 and the server refuses orders. The **Pause orders** switch below the hours stops orders earlier (sold out) and
-wins over the timetable. Hours are saved in the existing `settings` table (key `hours`), so no schema change.
+wins over the timetable. **Open for the rest of today** (status pill, Today, or Shop settings) opens the shop outside its hours for that Indian date only: it stops at midnight and tomorrow the usual hours apply again. Hours are saved in the existing `settings` table (key `hours`), so no schema change.
 
 ## Phone layout
 

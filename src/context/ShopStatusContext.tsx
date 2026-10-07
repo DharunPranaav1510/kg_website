@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_HOURS, shopNow, type LiveShopStatus, type ManualStatus, type OpeningHours } from "@/lib/hours";
 
-const OPEN: LiveShopStatus = { open: true, reason: "open", message: "", label: "", blockedLabel: "", closesAt: null, minutesToClose: null, opensLabel: null };
+const OPEN: LiveShopStatus = { open: true, reason: "open", message: "", label: "", blockedLabel: "", closesAt: null, minutesToClose: null, opensLabel: null, opensAt: null, extended: false };
 const ShopStatusContext = createContext<LiveShopStatus>(OPEN);
 
 /**

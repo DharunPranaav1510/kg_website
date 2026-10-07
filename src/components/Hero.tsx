@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { useShopStatus } from "@/context/ShopStatusContext";
 
 const INTERVAL = 8000;
 
@@ -52,6 +53,7 @@ export default function Hero() {
   const [fading, setFading] = useState(false);
   const router = useRouter();
   const touchX = useRef<number | null>(null);
+  const shop = useShopStatus();
 
   const goTo = useCallback((index: number) => {
     setFading(true);
@@ -93,7 +95,7 @@ export default function Hero() {
             alt={s.name}
             fill
             priority={index === 0}
-            className="object-cover"
+            className={`object-cover ${current === index ? "kg-kenburns" : ""}`}
             sizes="100vw"
           />
         </div>
@@ -102,6 +104,7 @@ export default function Hero() {
       {/* Warm, lighter overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-black/5 z-10" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/15 to-transparent z-10" />
+      <div aria-hidden className="absolute inset-0 z-10 bg-[radial-gradient(60%_50%_at_90%_0%,rgba(255,170,90,0.22),transparent)]" />
 
       {/* Arrow navigation */}
       <button
@@ -125,6 +128,10 @@ export default function Hero() {
         <div className="h-2 sm:h-4" />
 
         <div className="flex-1 flex flex-col justify-center max-w-2xl">
+          <span className="kg-rise mb-4 inline-flex w-fit items-center gap-2.5 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold tracking-wide text-white backdrop-blur-md sm:text-sm">
+            <span className="kg-live-dot" aria-hidden="true" />
+            {shop.extended ? "Open late today · taking orders until midnight" : shop.closesAt ? `Open now · taking orders until ${shop.closesAt}` : "Open now · taking orders"}
+          </span>
           <div className="flex items-center gap-3 mb-5 sm:mb-6">
             <div className="w-8 h-px bg-white/70" />
             <span className="text-xs font-semibold tracking-[0.25em] uppercase text-white/80">
@@ -164,7 +171,7 @@ export default function Hero() {
               transition: "opacity 0.35s ease 0.08s",
             }}
           >
-            <Link href={slide.shopHref} className="btn-primary text-base py-4 px-8">
+            <Link href={slide.shopHref} className="btn-primary kg-shine text-base py-4 px-8 shadow-[0_12px_40px_-10px_rgba(214,62,10,0.8)]">
               Shop {slide.name}
               <ArrowRight size={16} />
             </Link>

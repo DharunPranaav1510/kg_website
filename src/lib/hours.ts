@@ -96,6 +96,11 @@ export function hoursOn(h: OpeningHours, date: string): { from: string; to: stri
 export interface ManualStatus {
   open: boolean;
   message: string;
+  /**
+   * "YYYY-MM-DD" (Indian date) on which the owner opened the shop outside its hours.
+   * It only counts on that exact date, so the next day the normal hours apply again.
+   */
+  forceOpenOn?: string;
 }
 
 export type ClosedReason = "paused" | "holiday" | "day_off" | "before_open" | "after_close";
@@ -114,15 +119,21 @@ export interface LiveShopStatus {
   minutesToClose: number | null;
   /** "today at 6:30 AM", "tomorrow at 6:30 AM", "Monday at 6:30 AM" */
   opensLabel: string | null;
+  /** When it opens next, as a timestamp (for a countdown). */
+  opensAt: number | null;
+  /** Open only because the owner opened it outside the usual hours for today. */
+  extended: boolean;
 }
 
-function nextOpening(h: OpeningHours, today: string, minutes: number): string | null {
+const atIst = (date: string, time: string) => Date.parse(`${date}T${time}:00+05:30`);
+
+function nextOpening(h: OpeningHours, today: string, minutes: number): { label: string; at: number } | null {
   const t = hoursOn(h, today);
-  if (t && minutes < toMin(t.from)) return `today at ${clock12(t.from)}`;
+  if (t && minutes < toMin(t.from)) return { label: `today at ${clock12(t.from)}`, at: atIst(today, t.from) };
   for (let i = 1; i <= 21; i++) {
     const d = addDays(today, i);
     const x = hoursOn(h, d);
-    if (x) return `${i === 1 ? "tomorrow" : DAY_NAMES[weekday(d)]} at ${clock12(x.from)}`;
+    if (x) return { label: `${i === 1 ? "tomorrow" : DAY_NAMES[weekday(d)]} at ${clock12(x.from)}`, at: atIst(d, x.from) };
   }
   return null;
 }
@@ -130,7 +141,8 @@ function nextOpening(h: OpeningHours, today: string, minutes: number): string | 
 export function shopNow(h: OpeningHours, manual: ManualStatus, now: number | Date = Date.now()): LiveShopStatus {
   const t = istParts(now);
   const today = hoursOn(h, t.date);
-  const opens = nextOpening(h, t.date, t.minutes);
+  const next = nextOpening(h, t.date, t.minutes);
+  const opens = next?.label ?? null;
   const closed = (reason: ClosedReason, message: string): LiveShopStatus => ({
     open: false,
     reason,
@@ -140,6 +152,8 @@ export function shopNow(h: OpeningHours, manual: ManualStatus, now: number | Dat
     closesAt: null,
     minutesToClose: null,
     opensLabel: reason === "paused" ? null : opens,
+    opensAt: reason === "paused" ? null : next?.at ?? null,
+    extended: false,
   });
 
   if (!manual.open) return closed("paused", manual.message || "Orders are paused right now. Please check back soon.");
@@ -155,15 +169,34 @@ export function shopNow(h: OpeningHours, manual: ManualStatus, now: number | Dat
       closesAt: clock12(today.to),
       minutesToClose: left,
       opensLabel: null,
+      opensAt: null,
+      extended: false,
+    };
+  }
+
+  // The owner opened the shop outside its hours for today only. The date check is what
+  // makes it end by itself: tomorrow the date no longer matches.
+  if (manual.forceOpenOn === t.date) {
+    return {
+      open: true,
+      reason: "open",
+      message: "We're open late today.",
+      label: "Open late today",
+      blockedLabel: "",
+      closesAt: "midnight",
+      minutesToClose: 24 * 60 - t.minutes,
+      opensLabel: null,
+      opensAt: null,
+      extended: true,
     };
   }
 
   const ex = h.exceptions.find((e) => e.date === t.date);
-  const next = opens ? ` We open ${opens}.` : "";
-  if (ex?.closed) return closed("holiday", `We're closed today${ex.note ? ` (${ex.note})` : ""}.${next}`);
-  if (!today) return closed("day_off", `We're closed today.${next}`);
+  const nextText = opens ? ` We open ${opens}.` : "";
+  if (ex?.closed) return closed("holiday", `We're closed today${ex.note ? ` (${ex.note})` : ""}.${nextText}`);
+  if (!today) return closed("day_off", `We're closed today.${nextText}`);
   if (t.minutes < toMin(today.from)) return closed("before_open", `We open today at ${clock12(today.from)}.`);
-  return closed("after_close", `We're closed for today.${next}`);
+  return closed("after_close", `We're closed for today.${nextText}`);
 }
 
 // ---- text for places that show the hours ----

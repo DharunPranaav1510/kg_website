@@ -5,9 +5,11 @@ export interface ShopStatus {
   open: boolean;
   /** Shown to customers while closed, e.g. "Back tomorrow at 6:30 AM". */
   message: string;
+  /** Indian date ("YYYY-MM-DD") the shop was opened outside its hours for. Counts for that day only. */
+  forceOpenOn: string;
 }
 
-const DEFAULT_STATUS: ShopStatus = { open: true, message: "" };
+const DEFAULT_STATUS: ShopStatus = { open: true, message: "", forceOpenOn: "" };
 
 async function readShopStatus(): Promise<ShopStatus> {
   const supabase = getSupabase();
@@ -25,6 +27,7 @@ async function readShopStatus(): Promise<ShopStatus> {
   return {
     open: v.open !== false,
     message: typeof v.message === "string" ? v.message.slice(0, 200) : "",
+    forceOpenOn: typeof v.forceOpenOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.forceOpenOn) ? v.forceOpenOn : "",
   };
 }
 

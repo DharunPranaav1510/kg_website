@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Moon, Phone } from "lucide-react";
 import { useShopStatus } from "@/context/ShopStatusContext";
 import ShopChip from "./ShopChip";
+import NightSky from "@/components/NightSky";
+import OpensIn from "@/components/OpensIn";
 
 /** The phone home banner. Open: the usual pitch. Closed: a calmer night view with when we are back. */
 export default function HomeHero({
@@ -26,10 +28,17 @@ export default function HomeHero({
   const closed = !shop.open;
   return (
     <section className={`relative overflow-hidden rounded-3xl text-white shadow-card ${closed ? "bg-[#14161c]" : "bg-primary-text"}`}>
-      <Image src="/images/hero/hero-chicken.jpg" alt="" fill priority sizes="(max-width: 480px) 100vw, 480px" className={`object-cover ${closed ? "opacity-25 saturate-50" : "opacity-55"}`} />
-      <div aria-hidden className={`absolute inset-0 ${closed ? "bg-gradient-to-t from-[#14161c] via-[#14161c]/80 to-[#1d2433]/40" : "bg-gradient-to-t from-black/85 via-black/45 to-black/10"}`} />
+      {closed ? (
+        <NightSky compact />
+      ) : (
+        <>
+          <Image src="/images/hero/hero-chicken.jpg" alt="" fill priority sizes="(max-width: 480px) 100vw, 480px" className="kg-kenburns object-cover opacity-60" />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/5" />
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_0%,rgba(255,170,90,0.28),transparent)]" />
+        </>
+      )}
       <div className="relative flex min-h-[19rem] flex-col justify-end p-5">
-        {closed && <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-amber-200"><Moon size={24} /></span>}
+        {closed && <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/10 text-amber-200 backdrop-blur"><Moon size={24} /></span>}
         <ShopChip />
         {!closed && highlights.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5">
@@ -45,6 +54,7 @@ export default function HomeHero({
               {shop.reason === "paused" ? "Orders are paused for now" : "We're closed right now"}
             </h1>
             <p className="mt-2 text-sm text-white/80">{shop.message}</p>
+            {shop.reason !== "paused" && <div className="mt-3"><OpensIn /></div>}
             {hoursLines.length > 0 && (
               <ul className="mt-3 space-y-0.5 text-xs text-white/70">
                 {hoursLines.map((l) => <li key={l}>{l}</li>)}
@@ -58,9 +68,9 @@ export default function HomeHero({
           </>
         ) : (
           <>
-            <h1 className="mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh chicken, mutton and eggs, delivered in {city}.</h1>
+            <h1 className="kg-rise mt-3 text-balance font-display text-[2rem] leading-[1.08]">Fresh chicken, mutton and eggs, delivered in {city}.</h1>
             <p className="mt-2 text-sm text-white/80">Pay on delivery · {slotCount} delivery slots a day</p>
-            <Link href="/shop" className="mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white active:scale-[0.98] active:bg-accent-light">
+            <Link href="/shop" className="kg-shine mt-4 flex h-12 items-center justify-center gap-2 rounded-full bg-accent text-[15px] font-semibold text-white shadow-[0_10px_30px_-8px_rgba(214,62,10,0.7)] active:scale-[0.98] active:bg-accent-light">
               Start ordering <ArrowRight size={17} />
             </Link>
           </>
