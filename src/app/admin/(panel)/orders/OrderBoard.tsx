@@ -437,7 +437,7 @@ export default function OrderBoard() {
                       <div role="button" tabIndex={0} onClick={() => setOpenId(o.id)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setOpenId(o.id)} className="cursor-pointer space-y-1.5" aria-label={`Open order ${o.order_number}`}>
                         <div className="flex items-center gap-2">
                           <span className="font-display text-xl font-bold">#{o.order_number}</span>
-                          <span className={`ml-auto rounded-full px-2.5 py-0.5 text-sm font-semibold tabular-nums ${AGE_PILL[urgency]}`}>{formatAge(age)}{AGE_WORD[urgency]}</span>
+                          <span className={`ml-auto whitespace-nowrap rounded-full px-2 py-0.5 text-sm font-semibold tabular-nums ${AGE_PILL[urgency]}`}>{formatAge(age)}{AGE_WORD[urgency]}</span>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-base font-semibold">{o.customer_name}</span>
@@ -459,14 +459,14 @@ export default function OrderBoard() {
                         {o.note && <p className="rounded-lg bg-yellow-50 px-2.5 py-1.5 text-sm text-yellow-900">“{o.note}”</p>}
                       </div>
 
-                      <div className="mt-3 flex items-center gap-2">
-                        <a href={`tel:${o.phone}`} className="flex min-h-12 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream"><Phone size={16} /> Call</a>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <a href={`tel:${o.phone}`} className="order-1 flex min-h-12 flex-shrink-0 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream"><Phone size={16} /> Call</a>
                         {next && (
-                          <button onClick={() => changeStatus(o, next)} className="btn-primary min-h-12 flex-1 !px-3 !text-base">
+                          <button onClick={() => changeStatus(o, next)} className="btn-primary order-3 min-h-12 basis-full whitespace-nowrap !px-3 !text-base">
                             {NEXT_LABEL[o.status]}
                           </button>
                         )}
-                        <MoreMenu
+                        <span className="order-2 ml-auto"><MoreMenu
                           items={[
                             { label: "WhatsApp message", href: whatsappLink(o) },
                             { label: "Print slip", onSelect: () => printSlip(o) },
@@ -475,7 +475,7 @@ export default function OrderBoard() {
                             { label: "Cancel order", onSelect: () => changeStatus(o, "cancelled"), danger: true },
                             { label: isBlocked ? "Unblock this phone number" : "Block this phone number", onSelect: () => (isBlocked ? unblock(o.phone) : block(o.phone)), danger: true },
                           ]}
-                        />
+                        /></span>
                       </div>
                     </article>
                   );

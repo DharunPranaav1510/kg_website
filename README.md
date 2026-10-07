@@ -172,14 +172,16 @@ Only emails in the `admins` table can sign in; everyone else is rejected even if
 
 `/admin/orders` (linked from the admin page) is a kanban board for running the shop day: New / Confirmed / Out for delivery / Delivered today. It shows time since the last order, the oldest order still waiting, today's sales and orders per hour, and top sellers. Cards turn amber/red when an order has waited too long (thresholds in `WAIT_LIMITS`, `src/app/admin/orderUtils.ts`). Move orders forward with one tap (7-second undo), search by name/phone/#, and optionally enable sound, desktop alerts, keep-screen-on and fullscreen for a counter display. It refreshes every 10 seconds.
 
-## Admin panel (sidebar)
+## Admin panel layout
 
-Everything in `/admin` is reached from the **left-hand sidebar**: Overview, Live orders, Order history, Products, Update prices, Sales and Shop settings. The open/closed switch is always at the top of the sidebar.
+The admin follows `docs/ADMIN_REDESIGN.md` (interface only, no server changes):
 
-- **Open / close the shop:** sidebar switch or *Shop settings* (with a message customers see). Closing pauses new orders on the site and is enforced by the server.
-- **Update prices:** `/admin/prices`. Edit many prices, use -/+ buttons, or the *% Adjust many at once* tool (with rounding), then press **Save changes** once.
-- **Sales:** `/admin/sales`. Today / 7 / 30 / 90 days / this month, each compared with the previous period; trend, best sellers, categories, busiest hours and weekdays, new vs returning customers.
-- **Order history:** search, filter by date/status, download CSV.
+- **Five groups:** Orders (Today, Live orders, Order history), Catalogue (Products, Update prices, Offers), Insights (Sales, Feedback), Shop (Shop settings, Website content), Account (Security, Activity log, Admins for the owner).
+- **Phones:** a bottom bar with Today, Orders, Products, Prices and More. **Desktop:** a left sidebar that can shrink to icons (remembered on that device).
+- **Status pill** on every screen says the real status in words (open until, closed until, paused). Tap it to pause with a customer message, or resume. A toast offers Undo for 7 seconds.
+- **Live orders:** short cards with one main action, full order in a side panel (also used by Today, Order history and Feedback), alerts panel with a test sound, "Updated n s ago" and a warning when the connection drops.
+- **Saving:** switches in lists act at once with Undo; forms use a bottom bar that says what changed and "Save and publish". Drafts of the product form, opening hours and business details are kept on the device.
+- Still to do on the server side (not built): backup codes, remembered devices, silent session renewal, first sign-in steps, lock countdown and owner resets. See the redesign document.
 
 ## Checkout rules
 

@@ -358,7 +358,9 @@ function StatusPill({
       : paused
         ? "Orders paused"
         : live.opensLabel
-          ? `Closed · opens ${live.opensLabel.replace("tomorrow at", "tomorrow")}`
+          ? small
+            ? `Closed · opens ${live.opensLabel.replace(/^today at /, "").replace(/^tomorrow at /, "")}`
+            : `Closed · opens ${live.opensLabel.replace("tomorrow at", "tomorrow")}`
           : "Closed";
   const dot = !live ? "bg-warm-gray" : live.open ? "bg-success" : paused ? "bg-amber-500" : "bg-gray-400";
 
@@ -404,11 +406,11 @@ function StatusPill({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`flex min-h-12 w-full items-center gap-2 rounded-full border border-warm-gray bg-white px-4 text-left font-medium hover:bg-cream ${small ? "text-sm" : "text-base"}`}
+        className={`flex min-h-12 items-center gap-2 rounded-full border border-warm-gray bg-white px-4 text-left font-medium hover:bg-cream ${small ? "text-sm" : "w-full text-base"}`}
       >
         <span className={`h-3 w-3 flex-shrink-0 rounded-full ${dot}`} aria-hidden="true" />
         {paused && <PauseCircle size={16} className="flex-shrink-0 text-amber-600" aria-hidden="true" />}
-        <span className="truncate">{label}</span>
+        <span className={small ? "truncate" : "leading-tight"}>{label}</span>
       </button>
 
       {open && summary && live && (
