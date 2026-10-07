@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import HoursEditor from "./HoursEditor";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { shopNow, type OpeningHours } from "@/lib/hours";
 import { formatPhone } from "@/lib/phone";
 import { adminApi } from "../../api";
-import { SHOP_CHANGED_EVENT } from "../../AdminShell";
+import { SHOP_CHANGED_EVENT, dayDate, useUi } from "../../ui";
+import CustomerView from "./CustomerView";
+import HoursEditor from "./HoursEditor";
 
 const PRESETS = [
-  "We're closed for today. Back tomorrow at 6:30 AM.",
+  "Back in 30 minutes.",
   "Sold out for today. Fresh stock arrives tomorrow morning.",
   "Closed for the festival. We'll be back soon!",
   "Not taking new orders right now. Please call us.",
@@ -19,23 +21,34 @@ interface Blocked {
   created_at: string;
 }
 
+type Tab = "orders" | "hours" | "blocked";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "orders", label: "Orders on or off" },
+  { id: "hours", label: "Opening hours" },
+  { id: "blocked", label: "Blocked numbers" },
+];
+
 export default function SettingsPanel() {
-  const [open, setOpen] = useState<boolean | null>(null);
+  const { toast, confirm } = useUi();
+  const [tab, setTab] = useState<Tab>("orders");
+  const [follow, setFollow] = useState<boolean | null>(null); // true = follow opening hours
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState({ open: true, message: "" });
+  const [hours, setHours] = useState<OpeningHours | null>(null);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [blocked, setBlocked] = useState<Blocked[]>([]);
   const [newPhone, setNewPhone] = useState("");
+  const [reason, setReason] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const [{ shop }, { blocked }] = await Promise.all([adminApi("/api/admin/shop"), adminApi("/api/admin/blocked")]);
-      setOpen(shop.open);
-      setMessage(shop.message);
-      setSaved(shop);
-      setBlocked(blocked);
+      const [s, b] = await Promise.all([adminApi("/api/admin/summary"), adminApi("/api/admin/blocked")]);
+      setFollow(s.shop.open);
+      setMessage(s.shop.message);
+      setSaved(s.shop);
+      setHours(s.hours);
+      setBlocked(b.blocked);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -44,23 +57,38 @@ export default function SettingsPanel() {
     load();
   }, [load]);
 
+  const dirty = follow !== null && (follow !== saved.open || (!follow && message.trim() !== saved.message));
+  const savedStatus = useMemo(() => (hours ? shopNow(hours, saved) : null), [hours, saved]);
+  const draftStatus = useMemo(() => (hours && follow !== null ? shopNow(hours, { open: follow, message: message.trim() }) : null), [hours, follow, message]);
+
   async function save() {
-    if (open === null) return;
-    if (!open && saved.open && !window.confirm("Close the shop? Customers will not be able to place orders.")) return;
+    if (follow === null) return;
+    if (!follow && saved.open) {
+      const r = await confirm({ title: "Pause orders?", body: `Customers will see: “${message.trim() || "Orders are paused right now. Please check back soon."}” They cannot order until you switch back.`, confirmLabel: "Pause orders", cancelLabel: "Keep taking orders", danger: true });
+      if (r.choice !== "confirm") return;
+    }
     setBusy(true);
     setError("");
-    setNotice("");
+    const before = saved;
     try {
-      const { shop } = await adminApi("/api/admin/shop", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ open, message }),
-      });
+      const { shop } = await adminApi("/api/admin/shop", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ open: follow, message: message.trim() }) });
       setSaved(shop);
-      setNotice(shop.open ? "Shop is open. Customers can order." : "Shop is closed. Customers see your message.");
       window.dispatchEvent(new Event(SHOP_CHANGED_EVENT));
+      toast({
+        text: shop.open ? "Orders follow the opening hours." : "Orders are paused.",
+        undo: async () => {
+          try {
+            await adminApi("/api/admin/shop", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(before) });
+            window.dispatchEvent(new Event(SHOP_CHANGED_EVENT));
+            await load();
+          } catch (e) {
+            toast({ text: (e as Error).message, tone: "error" });
+          }
+        },
+      });
     } catch (e) {
       setError((e as Error).message);
+      toast({ text: `Could not save. ${(e as Error).message}`, tone: "error", retry: save });
     }
     setBusy(false);
   }
@@ -68,126 +96,117 @@ export default function SettingsPanel() {
   async function block() {
     setError("");
     try {
-      await adminApi("/api/admin/blocked", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: newPhone, reason: "Added manually" }),
-      });
+      await adminApi("/api/admin/blocked", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: newPhone, reason: reason.trim() || "Added manually" }) });
       setNewPhone("");
+      setReason("");
+      toast({ text: "This number can no longer place orders." });
       await load();
     } catch (e) {
       setError((e as Error).message);
     }
   }
 
-  async function unblock(phone: string) {
+  async function unblock(b: Blocked) {
     try {
-      await adminApi(`/api/admin/blocked?phone=${encodeURIComponent(phone)}`, { method: "DELETE" });
+      await adminApi(`/api/admin/blocked?phone=${encodeURIComponent(b.phone)}`, { method: "DELETE" });
+      toast({
+        text: `${formatPhone(b.phone)} unblocked.`,
+        undo: async () => {
+          await adminApi("/api/admin/blocked", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: b.phone, reason: b.reason ?? "" }) });
+          await load();
+        },
+      });
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      toast({ text: (e as Error).message, tone: "error" });
     }
   }
 
-  const dirty = open !== null && (open !== saved.open || message.trim() !== saved.message);
+  const choice = (on: boolean, color: string) => `min-h-[5.5rem] rounded-2xl border-2 p-4 text-left transition-colors ${on ? color : "border-warm-gray bg-white hover:bg-cream"}`;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="font-display text-2xl sm:text-3xl">Shop settings</h1>
-        <p className="text-sm text-secondary-text">Control whether customers can place orders.</p>
+    <div className="mx-auto max-w-5xl space-y-5">
+      <h1 className="font-display text-2xl sm:text-3xl">Shop settings</h1>
+
+      <div className="flex gap-2 overflow-x-auto border-b border-warm-gray" role="tablist">
+        {TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} className={`-mb-px min-h-12 whitespace-nowrap border-b-2 px-4 text-base font-medium ${tab === t.id ? "border-accent text-accent" : "border-transparent text-secondary-text hover:text-primary-text"}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-      {notice && <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{notice}</p>}
+      {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-base text-red-700">{error}</p>}
 
-      <HoursEditor />
+      {tab === "orders" && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="space-y-4">
+            <p className="text-xl font-semibold" aria-live="polite">
+              {savedStatus ? (savedStatus.open ? `Shop is open, closes ${savedStatus.closesAt}.` : savedStatus.reason === "paused" ? "Orders are paused." : `Shop is closed${savedStatus.opensLabel ? `, opens ${savedStatus.opensLabel}` : ""}.`) : "Checking…"}
+            </p>
+            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Orders on or off">
+              <button role="radio" aria-checked={follow === true} onClick={() => setFollow(true)} className={choice(follow === true, "border-success bg-success/10")}>
+                <span className="block text-lg font-semibold">Follow opening hours</span>
+                <span className="block text-sm text-secondary-text">Orders open and close by themselves.</span>
+              </button>
+              <button role="radio" aria-checked={follow === false} onClick={() => setFollow(false)} className={choice(follow === false, "border-amber-500 bg-amber-50")}>
+                <span className="block text-lg font-semibold">Pause orders now</span>
+                <span className="block text-sm text-secondary-text">No orders until you switch back.</span>
+              </button>
+            </div>
+            <p className="text-base text-secondary-text">Pause overrides the timetable until you switch back.</p>
 
-      <section className="rounded-2xl border border-warm-gray bg-white p-5">
-        <h2 className="mb-1 font-medium">Pause orders</h2>
-        <p className="mb-3 text-xs text-secondary-text">Orders follow the opening hours above. Use this to stop taking orders earlier than that, for example when you are sold out.</p>
-        <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Shop status">
-          {[
-            { value: true, label: "Follow opening hours", sub: "Orders open and close by themselves", on: "border-success bg-success/10" },
-            { value: false, label: "Pause orders now", sub: "No orders until you switch back", on: "border-red-400 bg-red-50" },
-          ].map((opt) => (
-            <button
-              key={String(opt.value)}
-              role="radio"
-              aria-checked={open === opt.value}
-              onClick={() => setOpen(opt.value)}
-              className={`rounded-2xl border-2 p-4 text-left transition-colors ${open === opt.value ? opt.on : "border-warm-gray"}`}
-            >
-              <span className="block text-lg font-semibold">{opt.label}</span>
-              <span className="block text-xs text-secondary-text">{opt.sub}</span>
-            </button>
-          ))}
-        </div>
+            {follow === false && (
+              <div className="rounded-2xl border border-warm-gray bg-white p-4">
+                <p className="mb-2 text-base font-semibold">Message customers will see</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRESETS.map((p) => (
+                    <button key={p} onClick={() => setMessage(p)} aria-pressed={message === p} className={`min-h-12 rounded-full border px-4 text-left text-base ${message === p ? "border-accent bg-accent/10" : "border-warm-gray"}`}>{p}</button>
+                  ))}
+                </div>
+                <textarea rows={2} maxLength={200} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Or write your own message" aria-label="Message for customers" className="mt-3 w-full rounded-xl border border-warm-gray px-3 py-2 text-base outline-none focus:border-accent" />
+              </div>
+            )}
 
-        <label className="mt-5 block text-sm font-medium">
-          Message for customers {open ? "(only shown while paused)" : ""}
-          <textarea
-            rows={2}
-            maxLength={200}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="e.g. We're closed for today. Back tomorrow at 6:30 AM."
-            className="mt-1 w-full rounded-xl border border-warm-gray px-3 py-2.5 text-sm outline-none focus:border-accent"
-          />
-        </label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {PRESETS.map((p) => (
-            <button key={p} onClick={() => setMessage(p)} className="rounded-full border border-warm-gray px-3 py-1 text-xs text-secondary-text hover:border-accent/40">
-              {p.length > 34 ? p.slice(0, 34) + "…" : p}
-            </button>
-          ))}
-        </div>
-
-        {open === false && (
-          <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            <p className="text-xs font-semibold uppercase tracking-wide">What customers will see</p>
-            <p className="mt-1">🔒 Orders are paused. {message.trim() || "Please check back soon."}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={save} disabled={busy || !dirty} className="btn-primary min-h-12 !px-8 !text-base disabled:opacity-50">{busy ? "Saving…" : "Save"}</button>
+              {dirty && <button onClick={() => { setFollow(saved.open); setMessage(saved.message); }} className="min-h-12 px-3 text-base text-secondary-text underline">Discard</button>}
+            </div>
+            <p className="text-base text-secondary-text">Orders already received keep going. Customers can still browse while orders are paused or the shop is closed.</p>
           </div>
-        )}
-
-        <button onClick={save} disabled={busy || !dirty} className="btn-primary mt-5 disabled:opacity-50">
-          {busy ? "Saving…" : "Save"}
-        </button>
-        <p className="mt-2 text-xs text-secondary-text">
-          Orders already received keep going. Customers can still browse the shop while orders are paused or the shop is closed.
-        </p>
-      </section>
-
-      <section className="rounded-2xl border border-warm-gray bg-white p-5">
-        <h2 className="font-medium">Blocked phone numbers</h2>
-        <p className="mb-3 text-xs text-secondary-text">
-          Blocked numbers cannot place online orders (use this for dummy or abusive orders). You can also block a number from any order.
-        </p>
-        <div className="mb-4 flex gap-2">
-          <input
-            type="tel"
-            inputMode="tel"
-            value={newPhone}
-            onChange={(e) => setNewPhone(e.target.value)}
-            placeholder="10-digit mobile number"
-            className="flex-1 rounded-full border border-warm-gray px-4 py-2 text-sm outline-none focus:border-accent"
-          />
-          <button onClick={block} disabled={!newPhone.trim()} className="btn-secondary !py-2 !px-4 !text-xs disabled:opacity-50">Block</button>
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            {savedStatus && <CustomerView status={dirty && draftStatus ? draftStatus : savedStatus} title={dirty ? "What customers will see after you save" : "What customers see right now"} />}
+          </aside>
         </div>
-        {blocked.length === 0 ? (
-          <p className="text-sm text-secondary-text">No blocked numbers.</p>
-        ) : (
-          <ul className="divide-y divide-warm-gray/70">
-            {blocked.map((b) => (
-              <li key={b.phone} className="flex items-center gap-3 py-2 text-sm">
-                <span className="font-medium">{formatPhone(b.phone)}</span>
-                <span className="flex-1 truncate text-xs text-secondary-text">{b.reason}</span>
-                <button onClick={() => unblock(b.phone)} className="text-xs text-accent hover:underline">Unblock</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      )}
+
+      {tab === "hours" && <HoursEditor manual={saved} />}
+
+      {tab === "blocked" && (
+        <section className="rounded-2xl border border-warm-gray bg-white p-4">
+          <p className="mb-3 text-base font-medium">Blocked numbers cannot place orders.</p>
+          <p className="mb-4 text-base text-secondary-text">Use this for fake or abusive orders. You can also block a number from any order.</p>
+          <div className="mb-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <input type="tel" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="10-digit mobile number" aria-label="Phone number" className="min-h-12 rounded-xl border border-warm-gray px-4 text-base outline-none focus:border-accent" />
+            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} placeholder="Reason (optional)" aria-label="Reason" className="min-h-12 rounded-xl border border-warm-gray px-4 text-base outline-none focus:border-accent" />
+            <button onClick={block} disabled={!newPhone.trim()} className="btn-primary min-h-12 !text-base disabled:opacity-50">Block number</button>
+          </div>
+          {blocked.length === 0 ? (
+            <p className="text-base text-secondary-text">No blocked numbers.</p>
+          ) : (
+            <ul className="divide-y divide-warm-gray/70">
+              {blocked.map((b) => (
+                <li key={b.phone} className="flex flex-wrap items-center gap-3 py-2 text-base">
+                  <span className="font-semibold tabular-nums">{formatPhone(b.phone)}</span>
+                  <span className="min-w-0 flex-1 truncate text-secondary-text">{b.reason}</span>
+                  <span className="text-sm text-secondary-text">{dayDate(b.created_at)}</span>
+                  <button onClick={() => unblock(b)} className="min-h-12 rounded-full border border-warm-gray px-5 text-base font-medium hover:bg-cream">Unblock</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }
