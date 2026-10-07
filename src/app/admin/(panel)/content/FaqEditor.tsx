@@ -6,6 +6,7 @@ export default function FaqEditor() {
   return (
     <ItemsEditor
       kind="faqs"
+      plural="questions"
       noun="question"
       empty={{ question: "", answer: "", active: true }}
       fields={[

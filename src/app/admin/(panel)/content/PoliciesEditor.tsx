@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bold, ExternalLink, Heading2, History, Link2, List, RotateCcw } from "lucide-react";
+import { Bold, ExternalLink, Heading2, History, Link2, List } from "lucide-react";
 import Markdown from "@/components/Markdown";
 import { POLICY_SLUGS, POLICY_VARIABLES, type PolicySlug } from "@/data/policy-defaults";
 import { fillVars, policyVariables, type Business } from "@/lib/content-schema";
 import { adminApi } from "../../api";
+import { MoreMenu, SidePanel, useUi } from "../../ui";
 import { Field, Notice, fieldCls, useFlash } from "./ui";
 
 interface ListRow { slug: PolicySlug; title: string; updatedAt: string | null }
@@ -16,6 +17,8 @@ const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "Built-in text, not edited yet";
 
 export default function PoliciesEditor() {
+  const { toast, confirm } = useUi();
+  const [previewRev, setPreviewRev] = useState<Revision | null>(null);
   const [list, setList] = useState<ListRow[]>([]);
   const [slug, setSlug] = useState<PolicySlug>(POLICY_SLUGS[0]);
   const [doc, setDoc] = useState<Doc | null>(null);
@@ -63,9 +66,12 @@ export default function PoliciesEditor() {
 
   const dirty = !!doc && !!saved && (doc.title !== saved.title || doc.subtitle !== saved.subtitle || doc.body !== saved.body);
 
-  function pick(s: PolicySlug) {
+  async function pick(s: PolicySlug) {
     if (s === slug) return;
-    if (dirty && !window.confirm("You have unsaved changes. Leave without saving?")) return;
+    if (dirty) {
+      const r = await confirm({ title: "Leave without saving?", body: "Your changes to this policy will be lost.", confirmLabel: "Leave", cancelLabel: "Keep editing" });
+      if (r.choice !== "confirm") return;
+    }
     clear();
     setSlug(s);
   }
@@ -86,12 +92,11 @@ export default function PoliciesEditor() {
 
   async function save() {
     if (!doc) return;
-    if (!window.confirm("Publish this? Customers will see the new text straight away and the 'last updated' date changes.")) return;
     setSaving(true);
     clear();
     try {
       await adminApi(`/api/admin/policies/${slug}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(doc) });
-      flash("ok", "Published. The policy page now shows this text.");
+      toast({ text: "Saved and published. The policy page now shows this text." });
       await Promise.all([loadList(), loadOne(slug)]);
     } catch (e) {
       flash("error", (e as Error).message);
@@ -100,10 +105,11 @@ export default function PoliciesEditor() {
   }
 
   async function reset() {
-    if (!window.confirm("Go back to the built-in text? Your edited text stays in the history so you can load it again.")) return;
+    const r = await confirm({ title: "Reset to the built-in text?", body: "Your edited text stays in the versions list, so you can restore it later.", confirmLabel: "Reset to built-in text", cancelLabel: "Keep my text", danger: true });
+    if (r.choice !== "confirm") return;
     try {
       await adminApi(`/api/admin/policies/${slug}`, { method: "DELETE" });
-      flash("ok", "Back to the built-in text.");
+      toast({ text: "Back to the built-in text." });
       await Promise.all([loadList(), loadOne(slug)]);
     } catch (e) {
       flash("error", (e as Error).message);
@@ -124,17 +130,26 @@ export default function PoliciesEditor() {
       </Notice>
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
 
-      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Policy pages">
-        {POLICY_SLUGS.map((s) => {
-          const row = list.find((r) => r.slug === s);
-          return (
-            <button key={s} role="tab" aria-selected={s === slug} onClick={() => pick(s)} className={`flex-shrink-0 rounded-full border px-4 py-2 text-sm font-medium ${s === slug ? "border-primary-text bg-primary-text text-white" : "border-warm-gray bg-white"}`}>
-              {row?.title ?? s}
-            </button>
-          );
-        })}
-      </div>
-
+      <div className="grid gap-5 lg:grid-cols-[14rem_minmax(0,1fr)]">
+      <nav aria-label="Policy pages">
+        <select value={slug} onChange={(e) => pick(e.target.value as PolicySlug)} aria-label="Policy" className={`${fieldCls} lg:hidden`}>
+          {POLICY_SLUGS.map((s) => <option key={s} value={s}>{list.find((r) => r.slug === s)?.title ?? s}</option>)}
+        </select>
+        <ul className="hidden space-y-1 lg:block" role="tablist" aria-label="Policy pages">
+          {POLICY_SLUGS.map((s) => {
+            const row = list.find((r) => r.slug === s);
+            return (
+              <li key={s}>
+                <button role="tab" aria-selected={s === slug} onClick={() => pick(s)} className={`min-h-12 w-full rounded-xl border px-3 py-2 text-left ${s === slug ? "border-primary-text bg-primary-text text-white" : "border-warm-gray bg-white hover:bg-cream"}`}>
+                  <span className="block text-base font-medium">{row?.title ?? s}</span>
+                  <span className={`block text-sm ${s === slug ? "text-white/80" : "text-secondary-text"}`}>{row?.updatedAt ? `Saved ${when(row.updatedAt)}` : "Built-in text"}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      <div className="min-w-0">
       {!doc ? (
         <p className="py-10 text-center text-sm text-secondary-text">Loading…</p>
       ) : (
@@ -152,13 +167,13 @@ export default function PoliciesEditor() {
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
               <span className="mr-1 text-sm font-medium">Text</span>
-              <button type="button" onClick={() => insert("\n## ", "\n", "Heading")} className="flex h-10 items-center gap-1.5 rounded-full border border-warm-gray px-3 text-xs" title="Heading"><Heading2 size={14} /> Heading</button>
-              <button type="button" onClick={() => insert("**", "**", "bold text")} className="flex h-10 items-center gap-1.5 rounded-full border border-warm-gray px-3 text-xs" title="Bold"><Bold size={14} /> Bold</button>
-              <button type="button" onClick={() => insert("\n- ", "", "item")} className="flex h-10 items-center gap-1.5 rounded-full border border-warm-gray px-3 text-xs" title="Bullet"><List size={14} /> List</button>
-              <button type="button" onClick={() => insert("[", "](/delivery)", "link text")} className="flex h-10 items-center gap-1.5 rounded-full border border-warm-gray px-3 text-xs" title="Link"><Link2 size={14} /> Link</button>
+              <button type="button" onClick={() => insert("\n## ", "\n", "Heading")} className="flex min-h-12 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base" title="Heading"><Heading2 size={14} /> Heading</button>
+              <button type="button" onClick={() => insert("**", "**", "bold text")} className="flex min-h-12 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base" title="Bold"><Bold size={14} /> Bold</button>
+              <button type="button" onClick={() => insert("\n- ", "", "item")} className="flex min-h-12 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base" title="Bullet"><List size={14} /> List</button>
+              <button type="button" onClick={() => insert("[", "](/delivery)", "link text")} className="flex min-h-12 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base" title="Link"><Link2 size={14} /> Link</button>
               <span className="ml-auto flex rounded-full border border-warm-gray p-0.5 text-xs lg:hidden">
                 {(["edit", "preview"] as const).map((v) => (
-                  <button key={v} type="button" onClick={() => setView(v)} className={`rounded-full px-3 py-1.5 ${view === v ? "bg-primary-text text-white" : ""}`}>{v === "edit" ? "Edit" : "Preview"}</button>
+                  <button key={v} type="button" onClick={() => setView(v)} className={`min-h-12 rounded-full px-4 ${view === v ? "bg-primary-text text-white" : ""}`}>{v === "edit" ? "Edit" : "Preview"}</button>
                 ))}
               </span>
             </div>
@@ -191,26 +206,42 @@ export default function PoliciesEditor() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-warm-gray pt-4">
-            <button type="button" onClick={save} disabled={!dirty || saving} className="btn-primary !px-8 !py-3 disabled:opacity-50">{saving ? "Publishing…" : "Publish changes"}</button>
-            {dirty && <span className="text-sm font-medium text-amber-700">Unsaved changes</span>}
-            <button type="button" onClick={() => setShowHistory((v) => !v)} className="ml-auto inline-flex items-center gap-1.5 text-sm text-secondary-text hover:text-accent"><History size={15} /> History ({revisions.length})</button>
-            {updatedAt && <button type="button" onClick={reset} className="inline-flex items-center gap-1.5 text-sm text-secondary-text hover:text-accent"><RotateCcw size={15} /> Use built-in text</button>}
+          <div className="sticky bottom-[4.75rem] z-30 flex flex-wrap items-center gap-3 rounded-2xl border border-warm-gray bg-white/95 px-4 py-3 shadow-hover backdrop-blur lg:bottom-4">
+            <p className="min-w-[8rem] flex-1 text-base">{dirty ? <b className="text-amber-800">Unsaved changes</b> : "All changes are saved."}</p>
+            <button type="button" onClick={() => setShowHistory(true)} className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream"><History size={16} /> Versions ({revisions.length})</button>
+            <MoreMenu label="More" items={[{ label: "Reset to built-in text", onSelect: reset, danger: true, hidden: !updatedAt }, { label: "View live page", href: `/${slug}` }]} />
+            <button type="button" onClick={() => saved && setDoc(saved)} disabled={!dirty} className="min-h-12 rounded-full border border-warm-gray px-5 text-base font-medium hover:bg-cream disabled:opacity-50">Discard</button>
+            <button type="button" onClick={save} disabled={!dirty || saving} className="btn-primary min-h-12 !px-8 !text-base disabled:opacity-50">{saving ? "Publishing…" : "Save and publish"}</button>
           </div>
 
-          {showHistory && (
-            <ul className="divide-y divide-warm-gray overflow-hidden rounded-xl border border-warm-gray text-sm">
-              {revisions.length === 0 && <li className="p-4 text-secondary-text">No earlier versions yet.</li>}
-              {revisions.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-3 p-3.5">
-                  <span>{when(r.saved_at)} <span className="text-secondary-text">· {r.saved_by}</span></span>
-                  <button type="button" onClick={() => { setDoc({ title: r.title, subtitle: r.subtitle ?? "", body: r.body }); setShowHistory(false); flash("ok", "Loaded into the editor. Publish to use it."); }} className="rounded-full border border-warm-gray px-3.5 py-1.5 text-xs font-medium">Load</button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <SidePanel open={showHistory} onClose={() => { setShowHistory(false); setPreviewRev(null); }} title="Versions" subtitle="The 20 most recent saved versions." width="560px">
+            {previewRev ? (
+              <div>
+                <button type="button" onClick={() => setPreviewRev(null)} className="mb-3 min-h-12 text-base font-medium text-accent">← All versions</button>
+                <p className="mb-2 text-sm text-secondary-text">{when(previewRev.saved_at)} · {previewRev.saved_by}</p>
+                <h3 className="mb-1 font-display text-2xl">{previewRev.title}</h3>
+                {previewRev.subtitle && <p className="mb-3 text-secondary-text">{previewRev.subtitle}</p>}
+                <div className="rounded-xl border border-warm-gray bg-background p-4 text-base leading-relaxed text-secondary-text"><Markdown text={business ? fillVars(previewRev.body, policyVariables(business)) : previewRev.body} /></div>
+                <button type="button" onClick={() => { setDoc({ title: previewRev.title, subtitle: previewRev.subtitle ?? "", body: previewRev.body }); setShowHistory(false); setPreviewRev(null); toast({ text: "Restored into the editor. Save and publish to use it." }); }} className="btn-primary mt-4 min-h-12 w-full !text-base">Restore this version</button>
+              </div>
+            ) : revisions.length === 0 ? (
+              <p className="text-base text-secondary-text">No earlier versions yet.</p>
+            ) : (
+              <ul className="divide-y divide-warm-gray">
+                {revisions.map((r) => (
+                  <li key={r.id} className="flex flex-wrap items-center gap-3 py-2 text-base">
+                    <span className="flex-1">{when(r.saved_at)}<span className="block text-sm text-secondary-text">{r.saved_by}</span></span>
+                    <button type="button" onClick={() => setPreviewRev(r)} className="min-h-12 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream">Preview</button>
+                    <button type="button" onClick={() => { setDoc({ title: r.title, subtitle: r.subtitle ?? "", body: r.body }); setShowHistory(false); toast({ text: "Restored into the editor. Save and publish to use it." }); }} className="min-h-12 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream">Restore</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SidePanel>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 }

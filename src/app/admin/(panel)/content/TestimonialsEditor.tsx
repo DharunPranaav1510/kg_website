@@ -6,6 +6,7 @@ export default function TestimonialsEditor() {
   return (
     <ItemsEditor
       kind="testimonials"
+      plural="reviews"
       noun="review"
       empty={{ name: "", role: "", location: "", product: "", rating: 5, quote: "", image: "", active: true }}
       fields={[

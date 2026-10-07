@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Camera, Eye, EyeOff, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Camera, Loader2, Plus, Star } from "lucide-react";
 import { adminApi } from "../../api";
+import { SidePanel, useUi } from "../../ui";
 import { Field, Notice, Switch, fieldCls, useFlash } from "./ui";
 
 export interface FieldDef {
@@ -26,9 +27,12 @@ interface Props {
   sub: (i: Item) => string;
   defaultsNotice: React.ReactNode;
   intro?: React.ReactNode;
+  /** Words for the banner while the built-in list is shown: "reviews", "questions". */
+  plural?: string;
 }
 
-export default function ItemsEditor({ kind, noun, fields, empty, title, sub, defaultsNotice, intro }: Props) {
+export default function ItemsEditor({ kind, noun, fields, empty, title, sub, intro, plural = "items" }: Props) {
+  const { toast, confirm } = useUi();
   const [items, setItems] = useState<Item[] | null>(null);
   const [usingDefaults, setUsingDefaults] = useState(false);
   const [draft, setDraft] = useState<(Record<string, unknown> & { id?: string }) | null>(null);
@@ -58,7 +62,7 @@ export default function ItemsEditor({ kind, noun, fields, empty, title, sub, def
   async function seed() {
     try {
       await send(`/api/admin/content/${kind}`, "POST", { seed: true });
-      flash("ok", "Copied. You can now edit, hide, reorder or delete each one.");
+      toast({ text: "Copied. You can now edit, hide, reorder or delete each one." });
       await load();
     } catch (e) {
       flash("error", (e as Error).message);
@@ -72,7 +76,7 @@ export default function ItemsEditor({ kind, noun, fields, empty, title, sub, def
     try {
       await (draft.id ? send(`/api/admin/content/${kind}/${draft.id}`, "PUT", draft) : send(`/api/admin/content/${kind}`, "POST", draft));
       setDraft(null);
-      flash("ok", "Saved. It is live on the website now.");
+      toast({ text: "Saved and published. It is live on the website now." });
       await load();
     } catch (e) {
       flash("error", (e as Error).message);
@@ -80,20 +84,24 @@ export default function ItemsEditor({ kind, noun, fields, empty, title, sub, def
     setSaving(false);
   }
 
-  async function toggle(i: Item) {
+  async function toggle(i: Item, withUndo = true) {
+    setItems((all) => all && all.map((x) => (x.id === i.id ? { ...x, active: !i.active } : x)));
     try {
       await send(`/api/admin/content/${kind}/${i.id}`, "PUT", { ...i, active: !i.active });
-      await load();
+      if (withUndo) toast({ text: `The ${noun} is now ${i.active ? "hidden from" : "visible on"} the website.`, undo: () => toggle({ ...i, active: !i.active }, false) });
     } catch (e) {
-      flash("error", (e as Error).message);
+      setItems((all) => all && all.map((x) => (x.id === i.id ? { ...x, active: i.active } : x)));
+      toast({ text: (e as Error).message, tone: "error" });
     }
   }
 
   async function remove(i: Item) {
-    if (!window.confirm(`Delete this ${noun}? This cannot be undone.`)) return;
+    const r = await confirm({ title: `Delete this ${noun}?`, body: `“${title(i)}” will be removed from the website. This cannot be undone.`, confirmLabel: "Delete", cancelLabel: "Keep", danger: true, alternative: i.active ? { label: "Hide instead", value: "hide" } : undefined });
+    if (r.choice === "hide") return toggle(i);
+    if (r.choice !== "confirm") return;
     try {
       await send(`/api/admin/content/${kind}/${i.id}`, "DELETE");
-      flash("ok", "Deleted.");
+      toast({ text: "Deleted." });
       await load();
     } catch (e) {
       flash("error", (e as Error).message);
@@ -128,91 +136,93 @@ export default function ItemsEditor({ kind, noun, fields, empty, title, sub, def
     setUploading(false);
   }
 
+  const cls = "flex h-12 w-12 items-center justify-center rounded-full hover:bg-warm-gray disabled:opacity-30";
   return (
     <div className="space-y-4">
       {intro}
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
       {usingDefaults && items && (
         <Notice tone="warn">
-          {defaultsNotice}
-          <button type="button" onClick={seed} className="mt-3 block rounded-full bg-primary-text px-5 py-2.5 text-sm font-semibold text-white">
-            Copy these into the database so I can edit them
-          </button>
+          <p>The website is showing the built-in {plural}. Copy them here to start editing.</p>
+          <button type="button" onClick={seed} className="mt-3 block min-h-12 rounded-full bg-primary-text px-6 text-base font-semibold text-white">Copy defaults</button>
         </Notice>
       )}
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-secondary-text">{items ? `${items.length} ${items.length === 1 ? noun : noun + "s"}` : "Loading…"}</p>
-        <button type="button" onClick={() => setDraft({ ...empty })} disabled={usingDefaults} className="btn-primary !px-5 !py-2.5 disabled:opacity-50">
-          <Plus size={16} /> Add {noun}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-base text-secondary-text">{items ? `${items.length} ${items.length === 1 ? noun : noun + "s"}` : "Loading…"}</p>
+        <button type="button" onClick={() => setDraft({ ...empty })} disabled={usingDefaults} className="btn-primary min-h-12 !px-6 !text-base disabled:opacity-50">
+          <Plus size={18} /> Add {noun}
         </button>
       </div>
 
       <ul className="space-y-2.5">
         {(items ?? []).map((i, idx) => (
-          <li key={i.id} className={`flex gap-3 rounded-2xl border bg-white p-3.5 ${i.active ? "border-warm-gray" : "border-dashed border-warm-gray opacity-70"}`}>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{title(i)}</p>
-              <p className="mt-0.5 line-clamp-2 text-sm text-secondary-text">{sub(i)}</p>
-              {!i.active && <p className="mt-1 text-xs font-medium text-amber-700">Hidden from the website</p>}
+          <li key={i.id} className={`flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3.5 ${i.active ? "border-warm-gray" : "border-dashed border-warm-gray opacity-80"}`}>
+            <div className="min-w-0 flex-1 basis-48">
+              <p className="truncate text-base font-semibold">{title(i)}</p>
+              <p className="mt-0.5 line-clamp-2 text-base text-secondary-text">{sub(i)}</p>
+              {!i.active && <p className="mt-1 text-sm font-medium text-amber-700">Hidden from the website</p>}
             </div>
             {!usingDefaults && (
-              <div className="flex flex-shrink-0 flex-wrap items-start justify-end gap-1">
-                <button type="button" aria-label="Move up" disabled={idx === 0} onClick={() => move(idx, -1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray disabled:opacity-30"><ArrowUp size={16} /></button>
-                <button type="button" aria-label="Move down" disabled={idx === (items?.length ?? 0) - 1} onClick={() => move(idx, 1)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray disabled:opacity-30"><ArrowDown size={16} /></button>
-                <button type="button" aria-label={i.active ? "Hide" : "Show"} title={i.active ? "Hide from website" : "Show on website"} onClick={() => toggle(i)} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray">{i.active ? <Eye size={16} /> : <EyeOff size={16} />}</button>
-                <button type="button" aria-label="Edit" onClick={() => setDraft({ ...i })} className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray"><Pencil size={16} /></button>
-                <button type="button" aria-label="Delete" onClick={() => remove(i)} className="flex h-10 w-10 items-center justify-center rounded-full text-red-600 hover:bg-red-50"><Trash2 size={16} /></button>
+              <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1">
+                <button type="button" aria-label="Move up" disabled={idx === 0} onClick={() => move(idx, -1)} className={cls}><ArrowUp size={18} /></button>
+                <button type="button" aria-label="Move down" disabled={idx === (items?.length ?? 0) - 1} onClick={() => move(idx, 1)} className={cls}><ArrowDown size={18} /></button>
+                <button type="button" role="switch" aria-checked={i.active} onClick={() => toggle(i)} className="flex min-h-12 items-center gap-2 rounded-full px-2 text-base">
+                  <span className={`relative h-7 w-12 rounded-full transition-colors ${i.active ? "bg-success" : "bg-gray-300"}`} aria-hidden="true"><span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${i.active ? "left-[1.375rem]" : "left-0.5"}`} /></span>
+                  Visible
+                </button>
+                <button type="button" onClick={() => setDraft({ ...i })} className="min-h-12 rounded-full border border-warm-gray px-5 text-base font-medium hover:bg-cream">Edit</button>
+                <button type="button" onClick={() => remove(i)} className="min-h-12 rounded-full border border-red-200 px-5 text-base font-medium text-red-600 hover:bg-red-50">Delete</button>
               </div>
             )}
           </li>
         ))}
-        {items?.length === 0 && <li className="rounded-2xl border border-dashed border-warm-gray p-8 text-center text-sm text-secondary-text">Nothing here yet.</li>}
+        {items?.length === 0 && <li className="rounded-2xl border border-dashed border-warm-gray p-8 text-center text-base text-secondary-text">No {noun}s yet. Add the first one.</li>}
       </ul>
 
-      {draft && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={`${draft.id ? "Edit" : "Add"} ${noun}`}>
-          <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-hover sm:rounded-3xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-xl">{draft.id ? "Edit" : "Add"} {noun}</h2>
-              <button type="button" onClick={() => setDraft(null)} aria-label="Close" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray"><X size={20} /></button>
-            </div>
-            <div className="space-y-4">
-              {fields.map((f) => (
-                <Field key={f.key} label={f.label} optional={f.optional} hint={f.type === "textarea" && f.max ? `${String(draft[f.key] ?? "").length} / ${f.max}` : f.hint}>
-                  {f.type === "textarea" ? (
-                    <textarea rows={5} maxLength={f.max} value={String(draft[f.key] ?? "")} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} placeholder={f.placeholder} className={fieldCls} />
-                  ) : f.type === "rating" ? (
-                    <span className="flex gap-1" role="radiogroup" aria-label="Rating">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <button key={n} type="button" role="radio" aria-checked={Number(draft[f.key]) === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => setDraft({ ...draft, [f.key]: n })} className="flex h-11 w-11 items-center justify-center">
-                          <Star size={26} className={n <= Number(draft[f.key]) ? "fill-amber-400 text-amber-400" : "text-warm-gray"} />
-                        </button>
-                      ))}
-                    </span>
-                  ) : f.type === "image" ? (
-                    <span className="flex items-center gap-3">
-                      <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-warm-gray text-secondary-text">
-                        {draft[f.key] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={String(draft[f.key])} alt="" className="h-full w-full object-cover" /> : uploading ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
-                      </span>
-                      <input ref={file} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const x = e.target.files?.[0]; if (x) upload(x, f.key); e.target.value = ""; }} />
-                      <button type="button" onClick={() => file.current?.click()} disabled={uploading} className="rounded-full border border-warm-gray px-4 py-2.5 text-sm font-medium">{draft[f.key] ? "Change photo" : "Upload photo"}</button>
-                      {Boolean(draft[f.key]) && <button type="button" onClick={() => setDraft({ ...draft, [f.key]: "" })} className="text-sm text-secondary-text underline">Remove</button>}
-                    </span>
-                  ) : (
-                    <input value={String(draft[f.key] ?? "")} maxLength={f.max} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} placeholder={f.placeholder} className={fieldCls} />
-                  )}
-                </Field>
-              ))}
-              <Switch checked={draft.active !== false} onChange={(v) => setDraft({ ...draft, active: v })} title="Show on the website" hint="Turn off to hide it without deleting." />
-            </div>
-            <div className="mt-6 flex gap-3">
-              <button type="button" onClick={save} disabled={saving || uploading} className="btn-primary flex-1 disabled:opacity-60">{saving ? "Saving…" : "Save"}</button>
-              <button type="button" onClick={() => setDraft(null)} className="rounded-full border border-warm-gray px-6 text-sm">Cancel</button>
-            </div>
+      <SidePanel
+        open={!!draft}
+        onClose={() => setDraft(null)}
+        title={`${draft?.id ? "Edit" : "Add"} ${noun}`}
+        footer={
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setDraft(null)} className="min-h-12 rounded-full border border-warm-gray px-6 text-base font-medium hover:bg-cream">Cancel</button>
+            <button type="button" onClick={save} disabled={saving || uploading} className="btn-primary ml-auto min-h-12 !px-8 !text-base disabled:opacity-60">{saving ? "Saving…" : "Save and publish"}</button>
           </div>
-        </div>
-      )}
+        }
+      >
+        {draft && (
+          <div className="space-y-4">
+            {fields.map((f) => (
+              <Field key={f.key} label={f.label} optional={f.optional} hint={f.type === "textarea" && f.max ? `${String(draft[f.key] ?? "").length} / ${f.max}` : f.hint}>
+                {f.type === "textarea" ? (
+                  <textarea rows={5} maxLength={f.max} value={String(draft[f.key] ?? "")} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} placeholder={f.placeholder} className={fieldCls} />
+                ) : f.type === "rating" ? (
+                  <span className="flex gap-1" role="radiogroup" aria-label="Rating">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" role="radio" aria-checked={Number(draft[f.key]) === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => setDraft({ ...draft, [f.key]: n })} className="flex h-12 w-12 items-center justify-center">
+                        <Star size={28} className={n <= Number(draft[f.key]) ? "fill-amber-400 text-amber-400" : "text-warm-gray"} />
+                      </button>
+                    ))}
+                  </span>
+                ) : f.type === "image" ? (
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-warm-gray text-secondary-text">
+                      {draft[f.key] ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={String(draft[f.key])} alt="" className="h-full w-full object-cover" /> : uploading ? <Loader2 className="animate-spin" size={20} /> : <Camera size={20} />}
+                    </span>
+                    <input ref={file} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const x = e.target.files?.[0]; if (x) upload(x, f.key); e.target.value = ""; }} />
+                    <button type="button" onClick={() => file.current?.click()} disabled={uploading} className="min-h-12 rounded-full border border-warm-gray px-5 text-base font-medium">{draft[f.key] ? "Change photo" : "Upload photo"}</button>
+                    {Boolean(draft[f.key]) && <button type="button" onClick={() => setDraft({ ...draft, [f.key]: "" })} className="min-h-12 px-2 text-base text-secondary-text underline">Remove</button>}
+                  </span>
+                ) : (
+                  <input value={String(draft[f.key] ?? "")} maxLength={f.max} onChange={(e) => setDraft({ ...draft, [f.key]: e.target.value })} placeholder={f.placeholder} className={fieldCls} />
+                )}
+              </Field>
+            ))}
+            <Switch checked={draft.active !== false} onChange={(v) => setDraft({ ...draft, active: v })} title="Show on the website" hint="Turn off to hide it without deleting." />
+          </div>
+        )}
+      </SidePanel>
     </div>
   );
 }
