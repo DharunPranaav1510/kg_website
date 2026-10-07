@@ -97,10 +97,10 @@ export interface ManualStatus {
   open: boolean;
   message: string;
   /**
-   * "YYYY-MM-DD" (Indian date) on which the owner opened the shop outside its hours.
-   * It only counts on that exact date, so the next day the normal hours apply again.
+   * Set when the owner opens the shop outside its hours: the moment (ms) it should close again,
+   * which is the next regular closing time. Once that moment passes the normal hours apply again.
    */
-  forceOpenOn?: string;
+  forceOpenUntil?: number;
 }
 
 export type ClosedReason = "paused" | "holiday" | "day_off" | "before_open" | "after_close";
@@ -136,6 +136,28 @@ function nextOpening(h: OpeningHours, today: string, minutes: number): { label: 
     if (x) return { label: `${i === 1 ? "tomorrow" : DAY_NAMES[weekday(d)]} at ${clock12(x.from)}`, at: atIst(d, x.from) };
   }
   return null;
+}
+
+/** The next regular closing time after `now`, e.g. 5:00 PM today, or 5:00 PM tomorrow when it is already past closing. */
+export function nextClosing(h: OpeningHours, now: number | Date = Date.now()): { at: number; label: string } | null {
+  const t = istParts(now);
+  const today = hoursOn(h, t.date);
+  if (today && t.minutes < toMin(today.to)) return { at: atIst(t.date, today.to), label: clock12(today.to) };
+  for (let i = 1; i <= 21; i++) {
+    const d = addDays(t.date, i);
+    const x = hoursOn(h, d);
+    if (x) return { at: atIst(d, x.to), label: `${clock12(x.to)} ${i === 1 ? "tomorrow" : DAY_NAMES[weekday(d)]}` };
+  }
+  return null;
+}
+
+/** "5:00 PM", "5:00 PM tomorrow" or "5:00 PM Tuesday", for a moment in the future. */
+function untilLabel(ms: number, nowMs: number): string {
+  const u = istParts(ms);
+  const n = istParts(nowMs);
+  const hh = `${String(Math.floor(u.minutes / 60)).padStart(2, "0")}:${String(u.minutes % 60).padStart(2, "0")}`;
+  const when = u.date === n.date ? "" : u.date === addDays(n.date, 1) ? " tomorrow" : ` ${DAY_NAMES[weekday(u.date)]}`;
+  return `${clock12(hh)}${when}`;
 }
 
 export function shopNow(h: OpeningHours, manual: ManualStatus, now: number | Date = Date.now()): LiveShopStatus {
@@ -174,17 +196,19 @@ export function shopNow(h: OpeningHours, manual: ManualStatus, now: number | Dat
     };
   }
 
-  // The owner opened the shop outside its hours for today only. The date check is what
-  // makes it end by itself: tomorrow the date no longer matches.
-  if (manual.forceOpenOn === t.date) {
+  // The owner opened the shop outside its hours. It stays open until the next regular closing
+  // time; after that moment this no longer matches and the normal hours apply again.
+  const nowMs = typeof now === "number" ? now : now.getTime();
+  if (manual.forceOpenUntil && nowMs < manual.forceOpenUntil) {
+    const until = untilLabel(manual.forceOpenUntil, nowMs);
     return {
       open: true,
       reason: "open",
-      message: "We're open late today.",
-      label: "Open late today",
+      message: `We're open late. Taking orders until ${until}.`,
+      label: `Open late · until ${until}`,
       blockedLabel: "",
-      closesAt: "midnight",
-      minutesToClose: 24 * 60 - t.minutes,
+      closesAt: until,
+      minutesToClose: Math.round((manual.forceOpenUntil - nowMs) / 60000),
       opensLabel: null,
       opensAt: null,
       extended: true,

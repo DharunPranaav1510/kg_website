@@ -130,7 +130,7 @@ export default function Hero() {
         <div className="flex-1 flex flex-col justify-center max-w-2xl">
           <span className="kg-rise mb-4 inline-flex w-fit items-center gap-2.5 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold tracking-wide text-white backdrop-blur-md sm:text-sm">
             <span className="kg-live-dot" aria-hidden="true" />
-            {shop.extended ? "Open late today · taking orders until midnight" : shop.closesAt ? `Open now · taking orders until ${shop.closesAt}` : "Open now · taking orders"}
+            {shop.extended ? `Open late · taking orders until ${shop.closesAt}` : shop.closesAt ? `Open now · taking orders until ${shop.closesAt}` : "Open now · taking orders"}
           </span>
           <div className="flex items-center gap-3 mb-5 sm:mb-6">
             <div className="w-8 h-px bg-white/70" />

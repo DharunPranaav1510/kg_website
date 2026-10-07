@@ -104,7 +104,7 @@ const PRESETS = [
 
 interface Summary {
   newOrders: number;
-  shop: { open: boolean; message: string; forceOpenOn?: string };
+  shop: { open: boolean; message: string; forceOpenUntil?: number };
   hours: OpeningHours;
 }
 
@@ -356,7 +356,7 @@ function StatusPill({
     ? "Checking…"
     : live.open
       ? live.extended
-        ? "Open late · until midnight"
+        ? `Open late · until ${live.closesAt}`
         : `Open · closes ${live.closesAt}`
       : paused
         ? "Orders paused"
@@ -401,7 +401,7 @@ function StatusPill({
     onChanged();
   }
 
-  const force = useForceOpen(summary?.shop.message ?? "", async () => {
+  const force = useForceOpen(summary?.shop.message ?? "", summary?.hours, async () => {
     onChanged();
     setOpen(false);
   });
@@ -441,14 +441,14 @@ function StatusPill({
               {canForce && (
                 <div className="mt-3 rounded-xl bg-success/10 p-3">
                   <button onClick={() => force.run(true)} disabled={force.busy} className="min-h-12 w-full rounded-full bg-success px-6 text-base font-semibold text-white hover:opacity-90 disabled:opacity-60">
-                    {force.busy ? "Working…" : "Open for the rest of today"}
+                    {force.busy ? "Working…" : `Open until ${force.until}`}
                   </button>
-                  <p className="mt-2 text-sm text-secondary-text">Customers can order until midnight. Tomorrow the usual hours apply again.</p>
+                  <p className="mt-2 text-sm text-secondary-text">Customers can order until then. After that the usual hours apply again.</p>
                 </div>
               )}
               {live.extended && (
                 <button onClick={() => force.run(false)} disabled={force.busy} className="mt-3 min-h-12 w-full rounded-full border border-warm-gray px-6 text-base font-semibold hover:bg-cream disabled:opacity-60">
-                  Close for today
+                  Close the shop now
                 </button>
               )}
               <p className="mt-4 text-sm font-semibold">Message customers will see</p>

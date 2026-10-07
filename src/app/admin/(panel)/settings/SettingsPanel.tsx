@@ -34,7 +34,7 @@ export default function SettingsPanel() {
   const [tab, setTab] = useState<Tab>("orders");
   const [follow, setFollow] = useState<boolean | null>(null); // true = follow opening hours
   const [message, setMessage] = useState("");
-  const [saved, setSaved] = useState<{ open: boolean; message: string; forceOpenOn?: string }>({ open: true, message: "" });
+  const [saved, setSaved] = useState<{ open: boolean; message: string; forceOpenUntil?: number }>({ open: true, message: "" });
   const [hours, setHours] = useState<OpeningHours | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -62,7 +62,7 @@ export default function SettingsPanel() {
   const savedStatus = useMemo(() => (hours ? shopNow(hours, saved) : null), [hours, saved]);
   const draftStatus = useMemo(() => (hours && follow !== null ? shopNow(hours, { open: follow, message: message.trim() }) : null), [hours, follow, message]);
 
-  const force = useForceOpen(saved.message, load);
+  const force = useForceOpen(saved.message, hours, load);
 
   async function save() {
     if (follow === null) return;
@@ -161,12 +161,12 @@ export default function SettingsPanel() {
 
             {savedStatus && saved.open && (savedStatus.extended || (!savedStatus.open && savedStatus.reason !== "paused")) && (
               <div className="rounded-2xl border border-success/40 bg-success/10 p-4">
-                <h2 className="font-body text-lg font-semibold">{savedStatus.extended ? "Open late today" : "Open outside the opening hours"}</h2>
+                <h2 className="font-body text-lg font-semibold">{savedStatus.extended ? `Open late, until ${savedStatus.closesAt}` : "Open outside the opening hours"}</h2>
                 <p className="mb-3 text-base text-secondary-text">
-                  {savedStatus.extended ? "Customers can order until midnight. Tomorrow the usual hours apply again." : "Open the shop for the rest of today only. Customers can order until midnight, and tomorrow the usual hours apply again."}
+                  {savedStatus.extended ? "After that the usual hours apply again. You can also close the shop now." : `Open the shop now and keep it open until ${force.until}. After that the usual hours apply again.`}
                 </p>
                 <button onClick={() => force.run(!savedStatus.extended)} disabled={force.busy} className={savedStatus.extended ? "min-h-12 rounded-full border border-warm-gray bg-white px-6 text-base font-semibold hover:bg-cream disabled:opacity-60" : "min-h-12 rounded-full bg-success px-6 text-base font-semibold text-white hover:opacity-90 disabled:opacity-60"}>
-                  {force.busy ? "Working…" : savedStatus.extended ? "Close for today" : "Open for the rest of today"}
+                  {force.busy ? "Working…" : savedStatus.extended ? "Close the shop now" : `Open until ${force.until}`}
                 </button>
               </div>
             )}

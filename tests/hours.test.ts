@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_HOURS, shopNow, summarizeHours, validateHours, type OpeningHours } from "../src/lib/hours";
+import { DEFAULT_HOURS, nextClosing, shopNow, summarizeHours, validateHours, type OpeningHours } from "../src/lib/hours";
 
 const on = { open: true, message: "" };
 const at = (s: string) => Date.parse(`${s}+05:30`); // 2026-10-05 is a Monday
@@ -68,22 +68,44 @@ test("summary groups days with the same hours", () => {
   assert.equal(s.days, "Monday – Saturday");
 });
 
-test("opening late for today lasts only for that day", () => {
-  const forced = { open: true, message: "", forceOpenOn: "2026-10-05" };
-  const late = shopNow(DEFAULT_HOURS, forced, at("2026-10-05T19:30:00"));
-  assert.equal(late.open, true);
-  assert.equal(late.extended, true);
-  assert.equal(late.closesAt, "midnight");
-  // Before the hours open the same day it also counts.
-  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-05T05:00:00")).open, true);
-  // Inside normal hours it is just a normal open shop.
-  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-05T10:00:00")).extended, false);
-  // The next day the hours apply again.
-  const next = shopNow(DEFAULT_HOURS, forced, at("2026-10-06T19:30:00"));
-  assert.equal(next.open, false);
-  assert.equal(next.reason, "after_close");
+test("opening late lasts until the next regular closing time", () => {
+  // Pressed at 8 PM Monday: the next closing is 5 PM Tuesday.
+  const pressedAt = at("2026-10-05T20:00:00");
+  const closing = nextClosing(DEFAULT_HOURS, pressedAt)!;
+  assert.equal(closing.at, at("2026-10-06T17:00:00"));
+  assert.equal(closing.label, "5:00 PM tomorrow");
+  const forced = { open: true, message: "", forceOpenUntil: closing.at };
+
+  const night = shopNow(DEFAULT_HOURS, forced, at("2026-10-05T23:00:00"));
+  assert.equal(night.open, true);
+  assert.equal(night.extended, true);
+  assert.equal(night.closesAt, "5:00 PM tomorrow");
+  // Tomorrow morning it is simply inside the usual hours.
+  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-06T10:00:00")).extended, false);
+  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-06T16:59:00")).open, true);
+  // At the next closing time the usual hours take over again.
+  const after = shopNow(DEFAULT_HOURS, forced, at("2026-10-06T17:00:00"));
+  assert.equal(after.open, false);
+  assert.equal(after.reason, "after_close");
   // Pausing always wins.
-  assert.equal(shopNow(DEFAULT_HOURS, { ...forced, open: false }, at("2026-10-05T19:30:00")).reason, "paused");
+  assert.equal(shopNow(DEFAULT_HOURS, { ...forced, open: false }, at("2026-10-05T23:00:00")).reason, "paused");
+});
+
+test("pressed early in the morning, it stays open until 5 PM the same day", () => {
+  const pressedAt = at("2026-10-05T05:00:00");
+  const closing = nextClosing(DEFAULT_HOURS, pressedAt)!;
+  assert.equal(closing.at, at("2026-10-05T17:00:00"));
+  assert.equal(closing.label, "5:00 PM");
+  const forced = { open: true, message: "", forceOpenUntil: closing.at };
+  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-05T05:30:00")).extended, true);
+  assert.equal(shopNow(DEFAULT_HOURS, forced, at("2026-10-05T17:01:00")).open, false);
+});
+
+test("on a day off the next closing is on the next open day", () => {
+  const h: OpeningHours = { ...DEFAULT_HOURS, week: DEFAULT_HOURS.week.map((d, i) => (i === 0 ? { ...d, open: false } : d)) };
+  const c = nextClosing(h, at("2026-10-04T12:00:00"))!; // a Sunday
+  assert.equal(c.at, at("2026-10-05T17:00:00"));
+  assert.equal(c.label, "5:00 PM tomorrow");
 });
 
 test("a closed shop knows when it opens next, for a countdown", () => {
