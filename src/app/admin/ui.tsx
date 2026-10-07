@@ -280,3 +280,66 @@ export const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" }).replace(/\bam\b/, "AM").replace(/\bpm\b/, "PM");
 export const dayDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+
+// ---------------------------------------------------------------------------
+// Drafts kept on this device, so an expired session or a stray tap never loses typing.
+// ---------------------------------------------------------------------------
+const DRAFT_PREFIX = "kg-admin-draft:";
+interface StoredDraft<T> {
+  at: number;
+  value: T;
+}
+export function readDraft<T>(key: string): StoredDraft<T> | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_PREFIX + key);
+    return raw ? (JSON.parse(raw) as StoredDraft<T>) : null;
+  } catch {
+    return null;
+  }
+}
+export function clearDraft(key: string) {
+  try {
+    localStorage.removeItem(DRAFT_PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Saves `value` to this device every few seconds while it differs from `initial`.
+ * Returns the draft found when the form opened (to offer "Restore") and a way to drop it.
+ */
+export function useDraftBackup<T>(key: string, value: T, initial: T) {
+  const [found, setFound] = useState<StoredDraft<T> | null>(null);
+  const latest = useRef(value);
+  latest.current = value;
+  const initialJson = useRef(JSON.stringify(initial));
+
+  useEffect(() => {
+    const d = readDraft<T>(key);
+    setFound(d && JSON.stringify(d.value) !== initialJson.current ? d : null);
+  }, [key]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      try {
+        if (JSON.stringify(latest.current) === initialJson.current) return;
+        localStorage.setItem(DRAFT_PREFIX + key, JSON.stringify({ at: Date.now(), value: latest.current }));
+      } catch {
+        /* storage full or blocked: skip */
+      }
+    }, 3000);
+    return () => clearInterval(id);
+  }, [key]);
+
+  const dirty = JSON.stringify(value) !== initialJson.current;
+  return {
+    found,
+    dirty,
+    dismiss: () => setFound(null),
+    discard: () => {
+      clearDraft(key);
+      setFound(null);
+    },
+  };
+}

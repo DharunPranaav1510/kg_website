@@ -1,9 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, Check, Loader2, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Camera, Check, ChevronDown, Loader2 } from "lucide-react";
 import { shopCategories } from "@/data/products";
-import ProductFormExtras, { EMPTY_EXTRAS, type ExtrasDraft } from "./ProductFormExtras";
+import {
+  EMPTY_EXTRAS,
+  OfferFields,
+  ScheduleFields,
+  TaxFields,
+  WeightsFields,
+  offerSummary,
+  scheduleSummary,
+  taxSummary,
+  weightsSummary,
+  type ExtrasDraft,
+} from "./ProductFormExtras";
+import { SidePanel, clearDraft, clock, useDraftBackup, useUi } from "./ui";
+
 
 export const PRODUCT_CATEGORIES = shopCategories.filter((c) => c !== "All");
 
@@ -36,46 +49,39 @@ export const EMPTY_DRAFT: ProductDraft = {
   extras: EMPTY_EXTRAS,
 };
 
-const BADGES = ["New", "Bestseller", "Popular", "Premium"];
-const field =
-  "w-full rounded-xl border border-warm-gray bg-white px-3.5 py-3 text-base outline-none transition-colors focus:border-accent sm:text-sm";
+export const draftKey = (d: ProductDraft) => `product:${d.id ?? "new"}`;
+export const clearProductDraft = (d: ProductDraft) => clearDraft(draftKey(d));
 
-function Switch({
-  checked,
-  onChange,
-  title,
-  hint,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  title: string;
-  hint: string;
-}) {
+const BADGES = ["New", "Bestseller", "Popular", "Premium"];
+const field = "min-h-12 w-full rounded-xl border border-warm-gray bg-white px-3.5 text-base outline-none transition-colors focus:border-accent";
+
+function Switch({ checked, onChange, title, hint }: { checked: boolean; onChange: (v: boolean) => void; title: string; hint: string }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-cream/70"
-    >
+    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-cream/70">
       <span className="flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="block text-xs text-secondary-text">{hint}</span>
+        <span className="block text-base font-medium">{title}</span>
+        <span className="block text-sm text-secondary-text">{hint}</span>
       </span>
-      <span className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${checked ? "bg-success" : "bg-warm-gray"}`} aria-hidden="true">
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? "left-[1.375rem]" : "left-0.5"}`} />
+      <span className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${checked ? "bg-success" : "bg-gray-300"}`} aria-hidden="true">
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${checked ? "left-[1.375rem]" : "left-0.5"}`} />
       </span>
     </button>
   );
 }
 
-function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
+function Fold({ title, summary, children }: { title: string; summary: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="mb-1.5 flex items-baseline justify-between gap-2">
-      <span className="text-sm font-medium">{children}</span>
-      {hint && <span className="text-xs text-secondary-text">{hint}</span>}
-    </div>
+    <section className="rounded-2xl border border-warm-gray bg-white">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-12 w-full items-center gap-3 px-4 py-2 text-left">
+        <span className="flex-1">
+          <span className="block text-base font-semibold">{title}</span>
+          {!open && <span className="block text-sm text-secondary-text">{summary}</span>}
+        </span>
+        <ChevronDown size={18} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="border-t border-warm-gray px-4 py-4">{children}</div>}
+    </section>
   );
 }
 
@@ -98,182 +104,174 @@ export default function ProductForm({
   uploading: boolean;
   error: string;
 }) {
+  const { confirm } = useUi();
   const fileRef = useRef<HTMLInputElement>(null);
+  const initial = useRef(draft);
   const [touched, setTouched] = useState(false);
+  const [linkMode, setLinkMode] = useState(false);
   const set = <K extends keyof ProductDraft>(k: K, v: ProductDraft[K]) => onChange({ ...draft, [k]: v });
   const isNew = !draft.id;
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onCancel]);
+  const { found, dirty, dismiss, discard } = useDraftBackup<ProductDraft>(draftKey(draft), draft, initial.current);
 
   const price = Number(draft.pricePerKg);
   const problems = {
+    image: !draft.image ? "Add a photo" : "",
     name: draft.name.trim().length < 2 ? "Enter the product name" : "",
     price: draft.pricePerKg === "" || !Number.isFinite(price) || price < 0 ? "Enter a price" : "",
-    image: !draft.image ? "Add a photo" : "",
   };
   const hasProblem = Object.values(problems).some(Boolean);
   const unit = draft.isEgg ? "dozen" : "kg";
 
   function submit() {
     setTouched(true);
-    if (!hasProblem) onSave();
+    if (hasProblem) {
+      // Scroll to the first field that needs attention.
+      const first = (["image", "name", "price"] as const).find((k) => problems[k]);
+      document.getElementById(`pf-${first}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    onSave();
   }
 
+  async function close() {
+    if (dirty) {
+      const r = await confirm({
+        title: "Leave without saving?",
+        body: "Your changes are kept as a draft on this device.",
+        confirmLabel: "Leave",
+        cancelLabel: "Keep editing",
+      });
+      if (r.choice !== "confirm") return;
+    }
+    onCancel();
+  }
+
+  const extrasProps = { value: draft.extras, onChange: (extras: ExtrasDraft) => set("extras", extras), isEgg: !!draft.isEgg, price: Number(draft.pricePerKg) || 0 };
+  const err = (k: keyof typeof problems) => touched && problems[k] && <p className="mt-1.5 text-sm font-medium text-red-600">{problems[k]}</p>;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={isNew ? "Add product" : "Edit product"}>
-      <div className="flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-3xl bg-background shadow-hover sm:max-w-xl sm:rounded-3xl">
-        {/* Header */}
-        <div className="flex items-start gap-3 border-b border-warm-gray bg-white px-5 py-4">
-          <div className="min-w-0 flex-1">
-            <h2 className="font-display text-xl">{isNew ? "Add a product" : "Edit product"}</h2>
-            <p className="truncate text-xs text-secondary-text">
-              {isNew ? "It appears in the shop as soon as you save." : (
-                <>
-                  {draft.name || "Untitled"} · ID <code className="rounded bg-warm-gray/60 px-1.5 py-0.5 text-[11px]">{draft.id}</code>
-                </>
-              )}
-            </p>
-          </div>
-          <button onClick={onCancel} aria-label="Close" className="-mr-2 flex h-10 w-10 items-center justify-center rounded-full hover:bg-warm-gray">
-            <X size={20} />
+    <SidePanel
+      open
+      onClose={close}
+      width="640px"
+      title={isNew ? "Add a product" : "Edit product"}
+      subtitle={isNew ? "It appears in the shop as soon as you save." : `${draft.name || "Untitled"} · ID ${draft.id}`}
+      footer={
+        <div className="flex items-center gap-3">
+          <button onClick={close} className="min-h-12 rounded-full border border-warm-gray px-6 text-base font-medium hover:bg-cream">Cancel</button>
+          <button onClick={submit} disabled={saving || uploading} className="btn-primary ml-auto min-h-12 !px-8 !text-base disabled:opacity-60">
+            {saving ? "Saving…" : isNew ? "Add product" : "Save changes"}
           </button>
         </div>
+      }
+    >
+      <div className="space-y-5">
+        {found && (
+          <p className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-base text-amber-900">
+            <span className="flex-1">You have an unsaved draft from {clock(new Date(found.at).toISOString())}.</span>
+            <button onClick={() => { onChange(found.value); dismiss(); }} className="min-h-12 rounded-full bg-amber-600 px-4 font-semibold text-white">Restore</button>
+            <button onClick={discard} className="min-h-12 rounded-full border border-amber-300 px-4 font-medium">Discard</button>
+          </p>
+        )}
 
-        {/* Body */}
-        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
-          {/* Photo */}
-          <section>
-            <Label hint="JPG, PNG or WebP · up to 4 MB">Photo</Label>
+        {/* 1. Basics */}
+        <section className="space-y-4 rounded-2xl border border-warm-gray bg-white p-4">
+          <h3 className="font-body text-base font-semibold">Basics</h3>
+
+          <div id="pf-image">
+            <p className="mb-1.5 text-sm font-medium">Photo <span className="font-normal text-secondary-text">· JPG, PNG or WebP, up to 4 MB</span></p>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className={`group relative flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-white transition-colors sm:h-48 ${
-                touched && problems.image ? "border-accent" : "border-warm-gray hover:border-accent/50"
-              }`}
+              className={`relative flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-cream transition-colors ${touched && problems.image ? "border-red-500" : "border-warm-gray hover:border-accent/50"}`}
             >
               {draft.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={draft.image} alt="" className="h-full w-full object-cover" />
+                <img src={draft.image} alt="Product preview" className="h-full w-full object-cover" />
               ) : (
                 <span className="flex flex-col items-center gap-1 text-secondary-text">
                   <Camera size={28} />
-                  <span className="text-sm font-medium">Tap to add a photo</span>
+                  <span className="text-base font-medium">Upload photo</span>
                 </span>
               )}
               {draft.image && !uploading && (
-                <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/70 px-3.5 py-2 text-xs font-medium text-white">
-                  <Camera size={14} /> Change photo
-                </span>
+                <span className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/70 px-4 py-2 text-sm font-medium text-white"><Camera size={14} /> Change photo</span>
               )}
               {uploading && (
-                <span className="absolute inset-0 flex items-center justify-center gap-2 bg-white/80 text-sm font-medium">
-                  <Loader2 size={18} className="animate-spin" /> Uploading…
-                </span>
+                <span className="absolute inset-0 flex items-center justify-center gap-2 bg-white/80 text-base font-medium"><Loader2 size={18} className="animate-spin" /> Uploading…</span>
               )}
             </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onUpload(f);
-                e.target.value = "";
-              }}
-            />
-            {touched && problems.image && <p className="mt-1.5 text-xs text-accent">{problems.image}</p>}
-          </section>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
+            <button type="button" onClick={() => setLinkMode((m) => !m)} className="mt-1 flex min-h-12 items-center text-base text-accent hover:underline">Use a link instead</button>
+            {linkMode && <input className={field} value={draft.image} onChange={(e) => set("image", e.target.value)} placeholder="https://…" inputMode="url" aria-label="Image link" />}
+            {err("image")}
+          </div>
 
-          {/* Basics */}
-          <section className="space-y-4">
-            <div>
-              <Label>Name</Label>
-              <input className={`${field} ${touched && problems.name ? "border-accent" : ""}`} value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Chicken Breast" maxLength={100} />
-              {touched && problems.name && <p className="mt-1.5 text-xs text-accent">{problems.name}</p>}
-            </div>
+          <div id="pf-name">
+            <label className="block text-sm font-medium">Name
+              <input className={`${field} mt-1 ${touched && problems.name ? "!border-red-500" : ""}`} value={draft.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Chicken Breast" maxLength={100} />
+            </label>
+            {err("name")}
+          </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Category</Label>
-                <select className={field} value={draft.category} onChange={(e) => set("category", e.target.value)}>
-                  {PRODUCT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <Label>Price</Label>
-                <div className={`flex items-center overflow-hidden rounded-xl border bg-white focus-within:border-accent ${touched && problems.price ? "border-accent" : "border-warm-gray"}`}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium">Category
+              <select className={`${field} mt-1`} value={draft.category} onChange={(e) => set("category", e.target.value)}>
+                {PRODUCT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </label>
+            <div id="pf-price">
+              <label className="block text-sm font-medium">Price
+                <span className={`mt-1 flex items-center overflow-hidden rounded-xl border bg-white focus-within:border-accent ${touched && problems.price ? "border-red-500" : "border-warm-gray"}`}>
                   <span className="pl-3.5 text-secondary-text">₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    inputMode="decimal"
-                    value={draft.pricePerKg}
-                    onChange={(e) => set("pricePerKg", e.target.value)}
-                    className="min-w-0 flex-1 bg-transparent px-2 py-3 text-base outline-none sm:text-sm"
-                    aria-label="Price in rupees"
-                  />
-                  <span className="pr-3.5 text-xs text-secondary-text">/ {unit}</span>
-                </div>
-                {touched && problems.price && <p className="mt-1.5 text-xs text-accent">{problems.price}</p>}
-              </div>
+                  <input type="number" min="0" step="1" inputMode="decimal" value={draft.pricePerKg} onChange={(e) => set("pricePerKg", e.target.value)} className="min-h-12 min-w-0 flex-1 bg-transparent px-2 text-base outline-none" />
+                  <span className="pr-3.5 text-sm text-secondary-text">per {unit}</span>
+                </span>
+              </label>
+              {err("price")}
             </div>
+          </div>
 
-            <div>
-              <Label hint={`${draft.description.length}/500`}>Short description</Label>
-              <textarea className={`${field} resize-none`} rows={2} maxLength={500} value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="One line customers will read on the card" />
+          <label className="block text-sm font-medium">Short description <span className="font-normal text-secondary-text">· {draft.description.length}/500</span>
+            <textarea className={`${field} mt-1 resize-none py-3`} rows={2} maxLength={500} value={draft.description} onChange={(e) => set("description", e.target.value)} placeholder="One line customers will read on the card" />
+          </label>
+
+          <div>
+            <p className="mb-1.5 text-sm font-medium">Badge <span className="font-normal text-secondary-text">· optional</span></p>
+            <div className="flex flex-wrap gap-2">
+              {["", ...BADGES].map((b) => {
+                const on = (draft.badge ?? "") === b;
+                return (
+                  <button key={b || "none"} type="button" onClick={() => set("badge", b)} aria-pressed={on} className={`inline-flex min-h-12 items-center gap-1.5 rounded-full border px-4 text-base font-medium transition-colors ${on ? "border-primary-text bg-primary-text text-white" : "border-warm-gray bg-white text-secondary-text hover:border-accent/40"}`}>
+                    {on && <Check size={14} />}
+                    {b || "None"}
+                  </button>
+                );
+              })}
             </div>
+          </div>
+        </section>
 
-            <div>
-              <Label hint="optional">Badge</Label>
-              <div className="flex flex-wrap gap-2">
-                {["", ...BADGES].map((b) => {
-                  const on = (draft.badge ?? "") === b;
-                  return (
-                    <button key={b || "none"} type="button" onClick={() => set("badge", b)} className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-medium transition-colors ${on ? "border-primary-text bg-primary-text text-white" : "border-warm-gray bg-white text-secondary-text hover:border-accent/40"}`}>
-                      {on && <Check size={12} />}
-                      {b || "None"}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
+        {/* 2. Availability */}
+        <section className="rounded-2xl border border-warm-gray bg-white p-2">
+          <h3 className="px-2 pb-1 pt-2 font-body text-base font-semibold">Availability</h3>
+          <div className="divide-y divide-warm-gray/70">
+            <Switch checked={draft.active} onChange={(v) => set("active", v)} title="Visible in shop" hint={draft.active ? "Customers can see this product." : "Hidden: customers cannot see it."} />
+            <Switch checked={draft.inStock !== false} onChange={(v) => set("inStock", v)} title="In stock" hint={draft.inStock !== false ? "Customers can order it." : "Customers see “Sold out” and cannot order."} />
+            <Switch checked={!!draft.featured} onChange={(v) => set("featured", v)} title="Featured on home page" hint={draft.featured ? "Shown in the home page list." : "Not shown on the home page."} />
+            <Switch checked={!!draft.isEgg} onChange={(v) => set("isEgg", v)} title="Sold per dozen" hint={draft.isEgg ? "The price is per dozen." : "The price is per kg."} />
+          </div>
+        </section>
 
-          {/* Switches */}
-          <section>
-            <Label>Availability</Label>
-            <div className="divide-y divide-warm-gray/70 rounded-2xl border border-warm-gray bg-white p-1">
-              <Switch checked={draft.active} onChange={(v) => set("active", v)} title="Visible in the shop" hint="Turn off to hide it without deleting." />
-              <Switch checked={draft.inStock !== false} onChange={(v) => set("inStock", v)} title="In stock today" hint="Off shows “Sold out” and blocks orders." />
-              <Switch checked={!!draft.featured} onChange={(v) => set("featured", v)} title="Show on the home page" hint="Featured products appear in the home page list." />
-              <Switch checked={!!draft.isEgg} onChange={(v) => set("isEgg", v)} title="Sold per dozen" hint="For eggs: the price is per dozen, not per kg." />
-            </div>
-          </section>
+        {/* 3 to 6: folded, with a one-line summary */}
+        <Fold title="Weights" summary={weightsSummary(draft.extras, !!draft.isEgg)}><WeightsFields {...extrasProps} /></Fold>
+        <Fold title="Tax" summary={taxSummary(draft.extras)}><TaxFields {...extrasProps} /></Fold>
+        <Fold title="Offer" summary={offerSummary(draft.extras)}><OfferFields {...extrasProps} /></Fold>
+        <Fold title="Selling schedule" summary={scheduleSummary(draft.extras)}><ScheduleFields {...extrasProps} /></Fold>
 
-          <ProductFormExtras value={draft.extras} onChange={(extras) => set("extras", extras)} isEgg={!!draft.isEgg} price={Number(draft.pricePerKg) || 0} />
-
-          {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center gap-3 border-t border-warm-gray bg-white px-5 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
-          <button onClick={onCancel} className="btn-secondary !px-6 !py-2.5">Cancel</button>
-          <button onClick={submit} disabled={saving || uploading} className="btn-primary ml-auto !px-8 !py-2.5 disabled:opacity-60">
-            {saving ? "Saving…" : isNew ? "Add product" : "Save changes"}
-          </button>
-        </div>
+        {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-base text-red-700">{error}</p>}
       </div>
-    </div>
+    </SidePanel>
   );
 }
