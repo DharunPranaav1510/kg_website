@@ -174,6 +174,8 @@ Only emails in the `admins` table can sign in; everyone else is rejected even if
 
 ## Admin panel layout
 
+New to the admin? Read **`docs/ADMIN_GUIDE.md`**, the day-to-day how-to for shop staff.
+
 The admin follows `docs/ADMIN_REDESIGN.md` (interface only, no server changes):
 
 - **Five groups:** Orders (Today, Live orders, Order history), Catalogue (Products, Update prices, Offers), Insights (Sales, Feedback), Shop (Shop settings, Website content), Account (Security, Activity log, Admins for the owner).
