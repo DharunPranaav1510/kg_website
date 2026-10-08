@@ -9,3 +9,10 @@ test("only the owner email counts, case-insensitively", () => {
   assert.equal(isOwner("someone@gmail.com"), false);
   assert.equal(isOwner(null), false);
 });
+
+import { DELIVER_NOW, isValidSlot } from "../src/lib/delivery";
+test("deliver now is always a valid slot", () => {
+  assert.equal(isValidSlot(DELIVER_NOW, ["Morning (7 – 10 AM)"]), true);
+  assert.equal(isValidSlot("Morning (7 – 10 AM)", ["Morning (7 – 10 AM)"]), true);
+  assert.equal(isValidSlot("Midnight", ["Morning (7 – 10 AM)"]), false);
+});

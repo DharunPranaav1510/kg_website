@@ -1,5 +1,6 @@
 "use client";
 
+import { DELIVER_NOW } from "@/lib/delivery";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PhoneCall } from "lucide-react";
@@ -101,7 +102,7 @@ export default function CheckoutForm({
 }) {
   const { items, clearCart } = useCart();
   const business = useBusiness();
-  const [f, setF] = useState<Fields>({ ...EMPTY, pincode: business.address.pincode, slot: business.delivery.slots[0] ?? "" });
+  const [f, setF] = useState<Fields>({ ...EMPTY, pincode: business.address.pincode, slot: DELIVER_NOW });
   const [locationError, setLocationError] = useState("");
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState("");
@@ -365,14 +366,14 @@ export default function CheckoutForm({
         <section className="space-y-3" aria-labelledby="ck-slot">
           <h3 id="ck-slot" className="font-display text-lg">Preferred delivery time</h3>
           <div className="flex flex-col gap-2" role="radiogroup" aria-labelledby="ck-slot">
-            {business.delivery.slots.map((s) => (
+            {[DELIVER_NOW, ...business.delivery.slots].map((s) => (
               <label key={s} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-4 text-sm transition-colors ${f.slot === s ? "border-accent bg-accent/5" : "border-warm-gray bg-white"}`}>
                 <input type="radio" name="slot" checked={f.slot === s} onChange={() => set("slot", s)} className="h-4 w-4 accent-accent" />
                 {s}
               </label>
             ))}
           </div>
-          <p className="text-xs text-secondary-text">We will confirm the exact time when we call you.</p>
+          <p className="text-xs text-secondary-text">We will confirm the exact time when we call you. "Deliver now" means as soon as we can after that call.</p>
         </section>
 
         <Field id="note" label="Note for the shop" optional>

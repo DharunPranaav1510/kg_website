@@ -36,3 +36,7 @@ export function whatsappNumber(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   return digits.length === 10 ? `91${digits}` : digits;
 }
+
+/** Saved as the order's slot when the customer wants it as soon as possible. */
+export const DELIVER_NOW = "Deliver now (as soon as possible)";
+export const isValidSlot = (slot: string, slots: string[]) => slot === DELIVER_NOW || slots.includes(slot);

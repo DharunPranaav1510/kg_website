@@ -172,14 +172,18 @@ Only emails in the `admins` table can sign in; everyone else is rejected even if
 
 `/admin/orders` (linked from the admin page) is a kanban board for running the shop day: New / Confirmed / Out for delivery / Delivered today. It shows time since the last order, the oldest order still waiting, today's sales and orders per hour, and top sellers. Cards turn amber/red when an order has waited too long (thresholds in `WAIT_LIMITS`, `src/app/admin/orderUtils.ts`). Move orders forward with one tap (7-second undo), search by name/phone/#, and optionally enable sound, desktop alerts, keep-screen-on and fullscreen for a counter display. It refreshes every 10 seconds.
 
-## Admin panel (sidebar)
+## Admin panel layout
 
-Everything in `/admin` is reached from the **left-hand sidebar**: Overview, Live orders, Order history, Products, Update prices, Sales and Shop settings. The open/closed switch is always at the top of the sidebar.
+New to the admin? Read **`docs/ADMIN_GUIDE.md`**, the day-to-day how-to for shop staff.
 
-- **Open / close the shop:** sidebar switch or *Shop settings* (with a message customers see). Closing pauses new orders on the site and is enforced by the server.
-- **Update prices:** `/admin/prices`. Edit many prices, use -/+ buttons, or the *% Adjust many at once* tool (with rounding), then press **Save changes** once.
-- **Sales:** `/admin/sales`. Today / 7 / 30 / 90 days / this month, each compared with the previous period; trend, best sellers, categories, busiest hours and weekdays, new vs returning customers.
-- **Order history:** search, filter by date/status, download CSV.
+The admin follows `docs/ADMIN_REDESIGN.md` (interface only, no server changes):
+
+- **Five groups:** Orders (Today, Live orders, Order history), Catalogue (Products, Update prices, Offers), Insights (Sales, Feedback), Shop (Shop settings, Website content), Account (Security, Activity log, Admins for the owner).
+- **Phones:** a bottom bar with Today, Orders, Products, Prices and More. **Desktop:** a left sidebar that can shrink to icons (remembered on that device).
+- **Status pill** on every screen says the real status in words (open until, closed until, paused). Tap it to pause with a customer message, or resume. A toast offers Undo for 7 seconds.
+- **Live orders:** short cards with one main action, full order in a side panel (also used by Today, Order history and Feedback), alerts panel with a test sound, "Updated n s ago" and a warning when the connection drops.
+- **Saving:** switches in lists act at once with Undo; forms use a bottom bar that says what changed and "Save and publish". Drafts of the product form, opening hours and business details are kept on the device.
+- Still to do on the server side (not built): backup codes, remembered devices, silent session renewal, first sign-in steps, lock countdown and owner resets. See the redesign document.
 
 ## Checkout rules
 
@@ -226,7 +230,7 @@ Default hours are 6:30 AM to 5:00 PM, every day (Indian time). In the admin go t
 to change any day, mark a day off, or add special days (a holiday, or different hours on one date). Outside the
 hours customers see a "closed" hero (desktop and phone) with when you open next, Add buttons say "Opens ...",
 and the server refuses orders. The **Pause orders** switch below the hours stops orders earlier (sold out) and
-wins over the timetable. Hours are saved in the existing `settings` table (key `hours`), so no schema change.
+wins over the timetable. **Open until …** (status pill, Today, or Shop settings) opens the shop outside its hours until the next regular closing time: pressed after 5 PM it stays open until 5 PM the next day, pressed before 6:30 AM it stays open until 5 PM that day. Then the usual hours apply again by themselves. Pressed during opening hours, the pill offers **Pause orders** instead; while it is open late it offers **Close the shop now**. Hours are saved in the existing `settings` table (key `hours`), so no schema change.
 
 ## Phone layout
 

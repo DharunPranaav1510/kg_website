@@ -1,13 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BellRing, ChevronDown, MapPin, Phone, Search } from "lucide-react";
 import { STATUS_LABEL, type OrderStatus } from "@/lib/delivery";
 import { adminApi } from "../../api";
 import { usePoll } from "../../usePoll";
+import { useOrderActions } from "../../orderActions";
+import OrderPanel from "../../OrderPanel";
+import { MoreMenu, rupees } from "../../ui";
 import {
   NEXT,
   NEXT_LABEL,
   PREV,
+  customerHint,
   formatAge,
   itemsSummary,
   printSlip,
@@ -18,25 +23,46 @@ import {
   type OrdersResponse,
   type Urgency,
 } from "../../orderUtils";
-import { AddressBlock, BlockButton, ContactLines, CustomerBadge } from "../../OrderParts";
+import { mapsLink } from "@/lib/address";
 
 const POLL_MS = 10000;
 const COLUMNS: OrderStatus[] = ["new", "confirmed", "out_for_delivery", "delivered"];
-
-const COLUMN_STYLE: Record<string, { bar: string; chip: string }> = {
-  new: { bar: "bg-amber-400", chip: "bg-amber-100 text-amber-800" },
-  confirmed: { bar: "bg-sky-400", chip: "bg-sky-100 text-sky-800" },
-  out_for_delivery: { bar: "bg-violet-400", chip: "bg-violet-100 text-violet-800" },
-  delivered: { bar: "bg-success", chip: "bg-success/10 text-success" },
+const COLUMN_TITLE: Record<OrderStatus, string> = {
+  new: "New",
+  confirmed: "Confirmed",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
-const URGENCY_STYLE: Record<Urgency, string> = {
-  ok: "border-warm-gray",
-  warn: "border-amber-400 bg-amber-50/40",
-  late: "border-red-400 bg-red-50/50",
-};
+const PHONE_TAB: Record<string, string> = { new: "New", confirmed: "Confirmed", out_for_delivery: "Out", delivered: "Delivered" };
 
-const isToday = (iso: string, now: number) =>
-  new Date(iso).toDateString() === new Date(now).toDateString();
+const DOT: Record<string, string> = { new: "bg-amber-400", confirmed: "bg-sky-400", out_for_delivery: "bg-violet-400", delivered: "bg-success" };
+
+const AGE_PILL: Record<Urgency, string> = {
+  ok: "bg-success/10 text-success",
+  warn: "bg-amber-100 text-amber-800",
+  late: "bg-red-100 text-red-700",
+};
+const AGE_WORD: Record<Urgency, string> = { ok: "", warn: " · waiting", late: " · late" };
+const URGENCY_BORDER: Record<Urgency, string> = { ok: "border-warm-gray", warn: "border-amber-400", late: "border-red-400" };
+
+const isToday = (iso: string, now: number) => new Date(iso).toDateString() === new Date(now).toDateString();
+const SEEN_KEY = "kg-admin-alerts-card-seen";
+
+function Switch({ on, onChange, label, hint }: { on: boolean; onChange: () => void; label: string; hint?: string }) {
+  return (
+    <button role="switch" aria-checked={on} onClick={onChange} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-cream">
+      <span className="flex-1">
+        <span className="block text-base font-medium">{label}</span>
+        {hint && <span className="block text-sm text-secondary-text">{hint}</span>}
+      </span>
+      <span className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${on ? "bg-success" : "bg-gray-300"}`} aria-hidden="true">
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? "left-[1.375rem]" : "left-0.5"}`} />
+      </span>
+      <span className="sr-only">{on ? "On" : "Off"}</span>
+    </button>
+  );
+}
 
 export default function OrderBoard() {
   const [orders, setOrders] = useState<Order[] | null>(null);
@@ -44,21 +70,38 @@ export default function OrderBoard() {
   const [blocked, setBlocked] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [lastSync, setLastSync] = useState<number | null>(null);
+  const [failing, setFailing] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [activeCol, setActiveCol] = useState<OrderStatus>("new");
-  const [open, setOpen] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [arrived, setArrived] = useState<Record<string, number>>({});
+
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [sound, setSound] = useState(false);
   const [notify, setNotify] = useState(false);
   const [awake, setAwake] = useState(false);
-  const [toast, setToast] = useState<{ id: string; from: OrderStatus; text: string } | null>(null);
+  const [notifyBlocked, setNotifyBlocked] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [stripOpen, setStripOpen] = useState(true);
 
   const known = useRef<Set<string> | null>(null);
   const audio = useRef<AudioContext | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flags = useRef({ sound: false, notify: false });
   flags.current = { sound, notify };
+  const alertsBox = useRef<HTMLDivElement>(null);
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    setStripOpen(window.matchMedia("(min-width: 1024px)").matches);
+    try {
+      setShowIntro(localStorage.getItem(SEEN_KEY) !== "1");
+    } catch {
+      setShowIntro(true);
+    }
+    if ("Notification" in window && Notification.permission === "denied") setNotifyBlocked(true);
+  }, []);
 
   const beep = useCallback(() => {
     const ctx = audio.current;
@@ -83,21 +126,23 @@ export default function OrderBoard() {
       setHistory(hist);
       setBlocked(blk);
       setLastSync(Date.now());
+      setFailing(false);
       setError("");
 
       const fresh = list.filter((o) => known.current && !known.current.has(o.id) && o.status === "new");
       if (fresh.length > 0) {
+        const stamp = Date.now();
+        setArrived((a) => ({ ...a, ...Object.fromEntries(fresh.map((o) => [o.id, stamp])) }));
         if (flags.current.sound) beep();
         if (flags.current.notify && "Notification" in window && Notification.permission === "granted") {
           const o = fresh[0];
-          new Notification(`New order #${o.order_number} · ₹${o.total}`, {
-            body: `${o.customer_name} — ${itemsSummary(o)}`,
-          });
+          new Notification(`New order #${o.order_number} · ₹${o.total}`, { body: `${o.customer_name} — ${itemsSummary(o)}` });
         }
         setActiveCol("new");
       }
       known.current = new Set(list.map((o) => o.id));
     } catch (e) {
+      setFailing(true);
       setError((e as Error).message);
       setOrders((prev) => prev ?? []);
     }
@@ -108,38 +153,25 @@ export default function OrderBoard() {
   }, [load]);
   usePoll(load, POLL_MS);
 
-  // Live clocks ("12 min ago") tick locally; no server calls.
+  // Live clocks tick locally; no server calls.
   useEffect(() => {
-    const tick = setInterval(() => setNow(Date.now()), 5000);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(tick);
   }, []);
 
-  // Browser-tab title shows how many orders need action.
+  const { changeStatus, block, unblock } = useOrderActions(setOrders, load);
+
   const newCount = (orders ?? []).filter((o) => o.status === "new").length;
   useEffect(() => {
     document.title = newCount > 0 ? `(${newCount}) New orders — KG Foods` : "Live orders — KG Foods";
   }, [newCount]);
 
-  async function changeStatus(o: Order, status: OrderStatus, withUndo = true) {
-    if (status === "cancelled" && !window.confirm(`Cancel order #${o.order_number}?`)) return;
-    const from = o.status;
-    setOrders((prev) => prev && prev.map((x) => (x.id === o.id ? { ...x, status } : x)));
-    try {
-      await adminApi(`/api/admin/orders/${o.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (withUndo) {
-        if (toastTimer.current) clearTimeout(toastTimer.current);
-        setToast({ id: o.id, from, text: `#${o.order_number} → ${STATUS_LABEL[status]}` });
-        toastTimer.current = setTimeout(() => setToast(null), 7000);
-      }
-    } catch (e) {
-      setError((e as Error).message);
-      await load();
-    }
-  }
+  useEffect(() => {
+    if (!alertsOpen) return;
+    const away = (e: MouseEvent) => !alertsBox.current?.contains(e.target as Node) && setAlertsOpen(false);
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [alertsOpen]);
 
   async function toggleSound() {
     if (!sound) {
@@ -149,14 +181,20 @@ export default function OrderBoard() {
     }
     setSound(!sound);
   }
-
+  async function testSound() {
+    audio.current ??= new AudioContext();
+    await audio.current.resume();
+    beep();
+  }
   async function toggleNotify() {
     if (!notify && "Notification" in window && Notification.permission !== "granted") {
-      if ((await Notification.requestPermission()) !== "granted") return;
+      if ((await Notification.requestPermission()) !== "granted") {
+        setNotifyBlocked(true);
+        return;
+      }
     }
     setNotify(!notify);
   }
-
   async function toggleAwake() {
     if (awake) {
       await wakeLock.current?.release();
@@ -171,10 +209,13 @@ export default function OrderBoard() {
       setError("This browser can't keep the screen on.");
     }
   }
-
-  function toggleFullscreen() {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen?.();
+  function dismissIntro() {
+    setShowIntro(false);
+    try {
+      localStorage.setItem(SEEN_KEY, "1");
+    } catch {
+      /* ignore */
+    }
   }
 
   const list = orders ?? [];
@@ -192,24 +233,14 @@ export default function OrderBoard() {
     const by = (s: OrderStatus) =>
       list
         .filter((o) => o.status === s && matches(o))
-        // Oldest first for open work (they have waited longest); newest first for done.
         .filter((o) => (s === "delivered" ? isToday(o.created_at, now) : true))
-        .sort((a, b) =>
-          s === "delivered"
-            ? +new Date(b.created_at) - +new Date(a.created_at)
-            : +new Date(a.created_at) - +new Date(b.created_at)
-        );
+        // Longest waiting at the top for open work; newest first for done.
+        .sort((a, b) => (s === "delivered" ? +new Date(b.created_at) - +new Date(a.created_at) : +new Date(a.created_at) - +new Date(b.created_at)));
     return Object.fromEntries(COLUMNS.map((s) => [s, by(s)])) as Record<OrderStatus, Order[]>;
   }, [list, matches, now]);
 
   const todayOrders = list.filter((o) => o.status !== "cancelled" && isToday(o.created_at, now));
-  const sales = todayOrders.reduce((s, o) => s + Number(o.total), 0);
-  const latest = list.reduce<Order | null>(
-    (m, o) => (!m || +new Date(o.created_at) > +new Date(m.created_at) ? o : m),
-    null
-  );
-  const oldestNew = columns.new[0];
-  const cancelledToday = list.filter((o) => o.status === "cancelled" && isToday(o.created_at, now)).length;
+  const latest = list.reduce<Order | null>((m, o) => (!m || +new Date(o.created_at) > +new Date(m.created_at) ? o : m), null);
 
   const hourly = useMemo(() => {
     const hours = Array.from({ length: 15 }, (_, i) => ({ hour: i + 6, count: 0 }));
@@ -233,197 +264,219 @@ export default function OrderBoard() {
     return [...map.entries()].sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
   }, [todayOrders]);
 
-  const pill = (on: boolean) =>
-    `flex-shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-      on ? "bg-primary-text text-white border-primary-text" : "bg-white border-warm-gray text-secondary-text hover:text-primary-text"
-    }`;
+  const openOrder = openId ? list.find((o) => o.id === openId) ?? null : null;
+
+  // Swipe left or right on a phone to change column.
+  function onTouchStart(e: React.TouchEvent) {
+    touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const t = touch.current;
+    touch.current = null;
+    if (!t) return;
+    const dx = e.changedTouches[0].clientX - t.x;
+    const dy = e.changedTouches[0].clientY - t.y;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const i = COLUMNS.indexOf(activeCol);
+    const n = COLUMNS[Math.min(COLUMNS.length - 1, Math.max(0, i + (dx < 0 ? 1 : -1)))];
+    setActiveCol(n);
+  }
+
+  const syncAge = lastSync ? Math.max(0, Math.floor((now - lastSync) / 1000)) : null;
 
   return (
-    <div className="mx-auto max-w-[1500px] pb-24">
-      {/* Top bar */}
-      <header className="flex flex-wrap items-center gap-3 mb-4">
-        <div className="mr-auto">
-          <h1 className="font-display text-2xl sm:text-3xl text-primary-text flex items-center gap-3">
-            Live orders
-            <span className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-success">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
-              </span>
-              {lastSync ? `Updated ${formatAge(now - lastSync)}` : "Connecting…"}
-            </span>
-          </h1>
+    <div className="mx-auto max-w-[1500px]">
+      {/* Top strip */}
+      <header className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="mr-auto font-display text-2xl sm:text-3xl">Live orders</h1>
+
+        <label className="relative min-w-[12rem] flex-1 sm:max-w-sm">
+          <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Name, phone or order number"
+            aria-label="Search orders"
+            className="min-h-12 w-full rounded-full border border-warm-gray bg-white pl-11 pr-4 text-base outline-none focus:border-accent"
+          />
+        </label>
+
+        <span className={`text-sm ${failing ? "font-semibold text-red-600" : "text-secondary-text"}`} aria-live="polite">
+          {failing ? "Retrying…" : syncAge === null ? "Connecting…" : `Updated ${syncAge < 5 ? "just now" : `${syncAge} s ago`}`}
+        </span>
+
+        <div ref={alertsBox} className="relative">
+          <button onClick={() => setAlertsOpen((o) => !o)} aria-expanded={alertsOpen} className="flex min-h-12 items-center gap-2 rounded-full border border-warm-gray bg-white px-5 text-base font-medium hover:bg-cream">
+            <BellRing size={18} /> Alerts {(sound || notify || awake) && <span className="h-2.5 w-2.5 rounded-full bg-success" aria-label="some alerts are on" />}
+          </button>
+          {alertsOpen && (
+            <div role="dialog" aria-label="Alerts" className="absolute right-0 z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-warm-gray bg-white p-3 shadow-hover">
+              <Switch on={sound} onChange={toggleSound} label="Sound" hint="A beep for every new order" />
+              <Switch on={notify} onChange={toggleNotify} label="Browser notification" hint="A pop-up even in another tab" />
+              <Switch on={awake} onChange={toggleAwake} label="Keep screen awake" hint="The screen will not go to sleep" />
+              {notifyBlocked && <p className="mx-2 mt-1 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Notifications are blocked. Click the lock icon next to the web address and choose Allow for notifications.</p>}
+              <button onClick={testSound} className="mt-2 min-h-12 w-full rounded-full border border-warm-gray text-base font-medium hover:bg-cream">Test sound</button>
+            </div>
+          )}
         </div>
-        <button onClick={toggleSound} className={pill(sound)}>{sound ? "🔔 Sound on" : "🔕 Sound off"}</button>
-        <button onClick={toggleNotify} className={pill(notify)}>{notify ? "💬 Alerts on" : "💬 Desktop alerts"}</button>
-        <button onClick={toggleAwake} className={pill(awake)}>{awake ? "☀ Screen stays on" : "☀ Keep screen on"}</button>
-        <button onClick={toggleFullscreen} className={pill(false)}>⛶ Fullscreen</button>
-        <button onClick={load} className={pill(false)}>↻ Refresh</button>
       </header>
 
-      {error && <p className="mb-4 rounded-xl bg-red-50 text-red-700 text-sm px-4 py-3">{error}</p>}
+      {showIntro && (
+        <section className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-accent/30 bg-accent/5 p-4">
+          <p className="min-w-[14rem] flex-1 text-base font-medium">Turn on alerts so you never miss an order.</p>
+          <button onClick={() => { setAlertsOpen(true); dismissIntro(); }} className="btn-primary min-h-12 !text-base">Set up alerts</button>
+          <button onClick={dismissIntro} className="min-h-12 px-3 text-base text-secondary-text hover:underline">Not now</button>
+        </section>
+      )}
 
-      {/* Stats */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div className={`rounded-2xl border p-4 ${newCount > 0 ? "border-amber-300 bg-amber-50" : "border-warm-gray bg-white"}`}>
-          <p className="text-xs text-secondary-text">Time since last order</p>
-          <p className="font-display text-3xl leading-tight">
-            {latest ? formatAge(now - new Date(latest.created_at).getTime()) : "—"}
-          </p>
-          <p className="text-xs text-secondary-text truncate">
-            {latest ? `#${latest.order_number} · ${latest.customer_name}` : "No orders yet"}
-          </p>
-        </div>
-        <div className={`rounded-2xl border p-4 ${oldestNew && urgencyOf(oldestNew, now) === "late" ? "border-red-300 bg-red-50" : "border-warm-gray bg-white"}`}>
-          <p className="text-xs text-secondary-text">Waiting for you</p>
-          <p className="font-display text-3xl leading-tight">{newCount}</p>
-          <p className="text-xs text-secondary-text">
-            {oldestNew ? `Oldest waiting ${formatAge(now - new Date(oldestNew.created_at).getTime())}` : "All caught up 🎉"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-warm-gray bg-white p-4">
-          <p className="text-xs text-secondary-text">Today</p>
-          <p className="font-display text-3xl leading-tight">₹{sales}</p>
-          <p className="text-xs text-secondary-text">
-            {todayOrders.length} order{todayOrders.length === 1 ? "" : "s"}
-            {todayOrders.length > 0 && ` · avg ₹${Math.round(sales / todayOrders.length)}`}
-            {cancelledToday > 0 && ` · ${cancelledToday} cancelled`}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-warm-gray bg-white p-4">
-          <p className="text-xs text-secondary-text mb-1">Orders by hour</p>
-          <div className="flex items-end gap-[3px] h-12" role="img" aria-label="Orders per hour today">
-            {hourly.map((h) => (
-              <div
-                key={h.hour}
-                title={`${h.hour}:00 — ${h.count} order${h.count === 1 ? "" : "s"}`}
-                className={`flex-1 rounded-sm ${h.hour === new Date(now).getHours() ? "bg-accent" : "bg-accent/35"}`}
-                style={{ height: `${Math.max(6, (h.count / maxHour) * 100)}%`, opacity: h.count ? 1 : 0.25 }}
-              />
-            ))}
+      {error && !failing && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-base text-red-700">{error}</p>}
+
+      {/* Today so far */}
+      <section className="mb-4 rounded-2xl border border-warm-gray bg-white">
+        <button onClick={() => setStripOpen((o) => !o)} aria-expanded={stripOpen} className="flex min-h-12 w-full items-center gap-2 px-4 text-left text-base font-medium">
+          Today so far
+          <span className="text-sm font-normal text-secondary-text">
+            {todayOrders.length} order{todayOrders.length === 1 ? "" : "s"} · {rupees(todayOrders.reduce((s, o) => s + Number(o.total), 0))}
+          </span>
+          <ChevronDown size={18} className={`ml-auto transition-transform ${stripOpen ? "rotate-180" : ""}`} />
+        </button>
+        {stripOpen && (
+          <div className="grid gap-4 border-t border-warm-gray p-4 lg:grid-cols-3">
+            <div>
+              <p className="text-sm text-secondary-text">Time since last order</p>
+              <p className="font-display text-3xl">{latest ? formatAge(now - new Date(latest.created_at).getTime()) : "—"}</p>
+              <p className="truncate text-sm text-secondary-text">{latest ? `#${latest.order_number} · ${latest.customer_name}` : "No orders yet"}</p>
+            </div>
+            <div>
+              <p className="mb-2 text-sm text-secondary-text">Top sellers today</p>
+              {topItems.length === 0 ? (
+                <p className="text-base text-secondary-text">Nothing sold yet.</p>
+              ) : (
+                <ul className="space-y-1 text-base">
+                  {topItems.slice(0, 4).map(([name, v]) => (
+                    <li key={name} className="flex justify-between gap-2">
+                      <span className="truncate">{name}</span>
+                      <span className="tabular-nums text-secondary-text">{v.count}× · {rupees(v.revenue)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-2 text-sm text-secondary-text">Orders by hour</p>
+              <div className="flex h-14 items-end gap-[3px]" role="img" aria-label="Orders per hour today">
+                {hourly.map((h) => (
+                  <div
+                    key={h.hour}
+                    title={`${h.hour}:00 — ${h.count} order${h.count === 1 ? "" : "s"}`}
+                    className={`flex-1 rounded-sm ${h.hour === new Date(now).getHours() ? "bg-accent" : "bg-accent/35"}`}
+                    style={{ height: `${Math.max(6, (h.count / maxHour) * 100)}%`, opacity: h.count ? 1 : 0.25 }}
+                  />
+                ))}
+              </div>
+              <div className="mt-1 flex justify-between text-xs text-secondary-text"><span>6 AM</span><span>1 PM</span><span>8 PM</span></div>
+            </div>
           </div>
-          <div className="flex justify-between text-[10px] text-secondary-text mt-1"><span>6am</span><span>1pm</span><span>8pm</span></div>
-        </div>
+        )}
       </section>
 
-      {/* Search + mobile column tabs */}
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name, phone or #order…"
-          className="flex-1 min-w-[12rem] rounded-full border border-warm-gray bg-white px-4 py-2 text-sm outline-none focus:border-accent"
-        />
-        <div className="flex gap-1.5 overflow-x-auto lg:hidden">
-          {COLUMNS.map((s) => (
-            <button key={s} onClick={() => setActiveCol(s)} className={pill(activeCol === s)}>
-              {STATUS_LABEL[s]} · {columns[s].length}
-            </button>
-          ))}
-        </div>
+      {/* Phone column tabs */}
+      <div className="mb-3 grid grid-cols-4 gap-1 lg:hidden" role="tablist">
+        {COLUMNS.map((s) => (
+          <button
+            key={s}
+            role="tab"
+            aria-selected={activeCol === s}
+            onClick={() => setActiveCol(s)}
+            className={`min-h-12 rounded-xl border px-1 text-sm font-medium ${activeCol === s ? "border-primary-text bg-primary-text text-white" : "border-warm-gray bg-white"}`}
+          >
+            {PHONE_TAB[s]}{" "}
+            <span className={s === "new" && columns.new.length > 0 && activeCol !== s ? "rounded-full bg-red-600 px-1.5 text-white" : ""}>{columns[s].length}</span>
+          </button>
+        ))}
       </div>
 
       {orders === null ? (
-        <p className="text-secondary-text">Loading orders…</p>
+        <p className="text-base text-secondary-text">Loading orders…</p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-4" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
           {COLUMNS.map((s) => (
-            <section key={s} className={`${activeCol === s ? "block" : "hidden"} lg:block rounded-2xl bg-warm-gray/40 p-2.5`}>
+            <section key={s} className={`${activeCol === s ? "block" : "hidden"} rounded-2xl bg-warm-gray/40 p-2.5 lg:block`} aria-label={COLUMN_TITLE[s]}>
               <div className="flex items-center gap-2 px-1.5 py-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${COLUMN_STYLE[s].bar}`} />
-                <h2 className="font-medium text-sm">{STATUS_LABEL[s]}{s === "delivered" && " today"}</h2>
-                <span className={`ml-auto rounded-full px-2 text-xs font-semibold ${COLUMN_STYLE[s].chip}`}>{columns[s].length}</span>
+                <span className={`h-3 w-3 rounded-full ${DOT[s]}`} aria-hidden="true" />
+                <h2 className="font-body text-base font-semibold">{COLUMN_TITLE[s]}{s === "delivered" && " today"}</h2>
+                <span className={`ml-auto rounded-full px-2.5 text-sm font-semibold ${s === "new" && columns[s].length > 0 ? "bg-red-600 text-white" : "bg-white text-secondary-text"}`}>{columns[s].length}</span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
                 {columns[s].length === 0 && (
-                  <p className="rounded-xl border border-dashed border-warm-gray px-3 py-8 text-center text-xs text-secondary-text">
-                    {s === "new" ? "No new orders" : "Nothing here"}
+                  <p className="rounded-xl border border-dashed border-warm-gray px-3 py-8 text-center text-base text-secondary-text">
+                    {s === "new" ? "No new orders. You're all caught up." : "Nothing here"}
                   </p>
                 )}
+
                 {columns[s].map((o) => {
+                  if (s === "delivered") {
+                    return (
+                      <button key={o.id} onClick={() => setOpenId(o.id)} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-warm-gray bg-white px-3 text-left text-base">
+                        <span className="font-display">#{o.order_number}</span>
+                        <span className="min-w-0 flex-1 truncate">{o.customer_name}</span>
+                        <span className="tabular-nums font-semibold">{rupees(Number(o.total))}</span>
+                      </button>
+                    );
+                  }
                   const urgency = urgencyOf(o, now);
                   const age = now - new Date(o.created_at).getTime();
-                  const fresh = o.status === "new" && age < 120000;
-                  const expanded = open === o.id;
+                  const just = arrived[o.id] && now - arrived[o.id] < 10000;
+                  const hint = customerHint(history[o.phone]);
+                  const isBlocked = blocked.includes(o.phone);
+                  const next = NEXT[o.status];
+                  const prev = PREV[o.status];
                   return (
-                    <article
-                      key={o.id}
-                      className={`rounded-xl border bg-white p-3 shadow-sm ${URGENCY_STYLE[urgency]} ${fresh ? "ring-2 ring-accent/40" : ""}`}
-                    >
-                      <button onClick={() => setOpen(expanded ? null : o.id)} className="w-full text-left" aria-expanded={expanded}>
+                    <article key={o.id} className={`rounded-xl border-2 bg-white p-3 shadow-sm ${URGENCY_BORDER[urgency]} ${just ? "ring-4 ring-accent/40" : ""}`}>
+                      <div role="button" tabIndex={0} onClick={() => setOpenId(o.id)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setOpenId(o.id)} className="cursor-pointer space-y-1.5" aria-label={`Open order ${o.order_number}`}>
                         <div className="flex items-center gap-2">
-                          <span className="font-display text-lg">#{o.order_number}</span>
-                          {fresh && <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase text-white">New</span>}
-                          <span
-                            className={`ml-auto text-xs font-semibold ${
-                              urgency === "late" ? "text-red-600" : urgency === "warn" ? "text-amber-600" : "text-secondary-text"
-                            }`}
-                          >
-                            {urgency === "late" && "⚠ "}
-                            {formatAge(age)}
-                          </span>
+                          <span className="font-display text-xl font-bold">#{o.order_number}</span>
+                          <span className={`ml-auto whitespace-nowrap rounded-full px-2 py-0.5 text-sm font-semibold tabular-nums ${AGE_PILL[urgency]}`}>{formatAge(age)}{AGE_WORD[urgency]}</span>
                         </div>
-                        <p className="text-sm font-medium truncate">{o.customer_name}</p>
-                        {(o.status === "new" || blocked.includes(o.phone)) && (
-                          <div className="mt-1"><CustomerBadge history={history[o.phone]} blocked={blocked.includes(o.phone)} /></div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-base font-semibold">{o.customer_name}</span>
+                          {isBlocked ? (
+                            <span className="rounded-full bg-red-600 px-2 py-0.5 text-sm font-bold text-white">Blocked number</span>
+                          ) : (
+                            <span className={`rounded-full px-2 py-0.5 text-sm font-medium ${hint.text === "First order" ? "bg-accent/15 text-accent" : hint.tone === "bad" ? "bg-red-100 text-red-700" : "bg-warm-gray text-secondary-text"}`}>{hint.text}</span>
+                          )}
+                        </div>
+                        <p className="line-clamp-2 text-base text-secondary-text">{itemsSummary(o, 3)}</p>
+                        <p className="flex items-baseline justify-between gap-2 text-base">
+                          <span className={o.slot?.startsWith("Deliver now") ? "font-bold" : "text-secondary-text"}>{o.slot ? (o.slot.startsWith("Deliver now") ? "Deliver now" : o.slot.split(" (")[0]) : ""}</span>
+                          <b className="tabular-nums text-lg">{rupees(Number(o.total))}</b>
+                        </p>
+                        <p className="flex items-center gap-1.5 text-sm text-secondary-text">
+                          <a href={mapsLink({ lat: o.lat, lng: o.lng, address: o.address })} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} aria-label="Open in maps" className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-cream text-accent"><MapPin size={16} /></a>
+                          <span className="truncate">{o.address}</span>
+                        </p>
+                        {o.note && <p className="rounded-lg bg-yellow-50 px-2.5 py-1.5 text-sm text-yellow-900">“{o.note}”</p>}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <a href={`tel:${o.phone}`} className="order-1 flex min-h-12 flex-shrink-0 items-center gap-1.5 rounded-full border border-warm-gray px-4 text-base font-medium hover:bg-cream"><Phone size={16} /> Call</a>
+                        {next && (
+                          <button onClick={() => changeStatus(o, next)} className="btn-primary order-3 min-h-12 basis-full whitespace-nowrap !px-3 !text-base">
+                            {NEXT_LABEL[o.status]}
+                          </button>
                         )}
-                        <p className="text-xs text-secondary-text truncate">{itemsSummary(o)}</p>
-                        <div className="mt-1.5 flex items-center justify-between text-xs">
-                          <span className="text-secondary-text">{o.slot ? `🕒 ${o.slot.split(" (")[0]}` : ""}</span>
-                          <b className="text-sm">₹{o.total}</b>
-                        </div>
-                      </button>
-
-                      {expanded && (
-                        <div className="mt-3 border-t border-warm-gray pt-3 text-sm space-y-2">
-                          <ContactLines o={o} />
-                          <AddressBlock o={o} />
-                          <CustomerBadge history={history[o.phone]} blocked={blocked.includes(o.phone)} />
-                          {o.note && <p className="italic">“{o.note}”</p>}
-                          <p className="text-xs text-secondary-text">
-                            Placed {new Date(o.created_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
-                            {o.slot && ` · ${o.slot}`}
-                          </p>
-                          <ul className="divide-y divide-warm-gray/70 border-y border-warm-gray/70">
-                            {o.items.map((it, i) => (
-                              <li key={i} className="flex justify-between py-1">
-                                <span>{it.name} <span className="text-secondary-text">· {it.quantity}</span></span>
-                                <span>₹{it.price}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          <p className="flex justify-between text-xs text-secondary-text">
-                            <span>Delivery {Number(o.delivery_fee) ? `₹${o.delivery_fee}` : "free"} · cash on delivery</span>
-                            <b className="text-sm text-primary-text">₹{o.total}</b>
-                          </p>
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            <a href={whatsappLink(o)} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-xs">WhatsApp</a>
-                            <button onClick={() => printSlip(o)} className="btn-secondary !py-1.5 !px-3 !text-xs" title="Small slip for the kitchen or delivery boy">Print slip</button>
-                      <a href={`/admin/bill/${o.id}`} target="_blank" rel="noopener noreferrer" className="btn-secondary !py-1.5 !px-3 !text-xs" title="Customer bill with GST details">Print bill</a>
-                            {PREV[o.status] && o.status !== "cancelled" && (
-                              <button onClick={() => changeStatus(o, PREV[o.status]!, false)} className="text-xs text-secondary-text hover:underline">
-                                ← Move back
-                              </button>
-                            )}
-                            <span className="ml-auto flex gap-3">
-                              <BlockButton phone={o.phone} blocked={blocked.includes(o.phone)} onChanged={load} />
-                              {o.status !== "delivered" && o.status !== "cancelled" && (
-                                <button onClick={() => changeStatus(o, "cancelled")} className="text-xs text-red-600 hover:underline">Cancel order</button>
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      {NEXT[o.status] && (
-                        <button
-                          onClick={() => changeStatus(o, NEXT[o.status]!)}
-                          className="btn-primary mt-3 w-full !py-2.5 !text-sm"
-                        >
-                          {NEXT_LABEL[o.status]} →
-                        </button>
-                      )}
+                        <span className="order-2 ml-auto"><MoreMenu
+                          items={[
+                            { label: "WhatsApp message", href: whatsappLink(o) },
+                            { label: "Print slip", onSelect: () => printSlip(o) },
+                            { label: "Print bill", href: `/admin/bill/${o.id}` },
+                            { label: `Step back to ${prev ? STATUS_LABEL[prev] : ""}`, onSelect: () => prev && changeStatus(o, prev, false), hidden: !prev },
+                            { label: "Cancel order", onSelect: () => changeStatus(o, "cancelled"), danger: true },
+                            { label: isBlocked ? "Unblock this phone number" : "Block this phone number", onSelect: () => (isBlocked ? unblock(o.phone) : block(o.phone)), danger: true },
+                          ]}
+                        /></span>
+                      </div>
                     </article>
                   );
                 })}
@@ -433,39 +486,16 @@ export default function OrderBoard() {
         </div>
       )}
 
-      {/* Top sellers */}
-      {topItems.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-warm-gray bg-white p-4">
-          <h2 className="font-medium text-sm mb-3">Top sellers today</h2>
-          <ul className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {topItems.map(([name, v]) => (
-              <li key={name} className="rounded-xl bg-cream px-3 py-2">
-                <p className="text-sm font-medium truncate">{name}</p>
-                <p className="text-xs text-secondary-text">{v.count} order{v.count === 1 ? "" : "s"} · ₹{v.revenue}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* Undo toast */}
-      {toast && (
-        <div className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-4 rounded-full bg-primary-text px-5 py-3 text-sm text-white shadow-hover">
-            <span>{toast.text}</span>
-            <button
-              onClick={() => {
-                const o = list.find((x) => x.id === toast.id);
-                setToast(null);
-                if (o) changeStatus(o, toast.from, false);
-              }}
-              className="font-semibold text-amber-300 hover:underline"
-            >
-              Undo
-            </button>
-          </div>
-        </div>
-      )}
+      <OrderPanel
+        order={openOrder}
+        history={history}
+        blocked={blocked}
+        now={now}
+        onClose={() => setOpenId(null)}
+        onStatus={(o, st) => changeStatus(o, st, st !== PREV[o.status])}
+        onBlock={block}
+        onUnblock={unblock}
+      />
     </div>
   );
 }

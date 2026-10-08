@@ -5,9 +5,11 @@ export interface ShopStatus {
   open: boolean;
   /** Shown to customers while closed, e.g. "Back tomorrow at 6:30 AM". */
   message: string;
+  /** When the shop was opened outside its hours: the time (ms) it closes again. 0 = not forced open. */
+  forceOpenUntil: number;
 }
 
-const DEFAULT_STATUS: ShopStatus = { open: true, message: "" };
+const DEFAULT_STATUS: ShopStatus = { open: true, message: "", forceOpenUntil: 0 };
 
 async function readShopStatus(): Promise<ShopStatus> {
   const supabase = getSupabase();
@@ -25,6 +27,7 @@ async function readShopStatus(): Promise<ShopStatus> {
   return {
     open: v.open !== false,
     message: typeof v.message === "string" ? v.message.slice(0, 200) : "",
+    forceOpenUntil: typeof v.forceOpenUntil === "number" && Number.isFinite(v.forceOpenUntil) && v.forceOpenUntil > 0 ? v.forceOpenUntil : 0,
   };
 }
 

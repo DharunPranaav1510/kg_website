@@ -6,6 +6,7 @@ export default function TestimonialsEditor() {
   return (
     <ItemsEditor
       kind="testimonials"
+      plural="reviews"
       noun="review"
       empty={{ name: "", role: "", location: "", product: "", rating: 5, quote: "", image: "", active: true }}
       fields={[
@@ -15,7 +16,6 @@ export default function TestimonialsEditor() {
         { key: "product", label: "Product they bought", type: "text", max: 80, optional: true, placeholder: "e.g. Chicken Breast" },
         { key: "role", label: "Role", type: "text", max: 80, optional: true, placeholder: "e.g. Home cook" },
         { key: "location", label: "Place", type: "text", max: 80, optional: true, placeholder: "e.g. Anna Nagar, Hosur" },
-        { key: "image", label: "Photo", type: "image", optional: true },
       ]}
       title={(i) => `${String(i.name)} · ${"★".repeat(Number(i.rating))}`}
       sub={(i) => String(i.quote)}

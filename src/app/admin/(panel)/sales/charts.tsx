@@ -23,13 +23,13 @@ function niceMax(v: number) {
 /** "▲ 12%" with a word, never colour alone. `goodWhenUp=false` flips what counts as good. */
 export function Delta({ now, before, goodWhenUp = true, unit = "%" }: { now: number; before: number; goodWhenUp?: boolean; unit?: "%" | "pts" }) {
   const pct = pctChange(now, before);
-  if (pct === null) return <span className="text-xs font-medium text-secondary-text">▲ new</span>;
-  if (Math.abs(pct) < 0.5) return <span className="text-xs font-medium text-secondary-text">▬ no change</span>;
+  if (pct === null) return <span className="text-sm font-medium text-secondary-text">▲ new</span>;
+  if (Math.abs(pct) < 0.5) return <span className="text-sm font-medium text-secondary-text">▬ no change</span>;
   const up = pct > 0;
   const good = up === goodWhenUp;
   return (
-    <span className={`text-xs font-semibold ${good ? "text-success" : "text-red-600"}`}>
-      {up ? "▲" : "▼"} {Math.abs(Math.round(pct))}
+    <span className={`text-sm font-semibold ${good ? "text-success" : "text-red-600"}`}>
+      {up ? "▲ up" : "▼ down"} {Math.abs(Math.round(pct))}
       {unit}
     </span>
   );
@@ -150,7 +150,7 @@ export function MiniBars({
           </div>
         ))}
       </div>
-      <div className="mt-1 flex gap-[3px] text-[10px] text-secondary-text">
+      <div className="mt-1 flex gap-[3px] text-xs text-secondary-text">
         {data.map((d, i) => (
           <span key={i} className="flex-1 text-center">{i % labelEvery === 0 ? d.label : ""}</span>
         ))}
@@ -189,7 +189,29 @@ export function RankedBars({ rows, empty }: { rows: Ranked[]; empty: string }) {
               />
             )}
           </div>
-          <p className="mt-0.5 text-[11px] text-secondary-text">{r.orders} order{r.orders === 1 ? "" : "s"}</p>
+          <p className="mt-0.5 text-sm text-secondary-text">{r.orders} order{r.orders === 1 ? "" : "s"}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+
+/** Plain horizontal bars for a short list of counts (delivery slots, new vs returning). */
+export function HBars({ rows, empty, format }: { rows: { name: string; value: number; note?: string }[]; empty: string; format?: (n: number) => string }) {
+  if (rows.length === 0 || rows.every((r) => r.value === 0)) return <p className="py-4 text-center text-base text-secondary-text">{empty}</p>;
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  return (
+    <ul className="space-y-3">
+      {rows.map((r) => (
+        <li key={r.name}>
+          <div className="mb-1 flex items-baseline justify-between gap-3 text-base">
+            <span className="min-w-0 truncate font-medium">{r.name}</span>
+            <span className="flex-shrink-0 tabular-nums"><b>{format ? format(r.value) : r.value}</b>{r.note && <span className="ml-2 text-sm text-secondary-text">{r.note}</span>}</span>
+          </div>
+          <div className="h-3 rounded-full bg-warm-gray/50">
+            <div className="h-3 rounded-full" style={{ width: `${(r.value / max) * 100}%`, background: CURRENT }} />
+          </div>
         </li>
       ))}
     </ul>
