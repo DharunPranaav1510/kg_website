@@ -17,6 +17,8 @@ export default function SecurityPanel({ forced = false }: { forced?: boolean }) 
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pw, setPw] = useState({ current: "", next: "", again: "" });
+  const [showPw, setShowPw] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -75,6 +77,21 @@ export default function SecurityPanel({ forced = false }: { forced?: boolean }) 
       window.location.href = "/admin/login";
     } catch (e) {
       setError((e as Error).message);
+      setBusy(false);
+    }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError("");
+    if (pw.next !== pw.again) return setError("The two new passwords don't match.");
+    setBusy(true);
+    try {
+      await adminApi("/api/admin/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ current: pw.current, next: pw.next }) });
+      window.location.href = "/admin/login";
+    } catch (err) {
+      setError((err as Error).message);
       setBusy(false);
     }
   }
@@ -166,6 +183,31 @@ export default function SecurityPanel({ forced = false }: { forced?: boolean }) 
           <button onClick={start} disabled={busy || !status} className="btn-primary min-h-12 !text-base disabled:opacity-60">{busy ? "Starting…" : "Set up two-step login"}</button>
         )}
       </section>
+
+      {!forced && (
+        <section className={card}>
+          <h2 className="mb-1 font-body text-lg font-semibold">Change password</h2>
+          <p className="mb-3 text-base text-secondary-text">Pick a new password of at least 10 characters. You will be signed out everywhere and sign in again with the new one.</p>
+          <form onSubmit={changePassword} className="space-y-3">
+            {([["current", "Current password", "current-password"], ["next", "New password", "new-password"], ["again", "New password again", "new-password"]] as const).map(([k, label, ac]) => (
+              <label key={k} className="block text-base font-medium">
+                {label}
+                <input
+                  type={showPw ? "text" : "password"}
+                  autoComplete={ac}
+                  value={pw[k]}
+                  onChange={(e) => setPw({ ...pw, [k]: e.target.value })}
+                  className="mt-1 min-h-12 w-full rounded-xl border border-warm-gray px-4 text-base font-normal outline-none focus:border-accent"
+                />
+              </label>
+            ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="submit" disabled={busy || !pw.current || pw.next.length < 10 || !pw.again} className="btn-primary min-h-12 !text-base disabled:opacity-60">{busy ? "Saving…" : "Change password"}</button>
+              <button type="button" onClick={() => setShowPw(!showPw)} className="min-h-12 px-3 text-base text-secondary-text">{showPw ? "Hide" : "Show"} passwords</button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {!forced && (
         <section className={card}>

@@ -249,6 +249,7 @@ Add, edit, reorder with the arrows, and hide with the **Visible** switch. Until 
 
 **Account → Security**
 - **Two-step login:** turn it on or off (it cannot be turned off if the owner has made it compulsory).
+- **Change password:** enter your current password and a new one (at least 10 characters) twice. You are signed out everywhere and sign in again with the new password.
 - **Sign out of all devices:** use this if you lost a phone or signed in on a shared computer. It also signs you out here.
 
 **Lost your phone or forgot your password?** Ask the owner. They can reset your sign-in in Supabase (Authentication → Users).

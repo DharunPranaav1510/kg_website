@@ -24,7 +24,7 @@ const GROUPS: { id: Group; label: string }[] = [
   { id: "admins", label: "Admins" },
 ];
 const GROUP_OF: Record<string, Group> = {
-  login: "signin", login_failed: "signin", logout: "signin", logout_everywhere: "signin", mfa_enabled: "signin", mfa_disabled: "signin",
+  login: "signin", login_failed: "signin", logout: "signin", logout_everywhere: "signin", mfa_enabled: "signin", mfa_disabled: "signin", password_changed: "signin",
   order_status: "orders", bill_printed: "orders", number_blocked: "orders", number_unblocked: "orders",
   product_created: "products", product_updated: "products", product_deleted: "products", prices_changed: "products", products_imported: "products",
   offers_changed: "offers",
@@ -47,6 +47,7 @@ function sentence(e: Entry): string {
     case "logout_everywhere": return `${who} signed out of all devices`;
     case "mfa_enabled": return `${who} turned on two-step login`;
     case "mfa_disabled": return `${who} turned off two-step login`;
+    case "password_changed": return `${who} changed their password`;
     case "shop_open": return `${who} resumed orders`;
     case "shop_closed": return `${who} paused orders${t ? `: “${t}”` : ""}`;
     case "hours_changed": return `${who} changed the opening hours`;

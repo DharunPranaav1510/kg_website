@@ -8,6 +8,7 @@ export type AuditAction =
   | "logout_everywhere"
   | "mfa_enabled"
   | "mfa_disabled"
+  | "password_changed"
   | "shop_open"
   | "shop_closed"
   | "product_created"
