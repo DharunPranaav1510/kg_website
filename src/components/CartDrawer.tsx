@@ -223,7 +223,7 @@ export default function CartDrawer() {
                       <span className="text-right leading-tight">
                         <span className="font-bold text-primary-text">₹{lineFor(product.id)?.price ?? 0}</span>
                         {lineFor(product.id) && lineFor(product.id)!.unitPrice < lineFor(product.id)!.listPrice && <span className="block text-[10px] font-semibold text-success">Offer price</span>}
-                        {(lineFor(product.id)?.gstRate ?? 0) > 0 && <span className="block text-[10px] text-secondary-text">{business.tax.inclusive ? "incl." : "+"} {lineFor(product.id)!.gstRate}% GST</span>}
+                        {(lineFor(product.id)?.gstRate ?? 0) > 0 && <span className="block text-[10px] text-secondary-text">{lineFor(product.id)!.gstInclusive ? "incl." : "+"} {lineFor(product.id)!.gstRate}% GST</span>}
                       </span>
                     </div>
                   </div>
@@ -236,10 +236,16 @@ export default function CartDrawer() {
             <div className="space-y-3 border-t border-warm-gray bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-secondary-text"><span>Subtotal</span><span>₹{subtotal}</span></div>
-                {priced.gstTotal > 0 && (
+                {priced.gstIncluded > 0 && (
                   <div className="flex justify-between text-secondary-text">
-                    <span>{business.tax.inclusive ? "Includes GST" : "GST"}</span>
-                    <span>₹{business.tax.inclusive ? priced.gstTotal.toFixed(2) : gstExtra}</span>
+                    <span>Includes GST</span>
+                    <span>₹{priced.gstIncluded.toFixed(2)}</span>
+                  </div>
+                )}
+                {gstExtra > 0 && (
+                  <div className="flex justify-between text-secondary-text">
+                    <span>GST</span>
+                    <span>₹{gstExtra}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-secondary-text"><span>Delivery charge</span><span>{deliveryFee ? `₹${deliveryFee}` : "Free"}</span></div>

@@ -9,6 +9,7 @@ export interface ExtrasDraft {
   packLabel: string; // words for a pack of unknown weight, e.g. "10 pieces"
   packKg: string; // "" = sold loose by weight; otherwise kg in one pack
   gstRate: string; // "" = use the category rate
+  gstInclusive: "" | "yes" | "no"; // "" = follow the shop-wide setting
   hsn: string;
   offerPrice: string;
   offerLabel: string;
@@ -28,6 +29,7 @@ export const EMPTY_EXTRAS: ExtrasDraft = {
   packKg: "",
   packLabel: "",
   gstRate: "",
+  gstInclusive: "",
   hsn: "",
   offerPrice: "",
   offerLabel: "",
@@ -57,6 +59,7 @@ export function productToExtras(p: Product): ExtrasDraft {
     packKg: p.packKg ? String(p.packKg) : "",
     packLabel: p.packLabel ?? "",
     gstRate: p.gstRate === null || p.gstRate === undefined ? "" : String(p.gstRate),
+    gstInclusive: p.gstInclusive === true ? "yes" : p.gstInclusive === false ? "no" : "",
     hsn: p.hsn ?? "",
     offerPrice: p.offer ? String(p.offer.price) : "",
     offerLabel: p.offer?.label ?? "",
@@ -79,6 +82,7 @@ export function extrasToPayload(e: ExtrasDraft) {
     packKg: e.packKg === "" ? null : Number(e.packKg),
     packLabel: e.packKg === "" ? "" : e.packLabel.trim(),
     gstRate: e.gstRate === "" ? null : Number(e.gstRate),
+    gstInclusive: e.gstInclusive === "yes" ? true : e.gstInclusive === "no" ? false : null,
     hsn: e.hsn.trim(),
     offer: e.offerPrice === "" ? null : { price: Number(e.offerPrice), label: e.offerLabel, from: fromIst(e.offerFrom), to: fromIst(e.offerTo) },
     schedule: e.schedOn
@@ -106,7 +110,7 @@ export function packsSummary(v: ExtrasDraft) {
   return v.packKg === "" ? "Sold by weight" : `${v.packKg} kg packs, customers choose how many`;
 }
 export function taxSummary(v: ExtrasDraft) {
-  return `${v.gstRate === "" ? "Category rate" : `GST ${v.gstRate}%`}${v.hsn ? `, HSN ${v.hsn}` : ""}`;
+  return `${v.gstRate === "" ? "Category rate" : `GST ${v.gstRate}%`}${v.gstInclusive === "yes" ? ", included in price" : v.gstInclusive === "no" ? ", added on top" : ""}${v.hsn ? `, HSN ${v.hsn}` : ""}`;
 }
 export function offerSummary(v: ExtrasDraft) {
   return v.offerPrice === "" ? "No offer" : `₹${v.offerPrice}${v.offerLabel ? `, ${v.offerLabel}` : ""}`;
@@ -203,7 +207,15 @@ export function TaxFields({ value, onChange }: Props) {
           <input className={`${field} mt-1`} inputMode="numeric" placeholder="e.g. 0207" maxLength={8} value={value.hsn} onChange={(e) => set("hsn", e.target.value.replace(/\D/g, ""))} />
         </label>
       </div>
-      <p className="text-sm text-secondary-text">Empty means the category rate from Website content, Business details is used. Enter 0 for a product with no GST.</p>
+      <div role="radiogroup" aria-label="Is GST in the price?" className="grid gap-2 sm:grid-cols-3">
+        {([["", "Follow the shop setting", "Same as the GST choice in Business details."], ["yes", "Price includes GST", "For a printed MRP. The bill splits the GST out of the price."], ["no", "Add GST on top", "GST is added to the price at checkout."]] as const).map(([v, t, h]) => (
+          <button key={v || "default"} type="button" role="radio" aria-checked={value.gstInclusive === v} onClick={() => set("gstInclusive", v)} className={`min-h-12 rounded-2xl border-2 p-3 text-left ${value.gstInclusive === v ? "border-accent bg-accent/5" : "border-warm-gray"}`}>
+            <span className="block text-base font-semibold">{t}</span>
+            <span className="block text-sm text-secondary-text">{h}</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-sm text-secondary-text">Empty GST % means the category rate from Website content, Business details is used. Enter 0 for a product with no GST.</p>
     </div>
   );
 }

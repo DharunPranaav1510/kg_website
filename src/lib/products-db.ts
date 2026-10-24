@@ -27,6 +27,7 @@ export interface ProductRow {
   pack_kg?: number | string | null;
   pack_label?: string | null;
   gst_rate?: number | string | null;
+  gst_inclusive?: boolean | null;
   hsn?: string | null;
   offer_price?: number | string | null;
   offer_label?: string | null;
@@ -54,6 +55,7 @@ export function rowToProduct(row: ProductRow): AdminProduct {
     packKg: row.pack_kg ? Number(row.pack_kg) : undefined,
     packLabel: row.pack_kg && row.pack_label ? row.pack_label : undefined,
     gstRate: row.gst_rate === null || row.gst_rate === undefined ? null : Number(row.gst_rate),
+    gstInclusive: row.gst_inclusive ?? null,
     hsn: row.hsn || undefined,
     offer:
       row.offer_price === null || row.offer_price === undefined
@@ -69,12 +71,13 @@ export function rowToProduct(row: ProductRow): AdminProduct {
 }
 
 /** Columns for the optional product settings, used by both insert and update. */
-export function extrasToRow(p: Pick<Product, "allowedWeights" | "packKg" | "packLabel" | "gstRate" | "hsn" | "offer" | "schedule">) {
+export function extrasToRow(p: Pick<Product, "allowedWeights" | "packKg" | "packLabel" | "gstRate" | "gstInclusive" | "hsn" | "offer" | "schedule">) {
   return {
     allowed_weights: p.allowedWeights?.length ? p.allowedWeights : null,
     pack_kg: p.packKg ?? null,
     pack_label: p.packKg ? p.packLabel ?? null : null,
     gst_rate: p.gstRate ?? null,
+    gst_inclusive: p.gstInclusive ?? null,
     hsn: p.hsn || null,
     offer_price: p.offer?.price ?? null,
     offer_label: p.offer?.label ?? null,
@@ -143,6 +146,7 @@ export interface ProductInput {
   packKg?: number;
   packLabel?: string;
   gstRate?: number | null;
+  gstInclusive?: boolean | null;
   hsn?: string;
   offer?: ProductOffer;
   schedule?: ProductSchedule;
@@ -225,6 +229,8 @@ export function parseProductInput(
     if (!Number.isFinite(gstRate) || gstRate < 0 || gstRate > 40) return { error: "GST must be between 0 and 40 %" };
   }
 
+  const gstInclusive = b.gstInclusive === true ? true : b.gstInclusive === false ? false : null;
+
   const hsn = typeof b.hsn === "string" ? b.hsn.trim() : "";
   if (hsn && !/^\d{2,8}$/.test(hsn)) return { error: "An HSN code is 2 to 8 digits" };
 
@@ -251,6 +257,7 @@ export function parseProductInput(
       packKg,
       packLabel: packKg && typeof b.packLabel === "string" && b.packLabel.trim() ? b.packLabel.trim().slice(0, 40) : undefined,
       gstRate,
+      gstInclusive,
       hsn: hsn || undefined,
       offer,
       schedule: sched.value,

@@ -27,6 +27,8 @@ interface OrderItem {
   name: string;
   quantity: string;
   price: number;
+  gstAmount?: number;
+  gstInclusive?: boolean;
 }
 
 /** The order status card, shared by the full site and the phone layout. */
@@ -45,6 +47,11 @@ export default async function OrderView({ id }: { id: string }) {
     supabase && order && order.status === "delivered"
       ? await supabase.from("order_feedback").select("rating, comment").eq("order_id", id).maybeSingle()
       : { data: null };
+
+  // GST inside the prices vs GST added on top, line by line (older orders only have the order-level flag).
+  const taxLines = ((order?.items ?? []) as OrderItem[]).map((it) => ({ gst: Number(it.gstAmount) || 0, inclusive: it.gstInclusive ?? order?.gst_inclusive === true }));
+  const gstIncluded = taxLines.filter((l) => l.inclusive).reduce((n, l) => n + l.gst, 0);
+  const gstAdded = taxLines.filter((l) => !l.inclusive).reduce((n, l) => n + l.gst, 0);
 
   return (
       <div className="max-w-xl mx-auto">
@@ -104,10 +111,16 @@ export default async function OrderView({ id }: { id: string }) {
                     <span>₹{it.price}</span>
                   </div>
                 ))}
-                {Number(order.gst_total) > 0 && (
+                {gstIncluded > 0 && (
                   <div className="flex justify-between text-secondary-text">
-                    <span>{order.gst_inclusive ? "GST (included)" : "GST"}</span>
-                    <span>₹{Number(order.gst_total).toFixed(2)}</span>
+                    <span>GST (included in prices)</span>
+                    <span>₹{gstIncluded.toFixed(2)}</span>
+                  </div>
+                )}
+                {gstAdded > 0 && (
+                  <div className="flex justify-between text-secondary-text">
+                    <span>GST</span>
+                    <span>₹{gstAdded.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-secondary-text">

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useBusiness } from "@/context/BusinessContext";
 import type { Product } from "@/data/products";
-import { allowedWeightsFor, defaultWeight, gstRateFor, isPacked, offerActive, packLabel, percentOff, effectivePrice, unitWord } from "@/lib/pricing";
+import { allowedWeightsFor, defaultWeight, gstInclusiveFor, gstRateFor, isPacked, offerActive, packLabel, percentOff, effectivePrice, unitWord } from "@/lib/pricing";
 
 // A pack price worked out from a per-kg price can land a hair off a whole rupee (229.995), so snap to it.
 const money = (n: number) => (Math.abs(n - Math.round(n)) < 0.02 ? Math.round(n) : Math.round(n * 100) / 100);
@@ -38,7 +38,7 @@ export function useProductPricing(product: Product) {
       off: percentOff(product, now),
       offerLabel: product.offer?.label || (onOffer ? "Offer" : ""),
       gstRate,
-      gstNote: gstRate > 0 ? (tax.inclusive ? `incl. ${gstRate}% GST` : `+ ${gstRate}% GST`) : "",
+      gstNote: gstRate > 0 ? (gstInclusiveFor(product, tax) ? `incl. ${gstRate}% GST` : `+ ${gstRate}% GST`) : "",
       priceFor: (w: number) => Math.round(price * w),
     };
   }, [product, tax]);

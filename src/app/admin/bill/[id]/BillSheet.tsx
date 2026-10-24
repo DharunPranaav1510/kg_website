@@ -171,7 +171,7 @@ export default function BillSheet({ order, shop }: { order: Order; shop: Shop })
                   <p className="flex justify-between"><span>SGST @ {t.rate / 2}%</span><span>{money(t.sgst)}</span></p>
                 </div>
               ))}
-              {bill.inclusive && <p className="text-[0.85em] text-secondary-text">Rates above include this GST.</p>}
+              {bill.inclusive ? <p className="text-[0.85em] text-secondary-text">Rates above include this GST.</p> : bill.someInclusive && <p className="text-[0.85em] text-secondary-text">GST is included in the rates of some items and added to the others.</p>}
             </>
           )}
           <p className="flex justify-between"><span>Delivery charge</span><span>{bill.deliveryFee ? money(bill.deliveryFee) : "Free"}</span></p>

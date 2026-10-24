@@ -23,6 +23,11 @@ export interface Product {
   packLabel?: string;
   /** GST % for this product. Missing = the category's rate from the admin tax settings. */
   gstRate?: number | null;
+  /**
+   * true: the price already includes this product's GST (e.g. a printed MRP). false: GST is added on top.
+   * Missing / null: follow the shop-wide setting.
+   */
+  gstInclusive?: boolean | null;
   /** HSN code printed on the bill (optional). */
   hsn?: string;
   /** A temporary lower price. Shown crossed out against the normal price. */
