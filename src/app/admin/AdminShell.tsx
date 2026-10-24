@@ -42,6 +42,7 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: boolean;
+  requests?: boolean;
   ownerOnly?: boolean;
 }
 
@@ -82,7 +83,7 @@ const GROUPS: { name: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin/security", label: "Security", icon: ShieldCheck },
       { href: "/admin/activity", label: "Activity log", icon: ScrollText },
-      { href: "/admin/admins", label: "Admins", icon: Users, ownerOnly: true },
+      { href: "/admin/admins", label: "Admins", icon: Users, ownerOnly: true, requests: true },
     ],
   },
 ];
@@ -104,6 +105,7 @@ const PRESETS = [
 
 interface Summary {
   newOrders: number;
+  adminRequests?: number;
   shop: { open: boolean; message: string; forceOpenUntil?: number };
   hours: OpeningHours;
 }
@@ -187,6 +189,7 @@ function Shell({ email, children }: { email: string; children: React.ReactNode }
   const visibleGroups = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !i.ownerOnly || isOwner(email)) }));
   const current = visibleGroups.flatMap((g) => g.items).find((i) => isActive(i.href));
   const newOrders = summary?.newOrders ?? 0;
+  const adminRequests = summary?.adminRequests ?? 0;
   const live = summary ? shopNow(summary.hours, summary.shop) : null;
 
   const navList = (compact: boolean) => (
@@ -196,8 +199,8 @@ function Shell({ email, children }: { email: string; children: React.ReactNode }
           {!compact && <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-secondary-text">{g.name}</p>}
           {compact && <div className="mx-3 mb-1 border-t border-warm-gray" aria-hidden="true" />}
           <ul className="flex flex-col gap-1">
-            {g.items.map(({ href, label, icon: Icon, badge }) => {
-              const count = badge ? newOrders : 0;
+            {g.items.map(({ href, label, icon: Icon, badge, requests }) => {
+              const count = badge ? newOrders : requests ? adminRequests : 0;
               const active = isActive(href);
               return (
                 <li key={href}>

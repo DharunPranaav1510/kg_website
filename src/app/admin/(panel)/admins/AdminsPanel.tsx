@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Plus } from "lucide-react";
 import { adminApi } from "../../api";
-import { MoreMenu, SidePanel, useUi } from "../../ui";
+import { MoreMenu, SHOP_CHANGED_EVENT, SidePanel, clock, dayDate, useUi } from "../../ui";
+
+interface AdminRequest {
+  id: string;
+  created_at: string;
+  email: string;
+  name: string;
+  note: string | null;
+  status: "pending" | "approved" | "rejected";
+  decided_by: string | null;
+}
 
 const randomPassword = () => {
   const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -23,12 +33,15 @@ export default function AdminsPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [invite, setInvite] = useState<{ email: string; password: string } | null>(null);
+  const [requests, setRequests] = useState<AdminRequest[]>([]);
+  const [deciding, setDeciding] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const d = await adminApi("/api/admin/admins");
+      const [d, r] = await Promise.all([adminApi("/api/admin/admins"), adminApi("/api/admin/requests")]);
       setOwner(d.owner);
       setAdmins(d.admins);
+      setRequests(r.requests);
     } catch (e) {
       setError((e as Error).message);
       setAdmins((a) => a ?? []);
@@ -67,6 +80,23 @@ export default function AdminsPanel() {
     setBusy(false);
   }
 
+  async function decide(r: AdminRequest, action: "approve" | "reject") {
+    if (action === "reject") {
+      const c = await confirm({ title: `Reject the request from ${r.name}?`, body: `${r.email} will not get admin access.`, confirmLabel: "Reject request", cancelLabel: "Keep it", danger: true });
+      if (c.choice !== "confirm") return;
+    }
+    setDeciding(r.id);
+    try {
+      await adminApi(`/api/admin/requests/${r.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+      toast({ text: action === "approve" ? `${r.name} is now an admin and can sign in with the password they chose.` : `Request from ${r.name} rejected.` });
+      await load();
+      window.dispatchEvent(new Event(SHOP_CHANGED_EVENT)); // refreshes the menu badge
+    } catch (err) {
+      toast({ text: (err as Error).message, tone: "error" });
+    }
+    setDeciding(null);
+  }
+
   async function remove(who: string) {
     const r = await confirm({ title: `Remove ${who}?`, body: "They lose access within 30 seconds.", confirmLabel: "Remove admin", cancelLabel: "Keep", danger: true });
     if (r.choice !== "confirm") return;
@@ -79,6 +109,7 @@ export default function AdminsPanel() {
     }
   }
 
+  const pending = requests.filter((r) => r.status === "pending");
   const message = invite
     ? `Hi! You can now use the KG Foods admin.\nSign in at: ${window.location.origin}/admin/login\nEmail: ${invite.email}\nTemporary password: ${invite.password}\nAfter signing in, open Security to set up two-step login.`
     : "";
@@ -115,6 +146,27 @@ export default function AdminsPanel() {
             <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center rounded-full border border-warm-gray bg-white px-6 text-base font-medium hover:bg-cream">Send on WhatsApp</a>
             <button onClick={() => setInvite(null)} className="min-h-12 px-4 text-base text-secondary-text underline">Done</button>
           </div>
+        </section>
+      )}
+
+      {pending.length > 0 && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5" aria-label="Admin access requests">
+          <h2 className="mb-1 font-body text-lg font-semibold">Waiting for your approval ({pending.length})</h2>
+          <p className="mb-2 text-base text-secondary-text">These people asked for admin access from the sign-in page and chose their own password. Approve only people you know.</p>
+          <ul className="divide-y divide-amber-200">
+            {pending.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-3 py-3">
+                <span className="min-w-0 flex-1 basis-56">
+                  <span className="block text-base font-semibold">{r.name}</span>
+                  <span className="block truncate text-base">{r.email}</span>
+                  {r.note && <span className="block text-base text-secondary-text">“{r.note}”</span>}
+                  <span className="block text-sm text-secondary-text">{dayDate(r.created_at)}, {clock(r.created_at)}</span>
+                </span>
+                <button onClick={() => decide(r, "approve")} disabled={deciding === r.id} className="btn-primary min-h-12 !text-base disabled:opacity-60">{deciding === r.id ? "Working…" : "Approve"}</button>
+                <button onClick={() => decide(r, "reject")} disabled={deciding === r.id} className="min-h-12 rounded-full border border-red-200 bg-white px-5 text-base font-medium text-red-600 hover:bg-red-50 disabled:opacity-60">Reject</button>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

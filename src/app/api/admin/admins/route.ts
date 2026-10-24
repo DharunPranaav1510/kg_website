@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdmin, requireAdmin } from "@/lib/admin-auth";
+import { requireOwner } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { isOwner, OWNER_EMAIL } from "@/lib/owner";
 import { getSupabase } from "@/lib/supabase";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-/** Everything here is for the owner only; any other admin gets a 403. */
-async function requireOwner(): Promise<NextResponse | null> {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-  if (!isOwner((await getAdmin())?.email)) {
-    return NextResponse.json({ error: "Only the owner can manage admins." }, { status: 403 });
-  }
-  return null;
-}
 
 export async function GET() {
   const denied = await requireOwner();
