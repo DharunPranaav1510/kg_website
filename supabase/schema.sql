@@ -222,3 +222,6 @@ create table if not exists public.order_feedback (
 );
 create index if not exists order_feedback_created_idx on public.order_feedback (created_at desc);
 alter table public.order_feedback enable row level security;
+
+-- Products sold in standard packs (kg in one pack). Null = sold loose by weight. Safe to re-run.
+alter table public.products add column if not exists pack_kg numeric(6, 2);

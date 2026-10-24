@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useBusiness } from "@/context/BusinessContext";
 import type { Product } from "@/data/products";
-import { allowedWeightsFor, defaultWeight, gstRateFor, offerActive, percentOff, effectivePrice } from "@/lib/pricing";
+import { allowedWeightsFor, defaultWeight, gstRateFor, isPacked, offerActive, packLabel, percentOff, effectivePrice, unitWord } from "@/lib/pricing";
 
 /** Everything a product card needs to show: price, offer, GST note, allowed quantities. */
 export function useProductPricing(product: Product) {
@@ -17,14 +17,19 @@ export function useProductPricing(product: Product) {
 
     // Up to three quick-add choices: prefer 1/2, 1 and 2, else the first few allowed quantities.
     const preferred = (product.isEgg ? [1, 2, 0.5] : [0.5, 1, 2]).filter((w) => allowed.includes(w));
-    const quick = (allowed.length <= 4 ? allowed : preferred.length >= 2 ? preferred.sort((a, b) => a - b) : allowed.slice(0, 3)).slice(0, 4);
+    const packed = isPacked(product);
+    const quick = packed ? allowed.slice(0, 3) : (allowed.length <= 4 ? allowed : preferred.length >= 2 ? preferred.sort((a, b) => a - b) : allowed.slice(0, 3)).slice(0, 4);
+    // What one "unit" of the price is: a pack, a dozen or a kg.
+    const perUnit = packed ? product.packKg ?? 1 : 1;
 
     return {
       allowed,
       quick,
       first: defaultWeight(product),
-      price,
-      listPrice: product.pricePerKg,
+      price: Math.round(price * perUnit * 100) / 100,
+      listPrice: Math.round(product.pricePerKg * perUnit * 100) / 100,
+      unit: unitWord(product),
+      packNote: packed ? `${packLabel(product)} · ₹${Math.round(price * 100) / 100}/kg` : "",
       onOffer,
       off: percentOff(product, now),
       offerLabel: product.offer?.label || (onOffer ? "Offer" : ""),

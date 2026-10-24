@@ -6,6 +6,8 @@ import { shopCategories } from "@/data/products";
 import {
   EMPTY_EXTRAS,
   OfferFields,
+  PackFields,
+  packsSummary,
   ScheduleFields,
   TaxFields,
   WeightsFields,
@@ -115,7 +117,6 @@ export default function ProductForm({
 
   const price = Number(draft.pricePerKg);
   const problems = {
-    image: !draft.image ? "Add a photo" : "",
     name: draft.name.trim().length < 2 ? "Enter the product name" : "",
     price: draft.pricePerKg === "" || !Number.isFinite(price) || price < 0 ? "Enter a price" : "",
   };
@@ -126,7 +127,7 @@ export default function ProductForm({
     setTouched(true);
     if (hasProblem) {
       // Scroll to the first field that needs attention.
-      const first = (["image", "name", "price"] as const).find((k) => problems[k]);
+      const first = (["name", "price"] as const).find((k) => problems[k]);
       document.getElementById(`pf-${first}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -179,12 +180,12 @@ export default function ProductForm({
           <h3 className="font-body text-base font-semibold">Basics</h3>
 
           <div id="pf-image">
-            <p className="mb-1.5 text-sm font-medium">Photo <span className="font-normal text-secondary-text">· JPG, PNG or WebP, up to 4 MB</span></p>
+            <p className="mb-1.5 text-sm font-medium">Photo <span className="font-normal text-secondary-text">· optional for now · JPG, PNG or WebP, up to 4 MB</span></p>
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className={`relative flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-cream transition-colors ${touched && problems.image ? "border-red-500" : "border-warm-gray hover:border-accent/50"}`}
+              className={`relative flex h-44 w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed bg-cream transition-colors border-warm-gray hover:border-accent/50`}
             >
               {draft.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -205,7 +206,6 @@ export default function ProductForm({
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
             <button type="button" onClick={() => setLinkMode((m) => !m)} className="mt-1 flex min-h-12 items-center text-base text-accent hover:underline">Use a link instead</button>
             {linkMode && <input className={field} value={draft.image} onChange={(e) => set("image", e.target.value)} placeholder="https://…" inputMode="url" aria-label="Image link" />}
-            {err("image")}
           </div>
 
           <div id="pf-name">
@@ -265,7 +265,8 @@ export default function ProductForm({
         </section>
 
         {/* 3 to 6: folded, with a one-line summary */}
-        <Fold title="Weights" summary={weightsSummary(draft.extras, !!draft.isEgg)}><WeightsFields {...extrasProps} /></Fold>
+        <Fold title="Packs" summary={packsSummary(draft.extras)}><PackFields {...extrasProps} /></Fold>
+        {draft.extras.packKg === "" && <Fold title="Weights" summary={weightsSummary(draft.extras, !!draft.isEgg)}><WeightsFields {...extrasProps} /></Fold>}
         <Fold title="Tax" summary={taxSummary(draft.extras)}><TaxFields {...extrasProps} /></Fold>
         <Fold title="Offer" summary={offerSummary(draft.extras)}><OfferFields {...extrasProps} /></Fold>
         <Fold title="Selling schedule" summary={scheduleSummary(draft.extras)}><ScheduleFields {...extrasProps} /></Fold>

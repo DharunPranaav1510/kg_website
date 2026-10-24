@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 
 export interface ExtrasDraft {
   allowedWeights: number[];
+  packKg: string; // "" = sold loose by weight; otherwise kg in one pack
   gstRate: string; // "" = use the category rate
   hsn: string;
   offerPrice: string;
@@ -23,6 +24,7 @@ export interface ExtrasDraft {
 
 export const EMPTY_EXTRAS: ExtrasDraft = {
   allowedWeights: [],
+  packKg: "",
   gstRate: "",
   hsn: "",
   offerPrice: "",
@@ -50,6 +52,7 @@ export function productToExtras(p: Product): ExtrasDraft {
   const s = p.schedule;
   return {
     allowedWeights: p.allowedWeights ?? [],
+    packKg: p.packKg ? String(p.packKg) : "",
     gstRate: p.gstRate === null || p.gstRate === undefined ? "" : String(p.gstRate),
     hsn: p.hsn ?? "",
     offerPrice: p.offer ? String(p.offer.price) : "",
@@ -69,7 +72,8 @@ export function productToExtras(p: Product): ExtrasDraft {
 /** The fields the API expects. */
 export function extrasToPayload(e: ExtrasDraft) {
   return {
-    allowedWeights: e.allowedWeights,
+    allowedWeights: e.packKg ? [] : e.allowedWeights,
+    packKg: e.packKg === "" ? null : Number(e.packKg),
     gstRate: e.gstRate === "" ? null : Number(e.gstRate),
     hsn: e.hsn.trim(),
     offer: e.offerPrice === "" ? null : { price: Number(e.offerPrice), label: e.offerLabel, from: fromIst(e.offerFrom), to: fromIst(e.offerTo) },
@@ -93,6 +97,9 @@ type Props = { value: ExtrasDraft; onChange: (v: ExtrasDraft) => void; isEgg: bo
 /** One-line summaries shown on the folded sections. */
 export function weightsSummary(v: ExtrasDraft, isEgg: boolean) {
   return v.allowedWeights.length ? `${v.allowedWeights.join(", ")} ${isEgg ? "dozen" : "kg"}` : "Standard steps";
+}
+export function packsSummary(v: ExtrasDraft) {
+  return v.packKg === "" ? "Sold by weight" : `${v.packKg} kg packs, customers choose how many`;
 }
 export function taxSummary(v: ExtrasDraft) {
   return `${v.gstRate === "" ? "Category rate" : `GST ${v.gstRate}%`}${v.hsn ? `, HSN ${v.hsn}` : ""}`;
@@ -140,6 +147,38 @@ export function WeightsFields({ value, onChange, isEgg }: Props) {
         <button type="button" onClick={addCustom} className="min-h-12 rounded-xl border border-warm-gray bg-white px-5 text-base font-medium">Add</button>
       </div>
       <p className="text-sm text-secondary-text">The Add button starts at ½ kg (1 dozen for eggs), or the nearest larger quantity you allow.</p>
+    </div>
+  );
+}
+
+export function PackFields({ value, onChange, price }: Props) {
+  const on = value.packKg !== "";
+  const kg = Number(value.packKg);
+  const sw = (v: boolean) => (
+    <span className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${v ? "bg-success" : "bg-gray-300"}`} aria-hidden="true">
+      <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${v ? "left-[1.375rem]" : "left-0.5"}`} />
+    </span>
+  );
+  return (
+    <div className="space-y-3">
+      <button type="button" role="switch" aria-checked={on} onClick={() => onChange({ ...value, packKg: on ? "" : "1" })} className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-warm-gray bg-white px-3 py-2 text-left">
+        <span className="flex-1">
+          <span className="block text-base font-medium">Sold in standard packs</span>
+          <span className="block text-sm text-secondary-text">For packets of a fixed size. Customers choose how many packs (1, 2, 3 …) instead of a weight.</span>
+        </span>
+        {sw(on)}
+      </button>
+      {on && (
+        <>
+          <label className="block text-sm font-medium">Weight of one pack (kg)
+            <input className={`${field} mt-1`} inputMode="decimal" value={value.packKg} onChange={(e) => onChange({ ...value, packKg: e.target.value.replace(/[^\d.]/g, "") })} placeholder="e.g. 1 or 2.5" />
+          </label>
+          {Number.isFinite(kg) && kg > 0 && price > 0 && (
+            <p className="rounded-lg bg-cream px-3 py-2 text-base">Customers pay <b>₹{Math.round(price * kg * 100) / 100}</b> for each {kg} kg pack (₹{price} per kg). They can order up to {10} packs. The quantities in the Weights section are ignored.</p>
+          )}
+          <p className="text-sm text-secondary-text">Tip: put the pieces per pack in the product description, for example “Pack of 40 pieces”.</p>
+        </>
+      )}
     </div>
   );
 }

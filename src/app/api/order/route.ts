@@ -14,7 +14,7 @@ import {
 } from "@/lib/guard";
 import { formatPhone, normalizeEmail, normalizeIndianMobile } from "@/lib/phone";
 import { getProducts } from "@/lib/products-db";
-import { distanceKm, isAllowedWeight, priceCart, unavailableNote } from "@/lib/pricing";
+import { distanceKm, isAllowedWeight, isPacked, priceCart, qtyText, unavailableNote } from "@/lib/pricing";
 import type { Product } from "@/data/products";
 import { allow } from "@/lib/ratelimit";
 import { shopNow } from "@/lib/hours";
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
       const note = unavailableNote(product, now);
       if (note) return fail(`${product.name} can't be ordered right now. ${note}.`, 409);
       if (!isAllowedWeight(product, weight)) {
-        return fail(`${weight} ${product.isEgg ? "dozen" : "kg"} isn't available for ${product.name}. Please pick another quantity.`, 409);
+        return fail(`${qtyText(product, weight)} isn't available for ${product.name}. Please pick another quantity.`, 409);
       }
       chosen.push({ product, weightKg: weight });
     }
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         id: l.id,
         name: l.name,
         category: l.category,
-        quantity: `${fractionText(l.weightKg)} ${product.isEgg ? "dozen" : "kg"}`,
+        quantity: isPacked(product) ? `${qtyText(product, l.weightKg)} (${fractionText(l.weightKg)} kg)` : `${fractionText(l.weightKg)} ${product.isEgg ? "dozen" : "kg"}`,
         weightKg: l.weightKg,
         price: l.price,
         unitPrice: l.unitPrice,

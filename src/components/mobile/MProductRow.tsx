@@ -19,7 +19,7 @@ export default function MProductRow({ product }: { product: Product }) {
   const notNow = product.unavailableNote;
   const qty = getWeight(product.id);
   const inCart = qty > 0;
-  const unit = product.isEgg ? "dozen" : "kg";
+  const unit = pr.unit;
 
   return (
     <article className={`flex gap-3 rounded-2xl border bg-white p-2.5 shadow-soft ${inCart ? "border-success/40 ring-1 ring-success/25" : "border-warm-gray/70"}`}>
@@ -44,8 +44,8 @@ export default function MProductRow({ product }: { product: Product }) {
             {inCart ? (
               <span className="block text-[11px] font-medium text-success">₹{pr.priceFor(qty)} for {qtyLabel(product, qty)}</span>
             ) : (
-              (pr.gstNote || (pr.onOffer && pr.offerLabel)) && (
-                <span className="block text-[10px] text-secondary-text">{[pr.onOffer ? pr.offerLabel : "", pr.gstNote].filter(Boolean).join(" · ")}</span>
+              (pr.gstNote || pr.packNote || (pr.onOffer && pr.offerLabel)) && (
+                <span className="block text-[10px] text-secondary-text">{[pr.onOffer ? pr.offerLabel : "", pr.packNote, pr.gstNote].filter(Boolean).join(" · ")}</span>
               )
             )}
           </p>

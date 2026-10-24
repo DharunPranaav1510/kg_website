@@ -100,27 +100,62 @@ export function percentOff(p: Product, now: number | Date = Date.now()): number 
 export const STANDARD_WEIGHTS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3];
 export const STANDARD_EGG_WEIGHTS = [0.5, 1, 1.5, 2];
 
+export type QtyProduct = Pick<Product, "allowedWeights" | "isEgg" | "packKg">;
+
+/** The most packs of one product in a single order line. */
+export const MAX_PACKS = 10;
+
+/** True when the product is sold in standard packs (1 kg packets and so on). */
+export const isPacked = (p: Pick<Product, "packKg">): p is { packKg: number } => !!p.packKg && p.packKg > 0;
+
+/** How many packs a quantity in kg is. */
+export const packCount = (p: Pick<Product, "packKg">, kg: number) => (isPacked(p) ? Math.round(kg / p.packKg) : 0);
+
+/** Word for what the price is per: "pack", "dozen" or "kg". */
+export const unitWord = (p: QtyProduct) => (isPacked(p) ? "pack" : p.isEgg ? "dozen" : "kg");
+
+const fracText = (n: number) => {
+  const whole = Math.floor(n + 1e-9);
+  const rest = Math.round((n - whole) * 100) / 100;
+  const sym = rest === 0.25 ? "¼" : rest === 0.5 ? "½" : rest === 0.75 ? "¾" : "";
+  if (rest !== 0 && !sym) return String(n);
+  return `${whole || ""}${sym}` || "0";
+};
+
+/** "2 packs" for packed products, else "1½ kg" / "1 dozen" (or "dz" when `short`). */
+export function qtyText(p: QtyProduct, w: number, short = false): string {
+  if (isPacked(p)) {
+    const n = packCount(p, w);
+    return `${n} ${n === 1 ? "pack" : "packs"}`;
+  }
+  return `${fracText(w)} ${p.isEgg ? (short ? "dz" : "dozen") : "kg"}`;
+}
+
+/** "1 kg pack" / "2.5 kg pack": what one pack is. Empty for loose products. */
+export const packLabel = (p: Pick<Product, "packKg">) => (isPacked(p) ? `${p.packKg} kg pack` : "");
+
 /** Cleaned, sorted list of quantities the customer can pick for this product. */
-export function allowedWeightsFor(p: Pick<Product, "allowedWeights" | "isEgg">): number[] {
+export function allowedWeightsFor(p: QtyProduct): number[] {
+  if (isPacked(p)) return Array.from({ length: MAX_PACKS }, (_, i) => Math.round(p.packKg * (i + 1) * 100) / 100);
   const own = (p.allowedWeights ?? []).filter((w) => Number.isFinite(w) && w > 0 && w <= 50);
   const list = own.length ? own : p.isEgg ? STANDARD_EGG_WEIGHTS : STANDARD_WEIGHTS;
   return [...new Set(list.map((w) => Math.round(w * 100) / 100))].sort((a, b) => a - b);
 }
 
-export const isAllowedWeight = (p: Pick<Product, "allowedWeights" | "isEgg">, w: number) =>
+export const isAllowedWeight = (p: QtyProduct, w: number) =>
   allowedWeightsFor(p).some((x) => Math.abs(x - w) < 1e-6);
 
 /** Smallest allowed quantity at or above `wanted`. */
-export function snapWeight(p: Pick<Product, "allowedWeights" | "isEgg">, wanted: number): number {
+export function snapWeight(p: QtyProduct, wanted: number): number {
   const list = allowedWeightsFor(p);
   return list.find((w) => w >= wanted - 1e-6) ?? list[list.length - 1];
 }
 
 /** What the plain "Add" button puts in the cart: ½ kg (1 dozen for eggs), or the nearest larger allowed quantity. */
-export const defaultWeight = (p: Pick<Product, "allowedWeights" | "isEgg">) => snapWeight(p, p.isEgg ? 1 : 0.5);
+export const defaultWeight = (p: QtyProduct) => (isPacked(p) ? p.packKg : snapWeight(p, p.isEgg ? 1 : 0.5));
 
 /** The next smaller / larger allowed quantity, or null at the ends. */
-export function stepWeight(p: Pick<Product, "allowedWeights" | "isEgg">, current: number, dir: -1 | 1): number | null {
+export function stepWeight(p: QtyProduct, current: number, dir: -1 | 1): number | null {
   const list = allowedWeightsFor(p);
   const i = list.findIndex((w) => Math.abs(w - current) < 1e-6);
   if (i === -1) return dir === 1 ? list.find((w) => w > current) ?? null : [...list].reverse().find((w) => w < current) ?? null;

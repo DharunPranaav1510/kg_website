@@ -40,9 +40,9 @@ export default function MProductCard({ product, className = "" }: { product: Pro
         <p className="mt-auto flex flex-wrap items-baseline gap-x-1 pt-2">
           <span className="text-base font-bold text-primary-text">₹{pr.price}</span>
           {pr.onOffer && <span className="text-xs text-secondary-text line-through">₹{pr.listPrice}</span>}
-          <span className="text-[11px] text-secondary-text">/ {product.isEgg ? "dozen" : "kg"}</span>
+          <span className="text-[11px] text-secondary-text">/ {pr.unit}</span>
         </p>
-        {pr.gstNote && <p className="text-[10px] text-secondary-text">{pr.gstNote}</p>}
+        {(pr.packNote || pr.gstNote) && <p className="text-[10px] text-secondary-text">{[pr.packNote, pr.gstNote].filter(Boolean).join(" · ")}</p>}
 
         <div className="mt-3">
           {soldOut ? (
