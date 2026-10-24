@@ -48,6 +48,7 @@ function sentence(e: Entry): string {
     case "mfa_enabled": return `${who} turned on two-step login`;
     case "mfa_disabled": return `${who} turned off two-step login`;
     case "category_added": return `${who} added the category ${t}`;
+    case "category_renamed": return `${who} renamed the category ${t}`;
     case "category_removed": return `${who} removed the category ${t}`;
     case "password_changed": return `${who} changed their password`;
     case "shop_open": return `${who} resumed orders`;

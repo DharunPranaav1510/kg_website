@@ -9,6 +9,7 @@ import {
   sameName,
   saveExtraCategories,
 } from "@/lib/categories-db";
+import { revalidateStorefront } from "@/lib/products-db";
 import { getSupabase } from "@/lib/supabase";
 
 const list = async () => {
@@ -32,6 +33,31 @@ export async function POST(req: NextRequest) {
   if (extra.length >= MAX_EXTRA_CATEGORIES) return NextResponse.json({ error: "That is too many categories." }, { status: 400 });
   if (!(await saveExtraCategories([...extra, name]))) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
   await audit("category_added", name);
+  return NextResponse.json(await list());
+}
+
+// Rename a category you added: { from, to }. Its products move to the new name.
+export async function PATCH(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  const body = await req.json().catch(() => null);
+  const to = cleanCategoryName(body?.to);
+  const from = typeof body?.from === "string" ? body.from : "";
+  if (!to) return NextResponse.json({ error: "Type a category name of 2 to 40 characters." }, { status: 400 });
+  const { all, extra } = await list();
+  if (!extra.includes(from)) return NextResponse.json({ error: "Only categories you added can be renamed." }, { status: 400 });
+  if (to === from) return NextResponse.json(await list());
+  if (all.some((c) => c !== from && sameName(c, to))) return NextResponse.json({ error: `"${to}" already exists.` }, { status: 409 });
+
+  const supabase = getSupabase()!;
+  const { error: moveError } = await supabase.from("products").update({ category: to }).eq("category", from);
+  if (moveError) return NextResponse.json({ error: "Failed to rename" }, { status: 500 });
+  if (!(await saveExtraCategories(extra.map((c) => (c === from ? to : c))))) {
+    await supabase.from("products").update({ category: from }).eq("category", to);
+    return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+  }
+  revalidateStorefront();
+  await audit("category_renamed", `${from} → ${to}`);
   return NextResponse.json(await list());
 }
 

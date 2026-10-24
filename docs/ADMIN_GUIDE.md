@@ -139,7 +139,7 @@ Open any order and choose **Print bill** (or use **More → Print bill**).
 - **Search**, pick a category, or use the quick filters: **Sold out, Hidden, On offer**.
 - The switch on each product is **In stock / Sold out**. It works immediately, and customers see *Sold out* at once. Undo is offered.
 - **Edit** opens the product form. **Delete** asks first and offers *Hide from shop instead* (usually the better choice).
-- **Categories** (button at the top): see every category, type a name and tap **Add category** to create a new one. It then appears in the product form and, once it has a product, in the shop. Only categories you added can be removed, and only when empty.
+- **Categories** (button at the top): see every category, type a name and tap **Add category** to create a new one. It then appears in the product form and, once it has a product, in the shop. Tap the pencil on a category you added to rename it (its products move with it), or the × to remove it when it is empty. Built-in categories cannot be changed.
 - **Add product**: the orange button at the top right on a computer, the round **+** on a phone. If the list is empty you can **Import default products** to start.
 
 ### The product form
