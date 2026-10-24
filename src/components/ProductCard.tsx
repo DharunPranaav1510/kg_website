@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { Check, PencilLine } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
@@ -62,10 +62,9 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       <div className="flex gap-3.5">
         <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-warm-gray shadow-soft sm:h-28 sm:w-28">
-          <Image
+          <ProductImage
             src={product.image}
             alt={product.name}
-            fill
             className={`object-cover transition-transform duration-500 group-hover:scale-105 ${soldOut ? "opacity-60 grayscale" : ""}`}
             sizes="112px"
           />

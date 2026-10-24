@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { Clock, Plus } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
@@ -24,7 +24,7 @@ export default function MProductRow({ product }: { product: Product }) {
   return (
     <article className={`flex gap-3 rounded-2xl border bg-white p-2.5 shadow-soft ${inCart ? "border-success/40 ring-1 ring-success/25" : "border-warm-gray/70"}`}>
       <div className="relative h-[5.5rem] w-[5.5rem] flex-shrink-0 overflow-hidden rounded-xl bg-warm-gray">
-        <Image src={product.image} alt={product.name} fill sizes="88px" className={`object-cover ${soldOut || notNow ? "opacity-60 grayscale" : ""}`} />
+        <ProductImage src={product.image} alt={product.name} sizes="88px" className={`object-cover ${soldOut || notNow ? "opacity-60 grayscale" : ""}`} />
         {soldOut && <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-white">Sold out</span>}
         {pr.onOffer && !soldOut && <span className="absolute left-0 top-0 rounded-br-lg bg-success px-1.5 py-0.5 text-[10px] font-bold text-white">{pr.off}% OFF</span>}
       </div>
