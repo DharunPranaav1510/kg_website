@@ -62,6 +62,7 @@ export const shopCategories = [
   "Frozen Products",
   "Ready To Cook",
   "Processed Sea Foods",
+  "Seasoning",
 ] as const;
 
 export type ShopCategory = (typeof shopCategories)[number];

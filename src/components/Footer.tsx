@@ -11,6 +11,7 @@ const footerCategories = [
 	{ label: "Frozen Products", href: "/shop?category=Frozen%20Products" },
 	{ label: "Ready To Cook", href: "/shop?category=Ready%20To%20Cook" },
 	{ label: "Processed Sea Foods", href: "/shop?category=Processed%20Sea%20Foods" },
+	{ label: "Seasoning", href: "/shop?category=Seasoning" },
 ];
 
 const footerLinks = [

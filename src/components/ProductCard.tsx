@@ -24,6 +24,7 @@ const categoryBorder: Record<string, string> = {
   "Frozen Products": "border-t-[3px] border-t-sky-400",
   "Ready To Cook":   "border-t-[3px] border-t-accent",
   "Processed Sea Foods": "border-t-[3px] border-t-cyan-500",
+  Seasoning:         "border-t-[3px] border-t-lime-500",
 };
 
 const fmtQty = (product: Product, w: number) => qtyText(product, w);
@@ -67,6 +68,7 @@ export default function ProductCard({ product }: { product: Product }) {
           <ProductImage
             src={product.image}
             alt={product.name}
+            label={false}
             className={`object-cover transition-transform duration-500 group-hover:scale-105 ${soldOut ? "opacity-60 grayscale" : ""}`}
             sizes="112px"
           />
@@ -112,7 +114,8 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
 
       {picking && (
-        <div className="mt-3.5 rounded-2xl border border-warm-gray bg-cream p-3">
+        <div className="mt-auto pt-3.5">
+        <div className="rounded-2xl border border-warm-gray bg-cream p-3">
           {isPacked(product) ? (
             <div className="mb-3 flex items-center justify-center gap-4" role="group" aria-label={`Number of packs of ${product.name}`}>
               <button type="button" aria-label="One pack less" disabled={stepWeight(product, draftWeight, -1) === null}
@@ -147,10 +150,11 @@ export default function ProductCard({ product }: { product: Product }) {
             </button>
           </div>
         </div>
+        </div>
       )}
 
       {!picking && (
-        <div className="mt-3.5">
+        <div className="mt-auto pt-3.5">
           {inCart ? (
             <div className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
