@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, Briefcase, ChevronRight, FileText, Info, MessageSquare, Receipt, RotateCcw, ShieldCheck, Truck, XCircle } from "lucide-react";
+import { BookOpen, ChevronRight, FileText, Info, MessageSquare, Receipt, RotateCcw, ShieldCheck, Truck, XCircle } from "lucide-react";
 import AppBar from "@/components/mobile/AppBar";
 import ViewSwitch from "@/components/mobile/ViewSwitch";
 import { business } from "@/data/business";
@@ -15,7 +15,6 @@ const groups: { title: string; rows: { href: string; label: string; icon: typeof
       { href: "/contact", label: "Contact us", icon: MessageSquare },
       { href: "/about", label: "About us", icon: Info },
       { href: "/blog", label: "Blog", icon: BookOpen },
-      { href: "/careers", label: "Careers", icon: Briefcase },
     ],
   },
   {

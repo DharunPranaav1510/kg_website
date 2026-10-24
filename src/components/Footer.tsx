@@ -20,7 +20,6 @@ const footerLinks = [
 	{ label: "Shop", href: "/shop" },
 	{ label: "Track Order", href: "/track" },
 	{ label: "Blog", href: "/blog" },
-	{ label: "Careers", href: "/careers" },
 	{ label: "Contact", href: "/contact" },
 ];
 

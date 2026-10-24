@@ -100,7 +100,7 @@ vercel --prod
 - ✅ Contact form with email integration
 - ✅ Blog section
 - ✅ Customer testimonials
-- ✅ Legal pages (Terms, Privacy, Refunds, Careers)
+- ✅ Legal pages (Terms, Privacy, Refunds)
 - ✅ About page
 
 ## API Routes
