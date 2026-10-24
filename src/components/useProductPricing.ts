@@ -32,13 +32,8 @@ export function useProductPricing(product: Product) {
       price: money(price * perUnit),
       listPrice: money(product.pricePerKg * perUnit),
       unit: unitWord(product),
-      // Say what a pack is, unless the description already does ("1 kg pack · about 40 pieces").
-      packNote: packed
-        ? [
-            product.description.toLowerCase().includes(packLabel(product).toLowerCase()) ? "" : packLabel(product),
-            !product.packLabel && Number.isInteger(price) ? `₹${price}/kg` : "",
-          ].filter(Boolean).join(" · ")
-        : "",
+      // Say what a pack is, unless the description already does ("500 g pack · ...").
+      packNote: packed && !product.description.toLowerCase().includes(packLabel(product).toLowerCase()) ? packLabel(product) : "",
       onOffer,
       off: percentOff(product, now),
       offerLabel: product.offer?.label || (onOffer ? "Offer" : ""),

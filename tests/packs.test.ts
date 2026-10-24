@@ -65,3 +65,13 @@ test("packs priced from a rounded per-kg price still total the sheet price", () 
     assert.equal(priced.payable, expected, `${perKg} x ${kg}`);
   }
 });
+
+import { packLabel } from "../src/lib/pricing";
+test("small packs are described in grams", () => {
+  assert.equal(packLabel({ packKg: 0.5 }), "500 g pack");
+  assert.equal(packLabel({ packKg: 0.45 }), "450 g pack");
+  assert.equal(packLabel({ packKg: 1 }), "1 kg pack");
+  assert.equal(packLabel({ packKg: 2.5 }), "2.5 kg pack");
+  assert.equal(packLabel({ packKg: 1, packLabel: "pack of 10 pieces" }), "pack of 10 pieces");
+  assert.equal(packLabel({}), "");
+});

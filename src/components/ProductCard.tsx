@@ -24,6 +24,7 @@ const categoryBorder: Record<string, string> = {
   "Frozen Products": "border-t-[3px] border-t-sky-400",
   "Ready To Cook":   "border-t-[3px] border-t-accent",
   "Processed Sea Foods": "border-t-[3px] border-t-cyan-500",
+  Seasoning:         "border-t-[3px] border-t-lime-500",
 };
 
 const fmtQty = (product: Product, w: number) => qtyText(product, w);

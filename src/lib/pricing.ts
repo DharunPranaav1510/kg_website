@@ -134,7 +134,12 @@ export function qtyText(p: QtyProduct, w: number, short = false): string {
 }
 
 /** "1 kg pack" / "2.5 kg pack": what one pack is. Empty for loose products. */
-export const packLabel = (p: Pick<Product, "packKg" | "packLabel">) => (p.packKg && p.packKg > 0 ? p.packLabel || `${p.packKg} kg pack` : "");
+export const packLabel = (p: Pick<Product, "packKg" | "packLabel">) => {
+  if (!p.packKg || p.packKg <= 0) return "";
+  if (p.packLabel) return p.packLabel;
+  // Small packs read better in grams: "500 g pack", "1 kg pack".
+  return p.packKg < 1 ? `${Math.round(p.packKg * 1000)} g pack` : `${p.packKg} kg pack`;
+};
 
 /** Cleaned, sorted list of quantities the customer can pick for this product. */
 export function allowedWeightsFor(p: QtyProduct): number[] {
