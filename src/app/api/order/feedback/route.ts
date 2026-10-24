@@ -1,3 +1,4 @@
+import { isSameOrigin } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { clientIpHash } from "@/lib/guard";
 import { allow } from "@/lib/ratelimit";
@@ -8,6 +9,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // A customer rates a delivered order from its page. The order's random id is the key, so only
 // someone who has the link can leave feedback, and only once per order.
 export async function POST(req: NextRequest) {
+  if (!(await isSameOrigin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const supabase = getSupabase();
   if (!supabase) return NextResponse.json({ error: "Feedback is not available right now." }, { status: 503 });
   if (!(await allow(supabase, "feedback", clientIpHash(req), 10, 60 * 60 * 1000))) {

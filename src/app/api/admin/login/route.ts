@@ -1,5 +1,6 @@
+import { exactLike } from "@/lib/like";
 import { NextRequest, NextResponse } from "next/server";
-import { setPendingLogin, setSessionCookies, verifiedTotpFactors } from "@/lib/admin-auth";
+import { setPendingLogin, setSessionCookies, verifiedTotpFactors, isSameOrigin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { clientIpHash } from "@/lib/guard";
 import { record, underLimit } from "@/lib/ratelimit";
@@ -10,6 +11,7 @@ const tooMany = () =>
   NextResponse.json({ error: "Too many attempts. Please wait 15 minutes and try again." }, { status: 429 });
 
 export async function POST(req: NextRequest) {
+  if (!(await isSameOrigin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const auth = getAuthClient();
   const supabase = getSupabase();
   if (!auth || !supabase) {
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Valid Supabase user, but are they an admin? Same message so it can't be probed.
-  const { data: admin } = await supabase.from("admins").select("email").ilike("email", email).maybeSingle();
+  const { data: admin } = await supabase.from("admins").select("email").ilike("email", exactLike(email)).maybeSingle();
   if (!admin) {
     console.error("[admin login] password OK but email is not in the admins table (or the table is missing)");
     return reject("not an admin");

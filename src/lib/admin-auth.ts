@@ -1,3 +1,4 @@
+import { exactLike } from "@/lib/like";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { decideAccess, peekClaims } from "@/lib/admin-access";
@@ -73,7 +74,7 @@ async function resolveAdmin(token: string): Promise<Admin | null> {
   const claims = peekClaims(token);
   const [userRes, allowRow, factors] = await Promise.all([
     supabase.auth.getUser(token),
-    claims.email ? supabase.from("admins").select("email").ilike("email", claims.email).maybeSingle() : null,
+    claims.email ? supabase.from("admins").select("email").ilike("email", exactLike(claims.email)).maybeSingle() : null,
     claims.sub && claims.aal !== "aal2" ? verifiedTotpFactors(claims.sub) : null,
   ]);
 

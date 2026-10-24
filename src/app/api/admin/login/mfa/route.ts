@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearPendingLogin, readPendingLogin, setSessionCookies, verifiedTotpFactors } from "@/lib/admin-auth";
+import { clearPendingLogin, readPendingLogin, setSessionCookies, verifiedTotpFactors, isSameOrigin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { clientIpHash } from "@/lib/guard";
 import { record, underLimit } from "@/lib/ratelimit";
@@ -9,6 +9,7 @@ const WINDOW = 15 * 60 * 1000;
 
 // Step 2 of login: the 6-digit code from the authenticator app.
 export async function POST(req: NextRequest) {
+  if (!(await isSameOrigin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const supabase = getSupabase();
   const pending = await readPendingLogin();
   if (!supabase || !pending) {

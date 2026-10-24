@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdmin, requireOwner } from "@/lib/admin-auth";
+import { findAuthUser } from "@/lib/auth-users";
 import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Does a sign-in account exist for this email? (Small shop: a few pages of users is plenty.) */
-async function loginExists(email: string): Promise<boolean> {
-  const supabase = getSupabase()!;
-  for (let page = 1; page <= 5; page++) {
-    const { data } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
-    const users = data?.users ?? [];
-    if (users.some((u) => u.email?.toLowerCase() === email)) return true;
-    if (users.length < 200) return false;
-  }
-  return false;
-}
 
 // The owner approves or rejects a request: { action: "approve" | "reject" }.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -34,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const email = request.email.toLowerCase();
   if (action === "approve") {
-    if (!(await loginExists(email))) {
+    if (!(await findAuthUser(email))) {
       return NextResponse.json({ error: "No sign-in account exists for this email. Use Add admin and set a temporary password instead." }, { status: 409 });
     }
     const { error } = await supabase.from("admins").upsert({ email });

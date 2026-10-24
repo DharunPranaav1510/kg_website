@@ -1,3 +1,4 @@
+import { exactLike } from "@/lib/like";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { decideAccess, decodeAal } from "@/lib/admin-access";
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
   const { data: admin } = await supabase
     .from("admins")
     .select("email")
-    .ilike("email", email)
+    .ilike("email", exactLike(email))
     .maybeSingle();
   if (!admin) return toLogin();
 

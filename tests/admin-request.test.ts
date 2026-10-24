@@ -21,3 +21,12 @@ test("a short password, a bad email or no name is refused", () => {
   assert.equal(parseAdminRequest({ ...good, name: " " }).ok, false);
   assert.equal(parseAdminRequest(null).ok, false);
 });
+
+import { exactLike } from "../src/lib/like";
+
+test("exactLike stops _ and % from acting as wildcards in an email match", () => {
+  assert.equal(exactLike("d_ranaav@gmail.com"), "d\\_ranaav@gmail.com");
+  assert.equal(exactLike("%@gmail.com"), "\\%@gmail.com");
+  assert.equal(exactLike("a\\b@x.com"), "a\\\\b@x.com");
+  assert.equal(exactLike("plain@x.com"), "plain@x.com");
+});
