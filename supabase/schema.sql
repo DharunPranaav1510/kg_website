@@ -228,3 +228,6 @@ alter table public.products add column if not exists pack_kg numeric(6, 2);
 
 -- Words for a pack whose weight is not known (e.g. "pack of 10 pieces"). Safe to re-run.
 alter table public.products add column if not exists pack_label text;
+
+-- A product can say whether its price already includes its GST (e.g. a printed MRP). Null = follow the shop-wide setting. Safe to re-run.
+alter table public.products add column if not exists gst_inclusive boolean;

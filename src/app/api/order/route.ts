@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
         listPrice: l.listPrice,
         gstRate: l.gstRate,
         gstAmount: l.gstAmount,
+        gstInclusive: l.gstInclusive,
         hsn: l.hsn || undefined,
       };
     });
@@ -205,7 +206,8 @@ export async function POST(req: NextRequest) {
           delivery_fee: deliveryFee,
           subtotal,
           gst_total: priced.gstTotal,
-          gst_inclusive: business.tax.inclusive,
+          // Order-level flag: true when every line that carries GST has it inside its price.
+          gst_inclusive: priced.gstTotal > 0 ? priced.gstExtra === 0 && priced.lines.filter((l) => l.gstAmount > 0).every((l) => l.gstInclusive) : business.tax.inclusive,
           distance_km: distance,
           slot,
           ip_hash: ipHash,
@@ -264,7 +266,7 @@ export async function POST(req: NextRequest) {
         </div>
         <div style="background:#fff;padding:0 32px 28px;border:1px solid #eee;border-top:none;">
           <table style="width:100%;border-collapse:collapse;font-size:15px;"><tbody>${itemRows}</tbody></table>
-          ${priced.gstTotal > 0 ? `<p style="margin:12px 0 0;font-size:14px;">GST ${business.tax.inclusive ? "(included)" : ""}: ₹${priced.gstTotal.toFixed(2)}</p>` : ""}
+          ${priced.gstIncluded > 0 ? `<p style="margin:12px 0 0;font-size:14px;">GST included in prices: ₹${priced.gstIncluded.toFixed(2)}</p>` : ""}${priced.gstExtra > 0 ? `<p style="margin:6px 0 0;font-size:14px;">GST added: ₹${priced.gstExtra}</p>` : ""}
           <p style="margin:6px 0 0;font-size:14px;">Delivery: ${deliveryFee ? `₹${deliveryFee}` : "Free"}</p>
           <p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#D63E0A;">Total ₹${total}</p>
         </div>

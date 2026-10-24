@@ -190,6 +190,9 @@ export function gstRateFor(p: Pick<Product, "category" | "gstRate">, tax: TaxCon
   return Number.isFinite(rate) && rate > 0 ? rate : 0;
 }
 
+/** Does the price of this product already contain its GST? A product can override the shop-wide setting. */
+export const gstInclusiveFor = (p: Pick<Product, "gstInclusive">, tax: TaxConfig): boolean => p.gstInclusive ?? tax.inclusive;
+
 export interface PricedLine {
   id: string;
   name: string;
@@ -204,6 +207,8 @@ export interface PricedLine {
   gstRate: number;
   /** GST contained in / added to this line. */
   gstAmount: number;
+  /** true: gstAmount is already inside `price`. false: it is added on top. */
+  gstInclusive: boolean;
 }
 
 export interface PricedCart {
@@ -211,7 +216,9 @@ export interface PricedCart {
   /** Sum of line prices: the figure the minimum order and free-delivery limit are checked against. */
   subtotal: number;
   gstTotal: number;
-  /** GST that is added on top of the subtotal (0 when prices already include GST). */
+  /** GST that sits inside prices that already include it. */
+  gstIncluded: number;
+  /** GST that is added on top of the subtotal (only for lines whose price excludes GST). */
   gstExtra: number;
   /** subtotal + gstExtra */
   payable: number;
@@ -226,8 +233,9 @@ export function priceCart(
     const unitPrice = effectivePrice(product, now);
     const price = Math.round(unitPrice * weightKg);
     const rate = gstRateFor(product, tax);
+    const inclusive = gstInclusiveFor(product, tax);
     const gstAmount = rate
-      ? tax.inclusive
+      ? inclusive
         ? Math.round((price - price / (1 + rate / 100)) * 100) / 100
         : Math.round(price * rate) / 100
       : 0;
@@ -242,12 +250,14 @@ export function priceCart(
       price,
       gstRate: rate,
       gstAmount,
+      gstInclusive: inclusive,
     };
   });
   const subtotal = lines.reduce((n, l) => n + l.price, 0);
   const gstTotal = Math.round(lines.reduce((n, l) => n + l.gstAmount, 0) * 100) / 100;
-  const gstExtra = tax.inclusive ? 0 : Math.round(gstTotal);
-  return { lines, subtotal, gstTotal, gstExtra, payable: subtotal + gstExtra };
+  const gstIncluded = Math.round(lines.filter((l) => l.gstInclusive).reduce((n, l) => n + l.gstAmount, 0) * 100) / 100;
+  const gstExtra = Math.round(lines.filter((l) => !l.gstInclusive).reduce((n, l) => n + l.gstAmount, 0));
+  return { lines, subtotal, gstTotal, gstIncluded, gstExtra, payable: subtotal + gstExtra };
 }
 
 // ---------------------------------------------------------------------------

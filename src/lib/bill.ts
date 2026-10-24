@@ -9,6 +9,8 @@ export interface BillItem {
   listPrice?: number;
   gstRate?: number;
   gstAmount?: number;
+  /** true: GST is inside `price`. Missing on old orders: the order-level flag applies. */
+  gstInclusive?: boolean;
   hsn?: string;
 }
 
@@ -36,6 +38,8 @@ export interface BillLine {
   gstRate: number;
   gst: number;
   amount: number; // taxable + gst
+  /** This line's GST was already inside its price. */
+  inclusive: boolean;
 }
 
 export interface TaxRow {
@@ -50,7 +54,10 @@ export interface Bill {
   itemsTotal: number; // sum of line amounts
   taxableTotal: number;
   gstTotal: number;
+  /** Every taxed line has its GST inside the price. */
   inclusive: boolean;
+  /** At least one taxed line has its GST inside the price. */
+  someInclusive: boolean;
   deliveryFee: number;
   roundOff: number;
   total: number;
@@ -60,8 +67,9 @@ export interface Bill {
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function buildBill(o: BillOrder): Bill {
-  const inclusive = o.gst_inclusive === true;
+  const orderInclusive = o.gst_inclusive === true;
   const lines: BillLine[] = o.items.map((it, i) => {
+    const inclusive = it.gstInclusive ?? orderInclusive;
     const gst = r2(Number(it.gstAmount) || 0);
     const rate = Number(it.gstRate) || 0;
     // Saved price is what the customer pays for the goods; GST sits inside it (inclusive) or on top of it.
@@ -80,6 +88,7 @@ export function buildBill(o: BillOrder): Bill {
       gstRate: rate,
       gst,
       amount,
+      inclusive,
     };
   });
 
@@ -103,7 +112,8 @@ export function buildBill(o: BillOrder): Bill {
     itemsTotal,
     taxableTotal,
     gstTotal,
-    inclusive,
+    inclusive: lines.filter((l) => l.gst > 0).every((l) => l.inclusive),
+    someInclusive: lines.some((l) => l.gst > 0 && l.inclusive),
     deliveryFee,
     roundOff,
     total: o.total,
