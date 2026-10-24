@@ -6,7 +6,7 @@ import { extrasToPayload, productToExtras } from "./ProductFormExtras";
 import type { Product } from "@/data/products";
 import ProductForm, { EMPTY_DRAFT, PRODUCT_CATEGORIES, clearProductDraft, type ProductDraft } from "./ProductForm";
 import { adminApi } from "./api";
-import { MoreMenu, rupees, useUi } from "./ui";
+import { rupees, useUi } from "./ui";
 
 type AdminProduct = Product & { active: boolean };
 type Quick = "all" | "soldout" | "hidden" | "offer";
@@ -272,7 +272,7 @@ export default function ProductsPanel() {
                     <td className="px-3 py-2">
                       <span className="flex items-center justify-end gap-2">
                         <button onClick={() => edit(p)} className="min-h-12 rounded-full border border-warm-gray px-5 text-base font-medium hover:bg-cream">Edit</button>
-                        <MoreMenu items={[{ label: "Delete", onSelect: () => remove(p), danger: true }]} />
+                        <button onClick={() => remove(p)} className="min-h-12 rounded-full border border-red-200 px-5 text-base font-medium text-red-600 hover:bg-red-50">Delete</button>
                       </span>
                     </td>
                   </tr>
@@ -298,7 +298,7 @@ export default function ProductsPanel() {
                   {stockSwitch(p)}
                   <span className="ml-auto flex items-center gap-2">
                     <button onClick={() => edit(p)} className="min-h-12 rounded-full border border-warm-gray px-5 text-base font-medium hover:bg-cream">Edit</button>
-                    <MoreMenu items={[{ label: "Delete", onSelect: () => remove(p), danger: true }]} />
+                    <button onClick={() => remove(p)} className="min-h-12 rounded-full border border-red-200 px-5 text-base font-medium text-red-600 hover:bg-red-50">Delete</button>
                   </span>
                 </div>
               </li>
