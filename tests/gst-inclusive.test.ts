@@ -2,10 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { gstInclusiveFor, priceCart } from "../src/lib/pricing";
 import { buildBill } from "../src/lib/bill";
+import type { Product } from "../src/data/products";
 
 const tax = { enabled: true, inclusive: false, categoryRates: { "Frozen Products": 5 } };
-const zippy = { id: "z", name: "Zippy Chicken Nuggets", category: "Ready To Cook", pricePerKg: 489, image: "", description: "", packKg: 1, gstRate: 5, gstInclusive: true };
-const frozen = { id: "f", name: "Frozen Nuggets", category: "Frozen Products", pricePerKg: 320, image: "", description: "" };
+const zippy: Product = { id: "z", name: "Zippy Chicken Nuggets", category: "Ready To Cook", pricePerKg: 489, image: "", description: "", packKg: 1, gstRate: 5, gstInclusive: true };
+const frozen: Product = { id: "f", name: "Frozen Nuggets", category: "Frozen Products", pricePerKg: 320, image: "", description: "" };
 
 test("a product can say its price already includes GST", () => {
   assert.equal(gstInclusiveFor(zippy, tax), true);
