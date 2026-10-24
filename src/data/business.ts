@@ -76,7 +76,7 @@ export const business = {
   delivery: {
     minOrder: 200, // ₹
     fee: 50, // ₹, fixed delivery charge
-    freeAbove: 0, // ₹, orders at or above this are free. 0 = delivery is never free
+    freeAbove: 500, // ₹, orders at or above this are free. 0 = delivery is never free
     radiusKm: 6, // delivery circle around the shop. 0 = no limit
     slots: ["Morning (7 – 10 AM)", "Noon (10 AM – 1 PM)", "Afternoon (1 – 4 PM)"],
     // Suggestions shown while typing the area. Customers can still type any
