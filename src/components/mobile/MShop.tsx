@@ -4,23 +4,25 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PackageOpen, Search, X } from "lucide-react";
 import { useProducts } from "@/context/ProductsContext";
-import { categoryToShopParam, filterProducts, shopCategories, sortProducts, type ShopCategory } from "@/data/products";
+import { categoriesFor, categoryToShopParam, filterProducts, sortProducts } from "@/data/products";
 import MProductRow from "./MProductRow";
 
 export default function MShop() {
   const products = useProducts();
   const params = useSearchParams();
-  const [category, setCategory] = useState<ShopCategory>("All");
+  const [category, setCategory] = useState<string>("All");
   const [query, setQuery] = useState("");
   const chips = useRef<HTMLDivElement>(null);
 
+  const categories = useMemo(() => categoriesFor(products), [products]);
+
   useEffect(() => {
     const c = params.get("category");
-    const mapped = c ? categoryToShopParam(c) : null;
+    const mapped = c ? categoryToShopParam(c, categories) : null;
     if (mapped) setCategory(mapped);
     const q = params.get("q");
     if (q) setQuery(q.slice(0, 60));
-  }, [params]);
+  }, [params, categories]);
 
   useEffect(() => {
     chips.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
@@ -51,7 +53,7 @@ export default function MShop() {
       </div>
       <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 mt-1 border-b border-warm-gray/70 bg-background/95 backdrop-blur-xl">
         <div ref={chips} className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-2.5">
-          {shopCategories.map((c) => (
+          {categories.map((c) => (
             <button
               key={c}
               type="button"

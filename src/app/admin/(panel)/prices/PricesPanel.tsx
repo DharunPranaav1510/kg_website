@@ -16,7 +16,6 @@ interface Row {
   active: boolean;
 }
 
-const categories = shopCategories.filter((c) => c !== "All");
 type Rounding = 1 | 5 | 10;
 const MAX_CHANGES = 200;
 const WARN_FROM = 150;
@@ -62,6 +61,10 @@ export default function PricesPanel() {
   const priceOf = (r: Row) => (draft[r.id] !== undefined ? Number(draft[r.id]) : r.pricePerKg);
   const priceChanged = (r: Row) => draft[r.id] !== undefined && Number(draft[r.id]) !== r.pricePerKg;
   const invalid = (r: Row) => draft[r.id] !== undefined && (draft[r.id] === "" || !Number.isFinite(Number(draft[r.id])) || Number(draft[r.id]) < 0);
+  const categories = useMemo(() => {
+    const base = shopCategories.filter((c) => c !== "All") as string[];
+    return [...base, ...new Set((rows ?? []).map((r) => r.category).filter((c) => !base.includes(c)))];
+  }, [rows]);
   const changedRows = (rows ?? []).filter(priceChanged);
   const hasInvalid = (rows ?? []).some(invalid);
   const atLimit = changedRows.length >= MAX_CHANGES;

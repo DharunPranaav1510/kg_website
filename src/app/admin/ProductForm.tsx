@@ -96,6 +96,7 @@ export default function ProductForm({
   saving,
   uploading,
   error,
+  categories = PRODUCT_CATEGORIES,
 }: {
   draft: ProductDraft;
   onChange: (d: ProductDraft) => void;
@@ -105,6 +106,7 @@ export default function ProductForm({
   saving: boolean;
   uploading: boolean;
   error: string;
+  categories?: string[];
 }) {
   const { confirm } = useUi();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -218,7 +220,7 @@ export default function ProductForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium">Category
               <select className={`${field} mt-1`} value={draft.category} onChange={(e) => set("category", e.target.value)}>
-                {PRODUCT_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                {(categories.includes(draft.category) ? categories : [...categories, draft.category]).map((c) => <option key={c}>{c}</option>)}
               </select>
             </label>
             <div id="pf-price">

@@ -75,3 +75,9 @@ test("small packs are described in grams", () => {
   assert.equal(packLabel({ packKg: 1, packLabel: "pack of 10 pieces" }), "pack of 10 pieces");
   assert.equal(packLabel({}), "");
 });
+
+test("a category the admin added is accepted only when it is in the allowed list", () => {
+  const body = { name: "Pepper", category: "Spices", pricePerKg: 100, image: "", description: "" };
+  assert.ok("error" in parseProductInput(body));
+  assert.ok("value" in parseProductInput(body, ["Spices"]));
+});
