@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Tags, X } from "lucide-react";
+import { Pencil, Plus, Tags, X } from "lucide-react";
 import { extrasToPayload, productToExtras } from "./ProductFormExtras";
 import type { Product } from "@/data/products";
 import ProductForm, { EMPTY_DRAFT, PRODUCT_CATEGORIES, clearProductDraft, type ProductDraft } from "./ProductForm";
@@ -25,6 +25,7 @@ export default function ProductsPanel() {
   const [catsOpen, setCatsOpen] = useState(false);
   const [newCat, setNewCat] = useState("");
   const [catBusy, setCatBusy] = useState(false);
+  const [renaming, setRenaming] = useState<{ from: string; to: string } | null>(null);
   const allCats = [...cats.base, ...cats.extra];
 
   useEffect(() => {
@@ -40,6 +41,22 @@ export default function ProductsPanel() {
       setCats(r);
       toast({ text: `"${newCat.trim()}" added. It shows in the shop once it has a product.` });
       setNewCat("");
+    } catch (err) {
+      toast({ text: (err as Error).message, tone: "error" });
+    }
+    setCatBusy(false);
+  }
+
+  async function renameCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!renaming || catBusy) return;
+    setCatBusy(true);
+    try {
+      setCats(await adminApi("/api/admin/categories", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(renaming) }));
+      if (catFilter === renaming.from) setCatFilter(renaming.to.trim());
+      toast({ text: `Renamed to "${renaming.to.trim()}". Its products moved with it.` });
+      setRenaming(null);
+      load();
     } catch (err) {
       toast({ text: (err as Error).message, tone: "error" });
     }
@@ -207,9 +224,16 @@ export default function ProductsPanel() {
           <p className="mb-2 text-base font-semibold">Categories</p>
           <div className="mb-3 flex flex-wrap gap-2">
             {cats.base.map((c) => <span key={c} className="rounded-full bg-cream px-3 py-1.5 text-sm">{c}</span>)}
-            {cats.extra.map((c) => (
+            {cats.extra.map((c) => renaming?.from === c ? (
+              <form key={c} onSubmit={renameCategory} className="flex items-center gap-1">
+                <input autoFocus value={renaming.to} onChange={(e) => setRenaming({ from: c, to: e.target.value })} maxLength={40} aria-label={`New name for ${c}`} className="min-h-10 w-44 rounded-full border border-accent px-3 text-sm outline-none" />
+                <button type="submit" disabled={catBusy || renaming.to.trim().length < 2} className="min-h-10 rounded-full bg-accent px-3 text-sm font-medium text-white disabled:opacity-60">Save</button>
+                <button type="button" onClick={() => setRenaming(null)} className="min-h-10 px-2 text-sm text-secondary-text">Cancel</button>
+              </form>
+            ) : (
               <span key={c} className="inline-flex items-center gap-1 rounded-full bg-accent/10 py-1.5 pl-3 pr-1.5 text-sm text-accent">
                 {c}
+                <button onClick={() => setRenaming({ from: c, to: c })} aria-label={`Rename ${c}`} className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-accent/20"><Pencil size={13} /></button>
                 <button onClick={() => removeCategory(c)} aria-label={`Remove ${c}`} className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-accent/20"><X size={14} /></button>
               </span>
             ))}
