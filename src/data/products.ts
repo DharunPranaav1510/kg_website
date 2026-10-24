@@ -171,7 +171,7 @@ export const products: Product[] = [
 
 export function filterProducts(
   items: Product[],
-  category: ShopCategory,
+  category: string,
   query: string
 ): Product[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -207,9 +207,13 @@ export function sortProducts(items: Product[], sort: SortOption): Product[] {
   }
 }
 
-export function categoryToShopParam(category: string): ShopCategory | null {
-  const match = shopCategories.find(
-    (c) => c.toLowerCase() === category.toLowerCase()
-  );
-  return match ?? null;
+/** "All", the built-in categories, then any category the admin added that has products. */
+export function categoriesFor(items: Product[]): string[] {
+  const known = new Set<string>(shopCategories);
+  const extra = [...new Set(items.map((p) => p.category))].filter((c) => !known.has(c)).sort();
+  return [...shopCategories, ...extra];
+}
+
+export function categoryToShopParam(category: string, list: readonly string[] = shopCategories): string | null {
+  return list.find((c) => c.toLowerCase() === category.toLowerCase()) ?? null;
 }

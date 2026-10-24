@@ -7,29 +7,30 @@ import { PackageOpen } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { useProducts } from "@/context/ProductsContext";
 import {
-  shopCategories,
+  categoriesFor,
   filterProducts,
   sortProducts,
   sortOptions,
   type SortOption,
   categoryToShopParam,
-  type ShopCategory,
 } from "@/data/products";
 
 export default function ShopContent() {
   const products = useProducts();
   const searchParams = useSearchParams();
-  const [activeCategory, setActiveCategory] = useState<ShopCategory>("All");
+  const [activeCategory, setActiveCategory] = useState<string>("All");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOption>("featured");
+
+  const categories = useMemo(() => categoriesFor(products), [products]);
 
   useEffect(() => {
     const categoryParam = searchParams.get("category");
     if (categoryParam) {
-      const category = categoryToShopParam(categoryParam);
+      const category = categoryToShopParam(categoryParam, categories);
       if (category && category !== "All") setActiveCategory(category);
     }
-  }, [searchParams]);
+  }, [searchParams, categories]);
 
   const filteredProducts = useMemo(() => {
     const filtered = filterProducts(products, activeCategory, query);
@@ -68,7 +69,7 @@ export default function ShopContent() {
             </select>
           </div>
           <div className="flex gap-2 overflow-x-auto sm:flex-wrap pb-1 -mx-1 px-1">
-            {shopCategories.map((category) => (
+            {categories.map((category) => (
               <button
                 key={category}
                 type="button"

@@ -1,3 +1,4 @@
+import { getExtraCategories } from "@/lib/categories-db";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
@@ -17,7 +18,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const supabase = getSupabase()!;
   const { id } = await params;
 
-  const parsed = parseProductInput(await req.json().catch(() => null));
+  const parsed = parseProductInput(await req.json().catch(() => null), await getExtraCategories());
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
   const p = parsed.value;
 

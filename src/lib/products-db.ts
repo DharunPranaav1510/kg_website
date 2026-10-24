@@ -185,7 +185,8 @@ function parseSchedule(raw: unknown): { value?: ProductSchedule } | { error: str
 
 // Validates untrusted admin input. Returns a clean object or an error message.
 export function parseProductInput(
-  body: unknown
+  body: unknown,
+  extraCategories: string[] = []
 ): { value: ProductInput } | { error: string } {
   if (typeof body !== "object" || body === null) return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -194,7 +195,7 @@ export function parseProductInput(
   if (!name || name.length > 100) return { error: "Name is required (max 100 characters)" };
 
   const category = typeof b.category === "string" ? b.category : "";
-  if (!(PRODUCT_CATEGORIES as readonly string[]).includes(category))
+  if (!(PRODUCT_CATEGORIES as readonly string[]).includes(category) && !extraCategories.includes(category))
     return { error: "Pick a valid category" };
 
   const pricePerKg = Number(b.pricePerKg);

@@ -27,6 +27,8 @@ export type AuditAction =
   | "admin_removed"
   | "admin_request_approved"
   | "admin_request_rejected"
+  | "category_added"
+  | "category_removed"
   | "offers_changed"
   | "bill_printed";
 

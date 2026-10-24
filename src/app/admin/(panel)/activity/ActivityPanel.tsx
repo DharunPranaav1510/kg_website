@@ -47,6 +47,8 @@ function sentence(e: Entry): string {
     case "logout_everywhere": return `${who} signed out of all devices`;
     case "mfa_enabled": return `${who} turned on two-step login`;
     case "mfa_disabled": return `${who} turned off two-step login`;
+    case "category_added": return `${who} added the category ${t}`;
+    case "category_removed": return `${who} removed the category ${t}`;
     case "password_changed": return `${who} changed their password`;
     case "shop_open": return `${who} resumed orders`;
     case "shop_closed": return `${who} paused orders${t ? `: “${t}”` : ""}`;

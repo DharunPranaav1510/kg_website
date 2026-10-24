@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Tags, X } from "lucide-react";
 import { extrasToPayload, productToExtras } from "./ProductFormExtras";
 import type { Product } from "@/data/products";
 import ProductForm, { EMPTY_DRAFT, PRODUCT_CATEGORIES, clearProductDraft, type ProductDraft } from "./ProductForm";
@@ -21,6 +21,41 @@ export default function ProductsPanel() {
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [quick, setQuick] = useState<Quick>("all");
+  const [cats, setCats] = useState<{ base: string[]; extra: string[] }>({ base: PRODUCT_CATEGORIES, extra: [] });
+  const [catsOpen, setCatsOpen] = useState(false);
+  const [newCat, setNewCat] = useState("");
+  const [catBusy, setCatBusy] = useState(false);
+  const allCats = [...cats.base, ...cats.extra];
+
+  useEffect(() => {
+    adminApi("/api/admin/categories").then(setCats).catch(() => {});
+  }, []);
+
+  async function addCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCat.trim() || catBusy) return;
+    setCatBusy(true);
+    try {
+      const r = await adminApi("/api/admin/categories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCat }) });
+      setCats(r);
+      toast({ text: `"${newCat.trim()}" added. It shows in the shop once it has a product.` });
+      setNewCat("");
+    } catch (err) {
+      toast({ text: (err as Error).message, tone: "error" });
+    }
+    setCatBusy(false);
+  }
+
+  async function removeCategory(name: string) {
+    const r = await confirm({ title: `Remove "${name}"?`, body: "Only an empty category can be removed.", confirmLabel: "Remove category", cancelLabel: "Keep it", danger: true });
+    if (r.choice !== "confirm") return;
+    try {
+      setCats(await adminApi(`/api/admin/categories?name=${encodeURIComponent(name)}`, { method: "DELETE" }));
+      if (catFilter === name) setCatFilter("All");
+    } catch (err) {
+      toast({ text: (err as Error).message, tone: "error" });
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -159,15 +194,38 @@ export default function ProductsPanel() {
     <section className="mx-auto max-w-6xl">
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="mr-auto font-display text-2xl sm:text-3xl">Products</h1>
+        <button onClick={() => setCatsOpen((o) => !o)} aria-expanded={catsOpen} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-warm-gray bg-white px-5 text-base font-medium hover:bg-cream">
+          <Tags size={18} /> Categories
+        </button>
         <button onClick={() => { setMessage(""); setDraft({ ...EMPTY_DRAFT }); }} className="btn-primary hidden min-h-12 !text-base lg:inline-flex">
           <Plus size={18} /> Add product
         </button>
       </div>
 
+      {catsOpen && (
+        <div className="mb-4 rounded-2xl border border-warm-gray bg-white p-4">
+          <p className="mb-2 text-base font-semibold">Categories</p>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {cats.base.map((c) => <span key={c} className="rounded-full bg-cream px-3 py-1.5 text-sm">{c}</span>)}
+            {cats.extra.map((c) => (
+              <span key={c} className="inline-flex items-center gap-1 rounded-full bg-accent/10 py-1.5 pl-3 pr-1.5 text-sm text-accent">
+                {c}
+                <button onClick={() => removeCategory(c)} aria-label={`Remove ${c}`} className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-accent/20"><X size={14} /></button>
+              </span>
+            ))}
+          </div>
+          <form onSubmit={addCategory} className="flex flex-wrap gap-2">
+            <input value={newCat} onChange={(e) => setNewCat(e.target.value)} maxLength={40} placeholder="New category, e.g. Spices" aria-label="New category name" className="min-h-12 min-w-[12rem] flex-1 rounded-full border border-warm-gray px-4 text-base outline-none focus:border-accent" />
+            <button type="submit" disabled={catBusy || newCat.trim().length < 2} className="btn-primary min-h-12 !text-base disabled:opacity-60">{catBusy ? "Adding…" : "Add category"}</button>
+          </form>
+          <p className="mt-2 text-sm text-secondary-text">A new category appears in the shop once it has a product. GST for its products uses each product's own rate.</p>
+        </div>
+      )}
+
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products" aria-label="Search products" className="min-h-12 min-w-[12rem] flex-1 rounded-full border border-warm-gray bg-white px-4 text-base outline-none focus:border-accent" />
         <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} aria-label="Category" className="min-h-12 rounded-full border border-warm-gray bg-white px-4 text-base">
-          {["All", ...PRODUCT_CATEGORIES].map((c) => <option key={c}>{c}</option>)}
+          {["All", ...allCats].map((c) => <option key={c}>{c}</option>)}
         </select>
       </div>
       <div className="mb-4 flex gap-2 overflow-x-auto" role="group" aria-label="Quick filters">
@@ -264,6 +322,7 @@ export default function ProductsPanel() {
           saving={busy}
           uploading={uploading}
           error={message}
+          categories={allCats}
         />
       )}
     </section>
