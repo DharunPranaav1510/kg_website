@@ -225,3 +225,6 @@ alter table public.order_feedback enable row level security;
 
 -- Products sold in standard packs (kg in one pack). Null = sold loose by weight. Safe to re-run.
 alter table public.products add column if not exists pack_kg numeric(6, 2);
+
+-- Words for a pack whose weight is not known (e.g. "pack of 10 pieces"). Safe to re-run.
+alter table public.products add column if not exists pack_label text;

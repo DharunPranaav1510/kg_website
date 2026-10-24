@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         id: l.id,
         name: l.name,
         category: l.category,
-        quantity: isPacked(product) ? `${qtyText(product, l.weightKg)} (${fractionText(l.weightKg)} kg)` : `${fractionText(l.weightKg)} ${product.isEgg ? "dozen" : "kg"}`,
+        quantity: isPacked(product) ? (product.packLabel ? qtyText(product, l.weightKg) : `${qtyText(product, l.weightKg)} (${fractionText(l.weightKg)} kg)`) : `${fractionText(l.weightKg)} ${product.isEgg ? "dozen" : "kg"}`,
         weightKg: l.weightKg,
         price: l.price,
         unitPrice: l.unitPrice,

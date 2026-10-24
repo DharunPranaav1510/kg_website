@@ -25,6 +25,7 @@ export interface ProductRow {
   in_stock: boolean;
   allowed_weights?: (number | string)[] | null;
   pack_kg?: number | string | null;
+  pack_label?: string | null;
   gst_rate?: number | string | null;
   hsn?: string | null;
   offer_price?: number | string | null;
@@ -51,6 +52,7 @@ export function rowToProduct(row: ProductRow): AdminProduct {
     active: row.active,
     allowedWeights: row.allowed_weights?.length ? row.allowed_weights.map(Number) : undefined,
     packKg: row.pack_kg ? Number(row.pack_kg) : undefined,
+    packLabel: row.pack_kg && row.pack_label ? row.pack_label : undefined,
     gstRate: row.gst_rate === null || row.gst_rate === undefined ? null : Number(row.gst_rate),
     hsn: row.hsn || undefined,
     offer:
@@ -67,10 +69,11 @@ export function rowToProduct(row: ProductRow): AdminProduct {
 }
 
 /** Columns for the optional product settings, used by both insert and update. */
-export function extrasToRow(p: Pick<Product, "allowedWeights" | "packKg" | "gstRate" | "hsn" | "offer" | "schedule">) {
+export function extrasToRow(p: Pick<Product, "allowedWeights" | "packKg" | "packLabel" | "gstRate" | "hsn" | "offer" | "schedule">) {
   return {
     allowed_weights: p.allowedWeights?.length ? p.allowedWeights : null,
     pack_kg: p.packKg ?? null,
+    pack_label: p.packKg ? p.packLabel ?? null : null,
     gst_rate: p.gstRate ?? null,
     hsn: p.hsn || null,
     offer_price: p.offer?.price ?? null,
@@ -138,6 +141,7 @@ export interface ProductInput {
   active: boolean;
   allowedWeights?: number[];
   packKg?: number;
+  packLabel?: string;
   gstRate?: number | null;
   hsn?: string;
   offer?: ProductOffer;
@@ -211,7 +215,7 @@ export function parseProductInput(
   let packKg: number | undefined;
   if (b.packKg !== null && b.packKg !== undefined && b.packKg !== "" && Number(b.packKg) !== 0) {
     const pk = Math.round(Number(b.packKg) * 100) / 100;
-    if (!Number.isFinite(pk) || pk <= 0 || pk > 5) return { error: "A pack must weigh between 0.01 and 5 kg" };
+    if (!Number.isFinite(pk) || pk <= 0 || pk > 25) return { error: "A pack must weigh between 0.01 and 25 kg" };
     packKg = pk;
   }
 
@@ -245,6 +249,7 @@ export function parseProductInput(
     value: {
       allowedWeights: weights.length && !packKg ? weights.sort((x, y) => x - y) : undefined,
       packKg,
+      packLabel: packKg && typeof b.packLabel === "string" && b.packLabel.trim() ? b.packLabel.trim().slice(0, 40) : undefined,
       gstRate,
       hsn: hsn || undefined,
       offer,

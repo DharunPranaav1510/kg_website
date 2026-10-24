@@ -104,6 +104,8 @@ export type QtyProduct = Pick<Product, "allowedWeights" | "isEgg" | "packKg">;
 
 /** The most packs of one product in a single order line. */
 export const MAX_PACKS = 10;
+/** An order line never goes over this many kg, however heavy a pack is. */
+const MAX_LINE_KG = 50;
 
 /** True when the product is sold in standard packs (1 kg packets and so on). */
 export const isPacked = (p: Pick<Product, "packKg">): p is { packKg: number } => !!p.packKg && p.packKg > 0;
@@ -132,11 +134,14 @@ export function qtyText(p: QtyProduct, w: number, short = false): string {
 }
 
 /** "1 kg pack" / "2.5 kg pack": what one pack is. Empty for loose products. */
-export const packLabel = (p: Pick<Product, "packKg">) => (isPacked(p) ? `${p.packKg} kg pack` : "");
+export const packLabel = (p: Pick<Product, "packKg" | "packLabel">) => (p.packKg && p.packKg > 0 ? p.packLabel || `${p.packKg} kg pack` : "");
 
 /** Cleaned, sorted list of quantities the customer can pick for this product. */
 export function allowedWeightsFor(p: QtyProduct): number[] {
-  if (isPacked(p)) return Array.from({ length: MAX_PACKS }, (_, i) => Math.round(p.packKg * (i + 1) * 100) / 100);
+  if (isPacked(p)) {
+    const most = Math.max(1, Math.min(MAX_PACKS, Math.floor(MAX_LINE_KG / p.packKg)));
+    return Array.from({ length: most }, (_, i) => Math.round(p.packKg * (i + 1) * 100) / 100);
+  }
   const own = (p.allowedWeights ?? []).filter((w) => Number.isFinite(w) && w > 0 && w <= 50);
   const list = own.length ? own : p.isEgg ? STANDARD_EGG_WEIGHTS : STANDARD_WEIGHTS;
   return [...new Set(list.map((w) => Math.round(w * 100) / 100))].sort((a, b) => a - b);
