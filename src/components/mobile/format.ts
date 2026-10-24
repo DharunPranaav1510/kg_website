@@ -1,4 +1,5 @@
 import type { Product } from "@/data/products";
+import { qtyText } from "@/lib/pricing";
 
 /** 0.25 -> "¼", 1.5 -> "1½". Whole numbers stay plain. */
 export function fraction(n: number): string {
@@ -9,7 +10,7 @@ export function fraction(n: number): string {
   return `${whole || ""}${sym}` || "0";
 }
 
-export const qtyLabel = (p: Product, w: number) => `${fraction(w)} ${p.isEgg ? "dz" : "kg"}`;
+export const qtyLabel = (p: Product, w: number) => qtyText(p, w, true);
 export function tap() {
   try {
     navigator.vibrate?.(8);

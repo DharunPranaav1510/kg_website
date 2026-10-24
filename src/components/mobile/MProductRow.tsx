@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { Clock, Plus } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
@@ -19,12 +19,12 @@ export default function MProductRow({ product }: { product: Product }) {
   const notNow = product.unavailableNote;
   const qty = getWeight(product.id);
   const inCart = qty > 0;
-  const unit = product.isEgg ? "dozen" : "kg";
+  const unit = pr.unit;
 
   return (
     <article className={`flex gap-3 rounded-2xl border bg-white p-2.5 shadow-soft ${inCart ? "border-success/40 ring-1 ring-success/25" : "border-warm-gray/70"}`}>
       <div className="relative h-[5.5rem] w-[5.5rem] flex-shrink-0 overflow-hidden rounded-xl bg-warm-gray">
-        <Image src={product.image} alt={product.name} fill sizes="88px" className={`object-cover ${soldOut || notNow ? "opacity-60 grayscale" : ""}`} />
+        <ProductImage src={product.image} alt={product.name} sizes="88px" className={`object-cover ${soldOut || notNow ? "opacity-60 grayscale" : ""}`} />
         {soldOut && <span className="absolute inset-x-0 bottom-0 bg-black/70 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-white">Sold out</span>}
         {pr.onOffer && !soldOut && <span className="absolute left-0 top-0 rounded-br-lg bg-success px-1.5 py-0.5 text-[10px] font-bold text-white">{pr.off}% OFF</span>}
       </div>
@@ -44,8 +44,8 @@ export default function MProductRow({ product }: { product: Product }) {
             {inCart ? (
               <span className="block text-[11px] font-medium text-success">₹{pr.priceFor(qty)} for {qtyLabel(product, qty)}</span>
             ) : (
-              (pr.gstNote || (pr.onOffer && pr.offerLabel)) && (
-                <span className="block text-[10px] text-secondary-text">{[pr.onOffer ? pr.offerLabel : "", pr.gstNote].filter(Boolean).join(" · ")}</span>
+              (pr.gstNote || pr.packNote || (pr.onOffer && pr.offerLabel)) && (
+                <span className="block text-[10px] text-secondary-text">{[pr.onOffer ? pr.offerLabel : "", pr.packNote, pr.gstNote].filter(Boolean).join(" · ")}</span>
               )
             )}
           </p>

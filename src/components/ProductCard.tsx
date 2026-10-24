@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import { Check, PencilLine } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useShopStatus } from "@/context/ShopStatusContext";
 import type { Product } from "@/data/products";
 import { useProductPricing } from "@/components/useProductPricing";
-import { fraction } from "@/components/mobile/format";
+import { Minus, Plus } from "lucide-react";
+import { isPacked, qtyText, stepWeight } from "@/lib/pricing";
 
 const badgeColors: Record<string, string> = {
   Bestseller: "bg-amber-100 text-amber-800",
@@ -22,10 +23,11 @@ const categoryBorder: Record<string, string> = {
   Eggs:              "border-t-[3px] border-t-yellow-400",
   "Frozen Products": "border-t-[3px] border-t-sky-400",
   "Ready To Cook":   "border-t-[3px] border-t-accent",
+  "Processed Sea Foods": "border-t-[3px] border-t-cyan-500",
 };
 
-const fmtQty = (product: Product, w: number) => `${fraction(w)} ${product.isEgg ? "dozen" : "kg"}`;
-const shortQty = (product: Product, w: number) => `${fraction(w)} ${product.isEgg ? "dz" : "kg"}`;
+const fmtQty = (product: Product, w: number) => qtyText(product, w);
+const shortQty = (product: Product, w: number) => qtyText(product, w, true);
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem, updateWeight, getWeight } = useCart();
@@ -62,10 +64,9 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       <div className="flex gap-3.5">
         <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-warm-gray shadow-soft sm:h-28 sm:w-28">
-          <Image
+          <ProductImage
             src={product.image}
             alt={product.name}
-            fill
             className={`object-cover transition-transform duration-500 group-hover:scale-105 ${soldOut ? "opacity-60 grayscale" : ""}`}
             sizes="112px"
           />
@@ -95,13 +96,15 @@ export default function ProductCard({ product }: { product: Product }) {
           <p className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5">
             <span className="text-lg font-bold text-primary-text">₹{pr.price}</span>
             {pr.onOffer && <span className="text-sm text-secondary-text line-through">₹{pr.listPrice}</span>}
-            <span className="text-xs text-secondary-text">/ {product.isEgg ? "dozen" : "kg"}</span>
+            <span className="text-xs text-secondary-text">/ {pr.unit}</span>
             {pr.onOffer && <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">{pr.off}% off</span>}
             </p>
-          {(pr.gstNote || (pr.onOffer && pr.offerLabel)) && (
+          {(pr.gstNote || pr.packNote || (pr.onOffer && pr.offerLabel)) && (
             <p className="mt-0.5 text-[11px] text-secondary-text">
               {pr.onOffer && pr.offerLabel && <b className="text-success">{pr.offerLabel}</b>}
-              {pr.onOffer && pr.offerLabel && pr.gstNote && " · "}
+              {pr.onOffer && pr.offerLabel && (pr.gstNote || pr.packNote) && " · "}
+              {pr.packNote}
+              {pr.packNote && pr.gstNote && " · "}
               {pr.gstNote}
             </p>
           )}
@@ -110,6 +113,17 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {picking && (
         <div className="mt-3.5 rounded-2xl border border-warm-gray bg-cream p-3">
+          {isPacked(product) ? (
+            <div className="mb-3 flex items-center justify-center gap-4" role="group" aria-label={`Number of packs of ${product.name}`}>
+              <button type="button" aria-label="One pack less" disabled={stepWeight(product, draftWeight, -1) === null}
+                onClick={() => setDraftWeight(stepWeight(product, draftWeight, -1) ?? draftWeight)}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-warm-gray bg-white text-primary-text disabled:opacity-40"><Minus size={18} /></button>
+              <span className="min-w-[6rem] text-center"><span className="block text-xl font-bold">{qtyText(product, draftWeight)}</span><span className="block text-[11px] text-secondary-text">{draftWeight} kg in total</span></span>
+              <button type="button" aria-label="One pack more" disabled={stepWeight(product, draftWeight, 1) === null}
+                onClick={() => setDraftWeight(stepWeight(product, draftWeight, 1) ?? draftWeight)}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-warm-gray bg-white text-primary-text disabled:opacity-40"><Plus size={18} /></button>
+            </div>
+          ) : (
           <div className="mb-3 flex flex-wrap gap-2" role="radiogroup" aria-label={`Quantity of ${product.name}`}>
             {pr.allowed.map((w) => (
               <button key={w} type="button" role="radio" aria-checked={draftWeight === w} onClick={() => setDraftWeight(w)}
@@ -120,6 +134,7 @@ export default function ProductCard({ product }: { product: Product }) {
               </button>
             ))}
           </div>
+          )}
           <div className="my-3 text-center text-2xl font-bold text-primary-text">₹{priceFor(draftWeight)}</div>
           <div className="flex gap-2">
             <button type="button" onClick={confirmAdd}

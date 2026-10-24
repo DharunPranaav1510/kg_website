@@ -24,6 +24,7 @@ export interface ProductRow {
   active: boolean;
   in_stock: boolean;
   allowed_weights?: (number | string)[] | null;
+  pack_kg?: number | string | null;
   gst_rate?: number | string | null;
   hsn?: string | null;
   offer_price?: number | string | null;
@@ -49,6 +50,7 @@ export function rowToProduct(row: ProductRow): AdminProduct {
     inStock: row.in_stock,
     active: row.active,
     allowedWeights: row.allowed_weights?.length ? row.allowed_weights.map(Number) : undefined,
+    packKg: row.pack_kg ? Number(row.pack_kg) : undefined,
     gstRate: row.gst_rate === null || row.gst_rate === undefined ? null : Number(row.gst_rate),
     hsn: row.hsn || undefined,
     offer:
@@ -65,9 +67,10 @@ export function rowToProduct(row: ProductRow): AdminProduct {
 }
 
 /** Columns for the optional product settings, used by both insert and update. */
-export function extrasToRow(p: Pick<Product, "allowedWeights" | "gstRate" | "hsn" | "offer" | "schedule">) {
+export function extrasToRow(p: Pick<Product, "allowedWeights" | "packKg" | "gstRate" | "hsn" | "offer" | "schedule">) {
   return {
     allowed_weights: p.allowedWeights?.length ? p.allowedWeights : null,
+    pack_kg: p.packKg ?? null,
     gst_rate: p.gstRate ?? null,
     hsn: p.hsn || null,
     offer_price: p.offer?.price ?? null,
@@ -134,6 +137,7 @@ export interface ProductInput {
   inStock: boolean;
   active: boolean;
   allowedWeights?: number[];
+  packKg?: number;
   gstRate?: number | null;
   hsn?: string;
   offer?: ProductOffer;
@@ -190,8 +194,8 @@ export function parseProductInput(
     return { error: "Enter a valid price" };
 
   const image = typeof b.image === "string" ? b.image.trim() : "";
-  if (!image) return { error: "Add a product photo" };
-  if (!isAllowedImageUrl(image)) return { error: "Invalid image" };
+  // A photo can be added later: the shop shows "Photo coming soon" until then.
+  if (image && !isAllowedImageUrl(image)) return { error: "Invalid image" };
 
   const badge = typeof b.badge === "string" ? b.badge.trim() : "";
   if (badge.length > 30) return { error: "Badge is too long (max 30 characters)" };
@@ -203,6 +207,13 @@ export function parseProductInput(
   const weights = [...new Set(rawWeights.map((w) => Math.round(Number(w) * 100) / 100))];
   if (weights.some((w) => !Number.isFinite(w) || w <= 0 || w > 50)) return { error: "Quantities must be between 0.01 and 50" };
   if (weights.length > 24) return { error: "Choose at most 24 quantities" };
+
+  let packKg: number | undefined;
+  if (b.packKg !== null && b.packKg !== undefined && b.packKg !== "" && Number(b.packKg) !== 0) {
+    const pk = Math.round(Number(b.packKg) * 100) / 100;
+    if (!Number.isFinite(pk) || pk <= 0 || pk > 5) return { error: "A pack must weigh between 0.01 and 5 kg" };
+    packKg = pk;
+  }
 
   let gstRate: number | null = null;
   if (b.gstRate !== null && b.gstRate !== undefined && b.gstRate !== "") {
@@ -232,7 +243,8 @@ export function parseProductInput(
 
   return {
     value: {
-      allowedWeights: weights.length ? weights.sort((x, y) => x - y) : undefined,
+      allowedWeights: weights.length && !packKg ? weights.sort((x, y) => x - y) : undefined,
+      packKg,
       gstRate,
       hsn: hsn || undefined,
       offer,

@@ -139,6 +139,7 @@ export default function ProductsPanel() {
       {p.featured && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-800">Featured</span>}
       {p.offer && <span className="rounded-full bg-success/10 px-2 py-0.5 text-success">Offer running</span>}
       {p.schedule && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">Scheduled</span>}
+      {p.packKg && <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-cyan-800">{p.packKg} kg packs</span>}
     </span>
   );
   const stockSwitch = (p: AdminProduct) => {

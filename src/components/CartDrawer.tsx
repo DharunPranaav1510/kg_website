@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import ProductImage from "@/components/ProductImage";
 import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2, X, Clock, MessageCircle, Phone, Lock } from "lucide-react";
 import CheckoutForm, { type PlacedOrder } from "@/components/CheckoutForm";
@@ -185,7 +185,7 @@ export default function CartDrawer() {
               {items.map(({ product, weightKg }) => (
                 <div key={product.id} className="flex gap-3 rounded-xl border border-warm-gray/60 bg-white p-3 shadow-soft">
                   <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-warm-gray">
-                    <Image src={product.image} alt={product.name} fill className="object-cover" sizes="80px" />
+                    <ProductImage src={product.image} alt={product.name} className="object-cover" sizes="80px" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
