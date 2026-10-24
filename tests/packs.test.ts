@@ -37,7 +37,31 @@ test("the admin can save a pack size, and a bad one is refused", () => {
   const base = { name: "Fish Fingers", category: "Processed Sea Foods", pricePerKg: 600, image: "", description: "" };
   const ok = parseProductInput({ ...base, packKg: 1, allowedWeights: [1, 2] });
   assert.ok("value" in ok && ok.value.packKg === 1 && ok.value.allowedWeights === undefined);
-  assert.ok("error" in parseProductInput({ ...base, packKg: 9 }));
+  assert.ok("error" in parseProductInput({ ...base, packKg: 30 }));
   const loosely = parseProductInput({ ...base, packKg: "" });
   assert.ok("value" in loosely && loosely.value.packKg === undefined);
+});
+
+test("a heavy pack stops before 50 kg in one line", () => {
+  const flour = { allowedWeights: undefined, isEgg: false, packKg: 20 };
+  assert.deepEqual(allowedWeightsFor(flour), [20, 40]);
+});
+
+test("a pack of unknown weight keeps its own words", () => {
+  const base = { name: "Tortilla 10\"", category: "Ready To Cook", pricePerKg: 100, image: "", description: "" };
+  const r = parseProductInput({ ...base, packKg: 1, packLabel: "pack of 10 pieces" });
+  assert.ok("value" in r && r.value.packLabel === "pack of 10 pieces");
+  assert.ok("value" in parseProductInput({ ...base, packKg: 20 }));
+  assert.ok("error" in parseProductInput({ ...base, packKg: 30 }));
+});
+
+import { priceCart } from "../src/lib/pricing";
+test("packs priced from a rounded per-kg price still total the sheet price", () => {
+  const tax = { enabled: false, inclusive: false, categoryRates: {} };
+  const cases: [number, number, number][] = [[153.33, 1.5, 230], [216.67, 1.5, 325], [186.67, 1.5, 280], [166.67, 1.2, 200], [131, 20, 2620], [85, 5, 425]];
+  for (const [perKg, kg, expected] of cases) {
+    const p = { id: "x", name: "x", category: "Ready To Cook", pricePerKg: perKg, image: "", description: "", packKg: kg };
+    const priced = priceCart([{ product: p, weightKg: kg }], tax, Date.now());
+    assert.equal(priced.payable, expected, `${perKg} x ${kg}`);
+  }
 });

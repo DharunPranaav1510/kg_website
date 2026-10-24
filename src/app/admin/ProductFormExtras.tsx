@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 
 export interface ExtrasDraft {
   allowedWeights: number[];
+  packLabel: string; // words for a pack of unknown weight, e.g. "10 pieces"
   packKg: string; // "" = sold loose by weight; otherwise kg in one pack
   gstRate: string; // "" = use the category rate
   hsn: string;
@@ -25,6 +26,7 @@ export interface ExtrasDraft {
 export const EMPTY_EXTRAS: ExtrasDraft = {
   allowedWeights: [],
   packKg: "",
+  packLabel: "",
   gstRate: "",
   hsn: "",
   offerPrice: "",
@@ -53,6 +55,7 @@ export function productToExtras(p: Product): ExtrasDraft {
   return {
     allowedWeights: p.allowedWeights ?? [],
     packKg: p.packKg ? String(p.packKg) : "",
+    packLabel: p.packLabel ?? "",
     gstRate: p.gstRate === null || p.gstRate === undefined ? "" : String(p.gstRate),
     hsn: p.hsn ?? "",
     offerPrice: p.offer ? String(p.offer.price) : "",
@@ -74,6 +77,7 @@ export function extrasToPayload(e: ExtrasDraft) {
   return {
     allowedWeights: e.packKg ? [] : e.allowedWeights,
     packKg: e.packKg === "" ? null : Number(e.packKg),
+    packLabel: e.packKg === "" ? "" : e.packLabel.trim(),
     gstRate: e.gstRate === "" ? null : Number(e.gstRate),
     hsn: e.hsn.trim(),
     offer: e.offerPrice === "" ? null : { price: Number(e.offerPrice), label: e.offerLabel, from: fromIst(e.offerFrom), to: fromIst(e.offerTo) },
@@ -176,6 +180,10 @@ export function PackFields({ value, onChange, price }: Props) {
           {Number.isFinite(kg) && kg > 0 && price > 0 && (
             <p className="rounded-lg bg-cream px-3 py-2 text-base">Customers pay <b>₹{Math.round(price * kg * 100) / 100}</b> for each {kg} kg pack (₹{price} per kg). They can order up to {10} packs. The quantities in the Weights section are ignored.</p>
           )}
+          <label className="block text-sm font-medium">Pack described as (optional)
+            <input className={`${field} mt-1`} maxLength={40} value={value.packLabel} onChange={(e) => onChange({ ...value, packLabel: e.target.value })} placeholder="e.g. pack of 10 pieces" />
+          </label>
+          <p className="text-sm text-secondary-text">Use this when a pack has no weight. Then set the pack weight to 1 and the price per kg to the price of one pack; customers see only the words you type, never kilograms.</p>
           <p className="text-sm text-secondary-text">Tip: put the pieces per pack in the product description, for example “Pack of 40 pieces”.</p>
         </>
       )}

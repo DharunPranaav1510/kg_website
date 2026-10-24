@@ -16,6 +16,11 @@ export interface Product {
    * The customer chooses how many packs; the cart still stores kg (packs x packKg).
    */
   packKg?: number;
+  /**
+   * For packs whose weight is not known (a pack of 10 tortillas): the words to show instead of "N kg pack".
+   * The cart then counts packs only and never shows kilograms.
+   */
+  packLabel?: string;
   /** GST % for this product. Missing = the category's rate from the admin tax settings. */
   gstRate?: number | null;
   /** HSN code printed on the bill (optional). */

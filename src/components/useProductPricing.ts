@@ -5,6 +5,9 @@ import { useBusiness } from "@/context/BusinessContext";
 import type { Product } from "@/data/products";
 import { allowedWeightsFor, defaultWeight, gstRateFor, isPacked, offerActive, packLabel, percentOff, effectivePrice, unitWord } from "@/lib/pricing";
 
+// A pack price worked out from a per-kg price can land a hair off a whole rupee (229.995), so snap to it.
+const money = (n: number) => (Math.abs(n - Math.round(n)) < 0.02 ? Math.round(n) : Math.round(n * 100) / 100);
+
 /** Everything a product card needs to show: price, offer, GST note, allowed quantities. */
 export function useProductPricing(product: Product) {
   const tax = useBusiness().tax;
@@ -26,10 +29,10 @@ export function useProductPricing(product: Product) {
       allowed,
       quick,
       first: defaultWeight(product),
-      price: Math.round(price * perUnit * 100) / 100,
-      listPrice: Math.round(product.pricePerKg * perUnit * 100) / 100,
+      price: money(price * perUnit),
+      listPrice: money(product.pricePerKg * perUnit),
       unit: unitWord(product),
-      packNote: packed ? `${packLabel(product)} · ₹${Math.round(price * 100) / 100}/kg` : "",
+      packNote: packed ? [packLabel(product), !product.packLabel && Number.isInteger(price) ? `₹${price}/kg` : ""].filter(Boolean).join(" · ") : "",
       onOffer,
       off: percentOff(product, now),
       offerLabel: product.offer?.label || (onOffer ? "Offer" : ""),
