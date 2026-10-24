@@ -231,3 +231,19 @@ alter table public.products add column if not exists pack_label text;
 
 -- A product can say whether its price already includes its GST (e.g. a printed MRP). Null = follow the shop-wide setting. Safe to re-run.
 alter table public.products add column if not exists gst_inclusive boolean;
+
+-- Admin access requests (from the sign-in page; only the owner can approve). Safe to re-run.
+create table if not exists public.admin_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  email text not null,
+  name text not null,
+  note text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  decided_at timestamptz,
+  decided_by text,
+  ip_hash text
+);
+create unique index if not exists admin_requests_email_key on public.admin_requests (lower(email));
+create index if not exists admin_requests_status_idx on public.admin_requests (status, created_at desc);
+alter table public.admin_requests enable row level security;

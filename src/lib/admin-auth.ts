@@ -1,6 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { decideAccess, peekClaims } from "@/lib/admin-access";
+import { isOwner } from "@/lib/owner";
 import { getAuthClient, getSupabase } from "@/lib/supabase";
 
 const ACCESS_COOKIE = "kg_admin_at";
@@ -177,4 +178,14 @@ export async function refreshSession() {
   if (!auth || !refresh_token) return null;
   const { data, error } = await auth.auth.refreshSession({ refresh_token });
   return error || !data.session ? null : data.session;
+}
+
+/** Like requireAdmin, but only the owner passes. Used for adding, removing and approving admins. */
+export async function requireOwner(): Promise<NextResponse | null> {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+  if (!isOwner((await getAdmin())?.email)) {
+    return NextResponse.json({ error: "Only the owner can manage admins." }, { status: 403 });
+  }
+  return null;
 }

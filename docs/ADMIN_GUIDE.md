@@ -259,10 +259,19 @@ Good habits: use a long password that is not used anywhere else, never share it,
 
 ## 16. Admins (owner only)
 
-Only the owner (`dpranaav@gmail.com`) sees **Account → Admins**.
+Only the owner (`dpranaav@gmail.com`) sees **Account → Admins** and can approve anyone.
 
-- **Add admin:** enter their email. Choose *Create a new login* (the admin makes a temporary password for them; **Generate** makes a strong one) or *This person already has a login*. After adding, copy the ready-made message, or tap **Send on WhatsApp**, and send it to them privately. The password is shown only once.
-- **Remove admin** asks first. They lose access within about 30 seconds. The owner cannot be removed.
+**Someone asks for access themselves (the usual way)**
+1. On the sign-in page they tap **Need access? Request admin access**, enter their name, email and **a password of their own**, and send the request.
+2. Their request shows in **Admins → Waiting for your approval** (and a red number appears on *Admins* in the menu).
+3. You tap **Approve** (they can now sign in with the email and password they chose) or **Reject**.
+
+Until you approve, their sign-in is refused. Approve only people you know.
+
+**You add someone yourself**
+- **Add admin:** enter their email. Choose *Create a new login* (**Generate** makes a temporary password) or *This person already has a login*. Copy the ready-made message, or tap **Send on WhatsApp**, and send it to them privately. The password is shown only once.
+
+**Remove admin** asks first. They lose access within about 30 seconds. The owner cannot be removed.
 
 ---
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdmin, requireAdmin } from "@/lib/admin-auth";
+import { isOwner } from "@/lib/owner";
 import { getSupabase } from "@/lib/supabase";
 import { getBusinessFresh } from "@/lib/content";
 import { getShopStatusFresh } from "@/lib/settings";
@@ -15,5 +16,11 @@ export async function GET() {
     getShopStatusFresh(),
     getBusinessFresh(),
   ]);
-  return NextResponse.json({ newOrders: count ?? 0, shop, hours: business.hours.schedule });
+  // Only the owner is told how many people are waiting for admin access.
+  let adminRequests = 0;
+  if (isOwner((await getAdmin())?.email)) {
+    const { count: waiting } = await supabase.from("admin_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+    adminRequests = waiting ?? 0;
+  }
+  return NextResponse.json({ newOrders: count ?? 0, shop, hours: business.hours.schedule, adminRequests });
 }

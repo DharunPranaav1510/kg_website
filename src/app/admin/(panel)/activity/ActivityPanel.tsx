@@ -30,7 +30,7 @@ const GROUP_OF: Record<string, Group> = {
   offers_changed: "offers",
   content_changed: "content", policy_changed: "content", business_changed: "content",
   shop_open: "shop", shop_closed: "shop", hours_changed: "shop",
-  admin_added: "admins", admin_removed: "admins",
+  admin_added: "admins", admin_removed: "admins", admin_request_approved: "admins", admin_request_rejected: "admins",
 };
 
 type Change = { name: string; from?: number | string; to?: number | string };
@@ -69,6 +69,8 @@ function sentence(e: Entry): string {
     case "business_changed": return `${who} changed the business and delivery details`;
     case "admin_added": return `${who} added the admin ${t}`;
     case "admin_removed": return `${who} removed the admin ${t}`;
+    case "admin_request_approved": return `${who} approved the admin request from ${t}`;
+    case "admin_request_rejected": return `${who} rejected the admin request from ${t}`;
     default: return `${who}: ${e.action}${t ? ` ${t}` : ""}`;
   }
 }

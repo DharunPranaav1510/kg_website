@@ -24,6 +24,8 @@ export type AuditAction =
   | "hours_changed"
   | "admin_added"
   | "admin_removed"
+  | "admin_request_approved"
+  | "admin_request_rejected"
   | "offers_changed"
   | "bill_printed";
 
