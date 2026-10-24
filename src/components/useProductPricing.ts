@@ -21,7 +21,7 @@ export function useProductPricing(product: Product) {
     // Up to three quick-add choices: prefer 1/2, 1 and 2, else the first few allowed quantities.
     const preferred = (product.isEgg ? [1, 2, 0.5] : [0.5, 1, 2]).filter((w) => allowed.includes(w));
     const packed = isPacked(product);
-    const quick = packed ? allowed.slice(0, 3) : (allowed.length <= 4 ? allowed : preferred.length >= 2 ? preferred.sort((a, b) => a - b) : allowed.slice(0, 3)).slice(0, 4);
+    const quick = packed ? allowed.slice(0, 3) : (allowed.length <= 4 ? allowed : preferred.length >= 2 ? preferred.sort((a, b) => a - b) : allowed.slice(0, 3)).slice(0, 3);
     // What one "unit" of the price is: a pack, a dozen or a kg.
     const perUnit = packed ? product.packKg ?? 1 : 1;
 
@@ -32,7 +32,13 @@ export function useProductPricing(product: Product) {
       price: money(price * perUnit),
       listPrice: money(product.pricePerKg * perUnit),
       unit: unitWord(product),
-      packNote: packed ? [packLabel(product), !product.packLabel && Number.isInteger(price) ? `₹${price}/kg` : ""].filter(Boolean).join(" · ") : "",
+      // Say what a pack is, unless the description already does ("1 kg pack · about 40 pieces").
+      packNote: packed
+        ? [
+            product.description.toLowerCase().includes(packLabel(product).toLowerCase()) ? "" : packLabel(product),
+            !product.packLabel && Number.isInteger(price) ? `₹${price}/kg` : "",
+          ].filter(Boolean).join(" · ")
+        : "",
       onOffer,
       off: percentOff(product, now),
       offerLabel: product.offer?.label || (onOffer ? "Offer" : ""),
