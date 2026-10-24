@@ -1,3 +1,4 @@
+import { isSameOrigin } from "@/lib/admin-auth";
 import { isValidSlot } from "@/lib/delivery";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
@@ -48,6 +49,7 @@ const fail = (error: string, status = 400, extra: Record<string, unknown> = {}) 
   NextResponse.json({ error, ...extra }, { status });
 
 export async function POST(req: NextRequest) {
+  if (!(await isSameOrigin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   try {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return fail("Invalid request");

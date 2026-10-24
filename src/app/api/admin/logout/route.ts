@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearSessionCookies, currentTokens, forgetAdminSession, getAdmin } from "@/lib/admin-auth";
+import { clearSessionCookies, currentTokens, forgetAdminSession, getAdmin, isSameOrigin } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
 import { getSupabase } from "@/lib/supabase";
 
 // Sign out. With ?all=1, sign out of every device (revokes all sessions).
 export async function POST(req: NextRequest) {
+  if (!(await isSameOrigin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const all = new URL(req.url).searchParams.get("all") === "1";
   const supabase = getSupabase();
   const tokens = await currentTokens();

@@ -1,3 +1,5 @@
+import { REQUEST_SOURCE } from "@/lib/auth-users";
+import { exactLike } from "@/lib/like";
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/admin-auth";
 import { parseAdminRequest } from "@/lib/admin-request";
@@ -34,18 +36,18 @@ export async function POST(req: NextRequest) {
   }
 
   // Already an admin: nothing to request.
-  const { data: existing } = await supabase.from("admins").select("email").ilike("email", email).maybeSingle();
+  const { data: existing } = await supabase.from("admins").select("email").ilike("email", exactLike(email)).maybeSingle();
   if (existing) return NextResponse.json(SENT);
 
   // The sign-in account. If the email already has one, keep its password: a stranger cannot change it.
-  const { error: userError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
+  const { error: userError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { via: REQUEST_SOURCE } });
   if (userError && !/already|registered|exists/i.test(userError.message)) {
     console.error("Admin request: could not create the login:", userError.message);
     return NextResponse.json({ error: "Could not send the request. Please try again." }, { status: 500 });
   }
 
   // One row per email. A rejected request can be asked again; an approved one stays approved.
-  const { data: prior } = await supabase.from("admin_requests").select("id, status").ilike("email", email).maybeSingle();
+  const { data: prior } = await supabase.from("admin_requests").select("id, status").ilike("email", exactLike(email)).maybeSingle();
   if (!prior) {
     const { error } = await supabase.from("admin_requests").insert({ email, name, note: note || null, ip_hash: ip });
     if (error) {

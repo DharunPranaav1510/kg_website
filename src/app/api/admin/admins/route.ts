@@ -1,3 +1,5 @@
+import { createdByRequest, findAuthUser } from "@/lib/auth-users";
+import { exactLike } from "@/lib/like";
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwner } from "@/lib/admin-auth";
 import { audit } from "@/lib/audit";
@@ -26,6 +28,15 @@ export async function POST(req: NextRequest) {
   const supabase = getSupabase()!;
   // A password is only needed for someone who has no login yet.
   let created = false;
+  // A login made through the public request form was set up by whoever typed it, who may not own
+  // that email. It becomes an admin only by approving its request, never from here.
+  const existingUser = await findAuthUser(email);
+  if (existingUser && password) {
+    return NextResponse.json({ error: "This email already has a login, so a new password cannot be set here. Choose \"This person already has a login\"." }, { status: 409 });
+  }
+  if (createdByRequest(existingUser)) {
+    return NextResponse.json({ error: "This login was created from an access request. Approve it under \"Waiting for your approval\" instead." }, { status: 409 });
+  }
   if (password) {
     if (password.length < 10) return NextResponse.json({ error: "Use a password of at least 10 characters." }, { status: 400 });
     const { error } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
@@ -49,7 +60,7 @@ export async function DELETE(req: NextRequest) {
   if (!email) return NextResponse.json({ error: "Missing email" }, { status: 400 });
   if (isOwner(email)) return NextResponse.json({ error: "The owner cannot be removed." }, { status: 400 });
 
-  const { error } = await getSupabase()!.from("admins").delete().ilike("email", email);
+  const { error } = await getSupabase()!.from("admins").delete().ilike("email", exactLike(email));
   if (error) return NextResponse.json({ error: "Failed to remove admin" }, { status: 500 });
   await audit("admin_removed", email);
   return NextResponse.json({ success: true });

@@ -1,3 +1,4 @@
+import { isSameOrigin } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { clientIpHash } from "@/lib/guard";
 import { allow } from "@/lib/ratelimit";
@@ -6,6 +7,7 @@ import { getSupabase } from "@/lib/supabase";
 
 // "Where is my order?": order number + the phone number it was placed with.
 export async function POST(req: NextRequest) {
+  if (!(await isSameOrigin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const supabase = getSupabase();
   if (!(await allow(supabase, "track", clientIpHash(req), 10, 10 * 60 * 1000))) {
     return NextResponse.json({ error: "Too many attempts. Please wait a few minutes or call the shop." }, { status: 429 });
