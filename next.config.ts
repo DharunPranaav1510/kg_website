@@ -14,12 +14,13 @@ const turnstile = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 // this site plus the few third parties the pages really use.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${turnstile ? " https://challenges.cloudflare.com" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://va.vercel-scripts.com${turnstile ? " https://challenges.cloudflare.com" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: https://tile.openstreetmap.org${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   "font-src 'self' data:",
   // nominatim.openstreetmap.org: "use my location" address lookup
-  `connect-src 'self' https://nominatim.openstreetmap.org${turnstile ? " https://challenges.cloudflare.com" : ""}${isDev ? " ws: wss:" : ""}`,
+  // va.vercel-scripts.com: Vercel Web Analytics (debug script in local/dev)
+  `connect-src 'self' https://nominatim.openstreetmap.org https://va.vercel-scripts.com${turnstile ? " https://challenges.cloudflare.com" : ""}${isDev ? " ws: wss:" : ""}`,
   // Google Maps embed on the contact page
   `frame-src https://www.google.com${turnstile ? " https://challenges.cloudflare.com" : ""}`,
   "object-src 'none'",

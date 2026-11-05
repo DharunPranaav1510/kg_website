@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { business } from "@/data/business";
 import { createPageMetadata } from "@/lib/seo";
 import { fraunces, dmSans } from "@/lib/fonts";
@@ -44,6 +45,7 @@ export default async function RootLayout({
         <Providers products={products} shop={shop} business={liveBusiness}>{children}</Providers>
         <BackToTop />
         <AutoView />
+        <Analytics />
       </body>
     </html>
   );
