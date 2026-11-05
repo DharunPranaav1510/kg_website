@@ -3,18 +3,18 @@
 // is missing it is skipped, so the site keeps working without it.
 
 export const turnstileEnabled = () =>
-  !!process.env.TURNSTILE_SECRET_KEY && !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  !!process.env.TURNSTILE_SECRET_KEY?.trim() && !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 
 export async function verifyTurnstile(
   token: unknown,
   ip: string | null,
   fetchImpl: typeof fetch = fetch,
-  secret = process.env.TURNSTILE_SECRET_KEY
+  secret = process.env.TURNSTILE_SECRET_KEY?.trim()
 ): Promise<boolean> {
   if (!secret) return true; // not configured: nothing to verify
-  if (typeof token !== "string" || token.length < 10 || token.length > 4096) return false;
+  if (typeof token !== "string" || token.trim().length < 10 || token.trim().length > 4096) return false;
   try {
-    const body = new URLSearchParams({ secret, response: token });
+    const body = new URLSearchParams({ secret, response: token.trim() });
     if (ip) body.set("remoteip", ip);
     const res = await fetchImpl("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",

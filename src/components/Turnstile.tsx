@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim();
 export const turnstileConfigured = !!SITE_KEY;
 
 /** Renders the Cloudflare check when configured; renders nothing otherwise. */

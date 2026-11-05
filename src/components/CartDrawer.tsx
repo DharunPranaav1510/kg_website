@@ -117,7 +117,9 @@ export default function CartDrawer() {
             {placed.number && (
               <>
                 <p className="mt-1 font-semibold text-accent">Order #{placed.number}</p>
-                <p className="mt-0.5 text-xs text-secondary-text">Keep this number. You can look it up any time under Track Order with your mobile number.</p>
+                <p className="mt-0.5 text-xs text-secondary-text">
+                  Keep this order number. Later, open <b>Track</b> and enter #{placed.number} with the same mobile number you used here.
+                </p>
               </>
             )}
 

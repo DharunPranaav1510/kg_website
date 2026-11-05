@@ -71,6 +71,10 @@ alter table public.orders add column if not exists order_number bigint generated
 alter table public.orders add column if not exists delivery_fee numeric(10, 2) not null default 0;
 alter table public.orders add column if not exists slot text;
 
+-- Track Order lookups: order number + the phone used at checkout
+create index if not exists orders_order_number_phone_idx
+  on public.orders (order_number, phone);
+
 -- ---------------------------------------------------------------------------
 -- Shop open/closed, structured addresses, spam protection (safe to re-run)
 -- ---------------------------------------------------------------------------
